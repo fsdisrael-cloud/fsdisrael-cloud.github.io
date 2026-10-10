@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="O8O" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="format-detection" content="telephone=no" />
+  <title>OO8OO</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="192x192" href="img/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png" />
+  <link rel="preload" href="fonts/Fredoka.ttf" as="font" type="font/ttf" crossorigin />
+  <link rel="stylesheet" href="css/style.css" />
+  <script type="importmap">{ "imports": { "three": "./js/vendor/three.module.min.js" } }</script>
+</head>
+<body>
+  <!-- iOS 18+ best-effort haptic tick (see js/haptics.js) -->
+  <input id="ios-haptic-switch" type="checkbox" switch aria-hidden="true" tabindex="-1" />
+  <label id="ios-haptic-label" for="ios-haptic-switch" aria-hidden="true"></label>
+
+  <canvas id="game-canvas"></canvas>
+  <canvas id="hud-canvas"></canvas>
+
+  <!-- top row: always available (title + game) -->
+  <div id="top-right" class="top-right">
+    <button type="button" class="round-btn ingame" id="btn-music" aria-label="Music on/off" title="Music"><span class="ico">♪</span></button>
+    <button type="button" class="round-btn ingame" id="btn-sfx" aria-label="Sound effects on/off" title="Sound effects"><span class="ico">🔊</span></button>
+    <button type="button" class="round-btn gear" id="btn-gear" aria-label="Settings" title="Settings">
+      <svg viewBox="0 0 48 48" aria-hidden="true"><g stroke="#111" stroke-width="3.5" stroke-linejoin="round">
+        <path fill="#ffc93c" d="M20 4h8l1.5 6.2a14 14 0 0 1 4 2.3l6.1-1.9 4 6.9-4.6 4.4a14 14 0 0 1 0 4.6l4.6 4.4-4 6.9-6.1-1.9a14 14 0 0 1-4 2.3L28 44h-8l-1.5-6.2a14 14 0 0 1-4-2.3l-6.1 1.9-4-6.9 4.6-4.4a14 14 0 0 1 0-4.6L4.4 17.5l4-6.9 6.1 1.9a14 14 0 0 1 4-2.3z"/>
+        <circle cx="24" cy="24" r="6.5" fill="#fff"/></g></svg>
+    </button>
+  </div>
+
+  <!-- OPENING SCREEN: the OO8OO circles ARE the menu -->
+  <section id="screen-title" class="screen intro">
+    <div class="dust d1" aria-hidden="true"></div><div class="dust d2" aria-hidden="true"></div>
+    <div class="title-col">
+    <button type="button" class="style-dial" id="style-dial" aria-label="Realistic or surreal look" aria-pressed="false"></button>
+    <div class="oo8oo" id="oo8oo" aria-label="OO8OO">
+      <button type="button" class="o-ring jet-o" id="o-jet" aria-label="Fly the jet">
+        <span class="o-hole" id="jet-hole"></span>
+        <svg class="ring-svg" viewBox="0 0 100 100" aria-hidden="true"><use href="#silver-ring"/></svg>
+      </button>
+      <button type="button" class="o-ring idle-o" aria-label="Coming later"><svg class="ring-svg" viewBox="0 0 100 100" aria-hidden="true"><use href="#silver-ring"/></svg></button>
+      <div class="o-eight" aria-hidden="true">
+        <svg viewBox="0 0 100 150" class="eight-svg"><use href="#silver-eight"/></svg>
+      </div>
+      <button type="button" class="o-ring idle-o" aria-label="Coming later"><svg class="ring-svg" viewBox="0 0 100 100" aria-hidden="true"><use href="#silver-ring"/></svg></button>
+      <button type="button" class="o-ring idle-o" aria-label="Coming later"><svg class="ring-svg" viewBox="0 0 100 100" aria-hidden="true"><use href="#silver-ring"/></svg></button>
+    </div>
+    </div>
+    <div class="preflight hidden" id="preflight" role="dialog" aria-label="Pre-flight">
+      <button type="button" class="pf-close" id="pf-close" aria-label="Close">×</button>
+      <div class="pf-line" id="pf-line">Series 1 · Book 1 · Chapter 1 · Level 1/10</div>
+      <div class="pf-sub" id="pf-sub"></div>
+      <div class="pf-row" id="pf-crafts" aria-label="Choose craft"></div>
+      <div class="pf-row">
+        <button type="button" class="silver-pill" id="pf-continue">Continue</button>
+        <button type="button" class="silver-pill" id="pf-new">New game</button>
+        <button type="button" class="silver-pill" id="pf-select">Pick level</button>
+        <button type="button" class="silver-pill hidden" id="pf-vibe">Vibe mode</button>
+      </div>
+      <div class="pf-levelsel hidden" id="pf-levelsel"></div>
+      <div class="len-pick" id="len-pick" role="radiogroup" aria-label="Mission length">
+        <button type="button" class="silver-chip" data-len="3"><b>3</b><small>min</small></button>
+        <button type="button" class="silver-chip" data-len="5"><b>5</b><small>min</small></button>
+        <button type="button" class="silver-chip" data-len="7"><b>7</b><small>min</small></button>
+      </div>
+      <div class="pf-hint" id="pf-hint">Tap a time to fly</div>
+    </div>
+  </section>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="g-silver" x1="0" y1="0" x2="0.35" y2="1">
+        <stop offset="0" stop-color="#ffffff"/><stop offset="0.18" stop-color="#d9dde3"/>
+        <stop offset="0.42" stop-color="#8a9099"/><stop offset="0.55" stop-color="#f4f6f8"/>
+        <stop offset="0.72" stop-color="#9aa1aa"/><stop offset="0.9" stop-color="#5d636c"/><stop offset="1" stop-color="#c9ced5"/>
+      </linearGradient>
+      <linearGradient id="g-silver-edge" x1="0" y1="1" x2="0.4" y2="0">
+        <stop offset="0" stop-color="#2a2d32"/><stop offset="0.5" stop-color="#6b717a"/><stop offset="1" stop-color="#f2f4f7"/>
+      </linearGradient>
+      <linearGradient id="g-silver-in" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#1c1e22"/><stop offset="0.6" stop-color="#55595f"/><stop offset="1" stop-color="#d0d4da"/>
+      </linearGradient>
+      <linearGradient id="g-sweep" x1="0" y1="0" x2="1" y2="0.35">
+        <stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.45" stop-color="#fff" stop-opacity="0"/>
+        <stop offset="0.5" stop-color="#fff" stop-opacity="0.95"/><stop offset="0.55" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+        <animateTransform attributeName="gradientTransform" type="translate" values="-1.2 0; -1.2 0; 1.2 0; 1.2 0" keyTimes="0; 0.35; 0.75; 1" dur="4.5s" repeatCount="indefinite"/>
+      </linearGradient>
+      <filter id="f-brush" x="-2%" y="-2%" width="104%" height="104%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.006 0.85" numOctaves="2" seed="7" result="n"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  1.6 0 0 0 -0.62" result="lite"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -1.6 0 0 0 0.78" result="dark"/>
+        <feComposite in="lite" in2="SourceGraphic" operator="in" result="lite2"/>
+        <feComposite in="dark" in2="SourceGraphic" operator="in" result="dark2"/>
+        <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="dark2"/><feMergeNode in="lite2"/></feMerge>
+      </filter>
+      <symbol id="silver-ring" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="42" fill="none" stroke="url(#g-silver-edge)" stroke-width="15"/>
+        <circle cx="50" cy="50" r="42" fill="none" stroke="url(#g-silver)" stroke-width="11" filter="url(#f-brush)"/>
+        <circle cx="50" cy="50" r="36.2" fill="none" stroke="url(#g-silver-in)" stroke-width="1.4"/>
+        <circle cx="50" cy="50" r="47.6" fill="none" stroke="#0b0c0e" stroke-width="1.2"/>
+        <path d="M18 34 A36 36 0 0 1 40 12" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity="0.9"/>
+        <path d="M80 70 A36 36 0 0 1 66 84" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity="0.5"/>
+        <ellipse cx="27" cy="22" rx="6" ry="2.2" transform="rotate(-40 27 22)" fill="#fff" opacity="0.95"/>
+        <circle cx="76" cy="78" r="1.6" fill="#fff" opacity="0.8"/>
+      </symbol>
+      <symbol id="silver-eight" viewBox="0 0 100 150">
+        <g fill="none">
+          <ellipse cx="50" cy="40" rx="27" ry="27" stroke="#050506" stroke-width="27"/>
+          <ellipse cx="50" cy="104" rx="33" ry="33" stroke="#050506" stroke-width="27"/>
+          <ellipse cx="50" cy="40" rx="27" ry="27" stroke="url(#g-silver-edge)" stroke-width="23"/>
+          <ellipse cx="50" cy="104" rx="33" ry="33" stroke="url(#g-silver-edge)" stroke-width="23"/>
+          <ellipse cx="50" cy="40" rx="27" ry="27" stroke="url(#g-silver)" stroke-width="17" filter="url(#f-brush)"/>
+          <ellipse cx="50" cy="104" rx="33" ry="33" stroke="url(#g-silver)" stroke-width="17" filter="url(#f-brush)"/>
+          <ellipse cx="50" cy="40" rx="18.5" ry="18.5" stroke="url(#g-silver-in)" stroke-width="1.6"/>
+          <ellipse cx="50" cy="104" rx="24.5" ry="24.5" stroke="url(#g-silver-in)" stroke-width="1.6"/>
+          <ellipse cx="50" cy="40" rx="27" ry="27" stroke="url(#g-sweep)" stroke-width="17"/>
+          <ellipse cx="50" cy="104" rx="33" ry="33" stroke="url(#g-sweep)" stroke-width="17"/>
+          <path d="M30 26 A24 24 0 0 1 48 15" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+          <path d="M24 88 A30 30 0 0 1 44 75" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+          <path d="M74 118 A30 30 0 0 1 62 130" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity="0.6"/>
+          <circle cx="36" cy="22" r="2.2" fill="#fff"/>
+        </g>
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- ENDING -->
+  <section id="screen-end" class="screen hidden">
+    <div class="end-wrap">
+      <svg viewBox="0 0 100 100" class="end-ring" aria-hidden="true"><use href="#silver-ring"/></svg>
+      <h1 class="end-title">You finished OO8OO!</h1>
+      <p class="end-name" id="end-name"></p>
+      <p class="end-sub">10 series · 100 books · 1,000 chapters · 10,000 levels</p>
+      <div class="pf-row"><button type="button" class="silver-pill" id="end-vibe">Vibe mode</button><button type="button" class="silver-pill" id="end-menu">Menu</button></div>
+    </div>
+  </section>
+
+  <!-- LOADING -->
+  <section id="screen-loading" class="screen hidden">
+    <div class="loader"><svg class="spin8" viewBox="0 0 100 150" aria-hidden="true"><use href="#silver-eight"/></svg><p id="loading-text">Loading satellite map…</p></div>
+  </section>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div class="hud-tl">
+      <div class="chip-pill" id="hud-timer">3:00</div>
+      <div class="chip-pill score" id="hud-score">0</div>
+      <div class="obj" id="hud-obj"></div>
+      <div class="hud-pos" id="hud-pos"></div>
+    </div>
+    <canvas id="radar" width="240" height="240" aria-label="Radar"></canvas>
+    <div class="hud-bl" id="weapons">
+      <button type="button" class="wpn" id="wpn-gun"><svg class="heat" viewBox="0 0 100 100" aria-hidden="true"><circle class="heat-bg" cx="50" cy="50" r="44"/><circle class="heat-fill" id="heat-fill" cx="50" cy="50" r="44" pathLength="100"/></svg><span class="wi">●●</span><b>Gun</b><i id="ammo-gun">∞</i></button>
+      <button type="button" class="wpn" id="wpn-rocket"><span class="wi">➤</span><b>Rocket</b><i id="ammo-rocket">16</i></button>
+      <button type="button" class="wpn" id="wpn-bomb"><span class="wi">⬤</span><b>Bomb</b><i id="ammo-bomb">8</i></button>
+    </div>
+    <div class="hud-loops" id="loops">
+      <button type="button" class="loop-btn" id="btn-loop-in" aria-label="Inside loop"><svg viewBox="0 0 40 40" aria-hidden="true"><path class="lp" d="M4 33 H17 A12 12 0 1 1 23 33 H36"/><path class="la" d="M27.5 9.6 l2.6 -6.4 l3.4 6"/><circle class="ld" cx="20" cy="9" r="2.6"/></svg></button>
+      <button type="button" class="loop-btn" id="btn-loop-out" aria-label="Outside loop"><svg viewBox="0 0 40 40" aria-hidden="true"><path class="lp" d="M4 7 H17 A12 12 0 1 0 23 7 H36"/><path class="la" d="M27.5 30.4 l2.6 6.4 l3.4 -6"/><circle class="ld" cx="20" cy="31" r="2.6"/></svg></button>
+      <button type="button" class="loop-btn" id="btn-roll-l" aria-label="Barrel roll left"><svg viewBox="0 0 40 40" aria-hidden="true"><ellipse class="lp" cx="20" cy="20" rx="15" ry="8.5"/><path class="la" d="M11 6.5 l-5.5 5.4 l7.2 2.2"/><path class="lw" d="M10 20 H30 M20 15.5 V20"/></svg></button>
+      <button type="button" class="loop-btn" id="btn-roll-r" aria-label="Barrel roll right"><svg viewBox="0 0 40 40" aria-hidden="true"><ellipse class="lp" cx="20" cy="20" rx="15" ry="8.5"/><path class="la" d="M29 6.5 l5.5 5.4 l-7.2 2.2"/><path class="lw" d="M10 20 H30 M20 15.5 V20"/></svg></button>
+    </div>
+    <div class="friend-slot" id="friend-slot" aria-hidden="true"></div>
+    <div class="hud-bc">
+      <div class="hp"><i id="hud-hp"></i></div>
+      <div class="flight"><span>SPD <b id="hud-spd">0</b></span><span id="alt-box">ALT <b id="hud-alt">0</b><em class="low-alt" id="low-alt" aria-hidden="true">▲</em></span></div>
+    </div>
+    <button type="button" class="round-btn view-btn" id="btn-view" aria-label="Toggle cockpit/outside view"><span id="view-ico">👁</span><small id="view-label">Cockpit</small></button>
+    <div id="alert" class="alert hidden"></div>
+    <div id="toasts"></div>
+    <div id="look-hint">Drag here to look around</div>
+  </div>
+  <div id="hit-flash"></div>
+  <div id="crash" class="crash hidden" aria-live="polite"><div class="crash-badge"><b>BOOM!</b><span>Oops! Back to the sky…</span></div></div>
+  <div id="crash-flash" aria-hidden="true"></div>
+  <div id="low-edge" aria-hidden="true"></div>
+  <div id="sky-flash" aria-hidden="true"></div>
+  <div id="dream-glow" aria-hidden="true"></div>
+
+  <!-- SETTINGS -->
+  <div id="settings" class="modal hidden" role="dialog" aria-label="Settings">
+    <div class="card">
+      <h2>Settings</h2>
+      <div class="set-pos" id="set-pos"></div>
+      <div class="set-scroll">
+        <label class="set-row"><span>Pilot name</span><input id="set-name" type="text" maxlength="16" placeholder="Your name" autocomplete="off" enterkeyhint="done" /></label>
+        <div class="set-row col"><span>Game mode</span>
+          <div class="seg">
+            <button type="button" class="seg-btn on" id="mode-solo">Play solo vs the machine</button>
+            <button type="button" class="seg-btn" id="mode-multi" disabled aria-disabled="true">Multiplayer online <em>coming soon</em></button>
+          </div>
+        </div>
+        <div class="set-row icon-only"><button type="button" class="style-dial small" id="set-style" aria-label="Realistic or surreal look" aria-pressed="false"></button></div>
+        <div class="set-row"><span>Music</span><button type="button" class="toggle" id="set-music"></button></div>
+        <div class="set-row"><span>Sound effects</span><button type="button" class="toggle" id="set-sfx"></button></div>
+        <div class="set-row"><span>Vibration</span><button type="button" class="toggle" id="set-haptics"></button></div>
+        <div class="set-row"><span>Graphics</span>
+          <div class="seg small"><button type="button" class="seg-btn" data-q="low">Low</button><button type="button" class="seg-btn" data-q="high">High</button></div>
+        </div>
+        <div class="set-row"><span>Tilt steering</span><button type="button" class="soft-btn" id="set-tilt">Enable</button></div>
+        <div class="set-row"><span>Calibrate tilt</span><button type="button" class="soft-btn" id="set-cal">Hold phone, tap</button></div>
+        <div class="set-row"><span>Invert up/down</span><button type="button" class="toggle" id="set-invert"></button></div>
+        <div class="set-row"><span>Tilt sensitivity</span><input type="range" id="set-sens" min="0.5" max="1.8" step="0.1" /></div>
+        <h3>Next mission</h3>
+        <div class="set-row col"><span>Mission length</span><div class="chips" id="chips-len"></div></div>
+        <div class="set-row col"><span>Place (real world)</span><div class="chips" id="chips-place"></div></div>
+        <div class="set-row col"><span>Time of day</span><div class="chips" id="chips-time"></div></div>
+        <div class="set-row col"><span>Weather</span><div class="chips" id="chips-weather"></div></div>
+        <div class="set-row col"><span>Jet color</span><div class="chips" id="chips-color"></div></div>
+        <p class="keys">Desktop: W/S or ↑/↓ pitch · A/D or ←/→ bank · Q/E rudder · L inside loop · K outside loop · J / O barrel roll left / right · Space gun · F rocket · B bomb · V view · Shift boost · drag right side to look</p>
+      </div>
+      <div class="card-foot">
+        <button type="button" class="soft-btn hidden" id="set-quit">Quit mission</button>
+        <button type="button" class="big-btn small" id="set-close">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results" class="modal hidden">
+    <div class="card">
+      <h2 id="res-title">Mission complete!</h2>
+      <div class="stars" id="res-stars"></div>
+      <p id="res-sub"></p>
+      <ul id="res-list"></ul>
+      <div class="card-foot">
+        <button type="button" class="soft-btn" id="res-menu">Menu</button>
+        <button type="button" class="big-btn small" id="res-again">Fly again</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="attr-play hidden" id="attr-play">Imagery © Esri, Maxar, Earthstar Geographics</div>
+  <noscript>OO8OO needs JavaScript.</noscript>
+  <script type="module" src="js/main.js?v=5"></script>
+</body>
+</html>
