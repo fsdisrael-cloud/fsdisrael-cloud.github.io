@@ -1,14 +1,14 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=17";
-import { createHud } from "./hud.js?v=17";
-import { createControls } from "./controls.js?v=17";
-import { runLabel, PLANETS, JET_TYPES } from "./variety.js?v=17";
-import { createAudio, trackFor } from "./audio.js?v=17";
-import { createHaptics } from "./haptics.js?v=17";
-import { createLoading } from "./loading.js?v=17";
-import { setSurreal, tickStyle } from "./surreal.js?v=17";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=17";
+import { createGame } from "./game.js?v=18";
+import { createHud } from "./hud.js?v=18";
+import { createControls } from "./controls.js?v=18";
+import { runLabel, PLANETS, JET_TYPES } from "./variety.js?v=18";
+import { createAudio, trackFor } from "./audio.js?v=18";
+import { createHaptics } from "./haptics.js?v=18";
+import { createLoading } from "./loading.js?v=18";
+import { setSurreal, tickStyle } from "./surreal.js?v=18";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=18";
 
 const $ = (id) => document.getElementById(id);
 
@@ -26,7 +26,7 @@ try {
   for (let i = 0; i < 500; i++) { w.fillStyle = `rgba(${rn() < 0.5 ? "255,255,255" : "0,0,0"},${0.03 + rn() * 0.08})`; w.fillRect(rn() * 256, rn() * 256, 1 + rn() * 2, 1 + rn() * 2); }
   document.documentElement.style.setProperty("--worn", `url(${wc.toDataURL("image/png")})`);
 } catch (e) { /* plain gradients if canvas is unavailable */ }
-const BUILD = 17;
+const BUILD = 18;
 { const t = $("build-tag"); if (t) t.textContent = "JET-X b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;
@@ -123,12 +123,15 @@ syncAudioButtons();
 function syncAssist() { $("btn-assist").classList.toggle("off", !game.assistOn()); }
 $("btn-assist").addEventListener("click", () => { game.setAssist(!game.assistOn()); syncAssist(); });
 syncAssist();
+function syncTilt() { $("btn-tilt").classList.toggle("off", !controls.tiltOn()); }
+$("btn-tilt").addEventListener("click", () => { controls.setTilt(!controls.tiltOn()); syncTilt(); });
+syncTilt();
 // settings gear (top right): open on the opening screen, collapsed in play, tap the gear to open / close
 {
   const st = $("settings"); let tm = 0;
   const setOpen = (v) => { st.classList.toggle("open", v); clearTimeout(tm); if (v && document.body.classList.contains("in-game")) tm = setTimeout(() => st.classList.remove("open"), 6000); };
   $("btn-settings").addEventListener("click", () => setOpen(!st.classList.contains("open")));
-  for (const id of ["btn-music", "btn-sfx", "btn-assist"]) $(id).addEventListener("click", () => setOpen(true));
+  for (const id of ["btn-music", "btn-sfx", "btn-tilt", "btn-assist"]) $(id).addEventListener("click", () => setOpen(true));
   window.__settingsOpen = setOpen;
 }
 
@@ -207,6 +210,7 @@ async function launch(n, fromTap, sv) {
   $("screen-title").classList.add("hidden");
   audio.playTrack("techno", { seed: L.run?.seed, alien: L.run?.planetKey !== "earth" });
   controls.calibrate(); controls.resetLook(); controls.setEnabled(true);
+  try { const sv0 = localStorage.getItem("jet-view"); if ((sv0 === "cockpit" || sv0 === "chase") && sv0 !== game.view() && !L.lockView) game.setView(sv0); } catch { /* ignore */ }
   window.__applyThrottle?.(parseFloat(document.getElementById('thr').style.getPropertyValue('--t')) || 0.35);
   game.setTime(sv ? sv.timeLeft : timeSec);
   if (sv) game.setScore(sv.score);
@@ -340,9 +344,12 @@ $("btn-view").addEventListener("pointerdown", (e) => { e.stopPropagation(); cont
 function goBackground() { audio.hold(); writeSave(); if (state === "playing") { state = "paused"; game.pause(); controls.setEnabled(false); $("resume").classList.remove("hidden"); } }
 document.addEventListener("visibilitychange", () => { if (document.hidden) goBackground(); });
 window.addEventListener("pagehide", goBackground);
-window.addEventListener("blur", goBackground);
-$("rs-cont").addEventListener("click", () => { audio.release(); audio.unlock(); audio.startEngine(); $("resume").classList.add("hidden"); state = "playing"; game.resume(); controls.setEnabled(true); controls.calibrate(); });
-$("rs-new").addEventListener("click", () => { audio.release(); audio.unlock(); $("resume").classList.add("hidden"); clearSave(); state = "title"; play(); });
+// CONT / NEW must always work: change game state first, audio afterwards in try/catch (iOS audio calls can throw or hang)
+let _rsT = 0; const rsOnce = () => { const n = performance.now(); if (n - _rsT < 500) return false; _rsT = n; return true; };
+const safe = (fn) => { try { const r = fn(); if (r && r.catch) r.catch(() => {}); } catch (e) { console.warn(e); } };
+function doCont(e) { e?.preventDefault?.(); if (!rsOnce()) return; $("resume").classList.add("hidden"); state = "playing"; safe(() => { game.resume(); controls.setEnabled(true); controls.calibrate(); }); safe(() => audio.release()); safe(() => audio.unlock()); safe(() => audio.startEngine()); }
+function doNew(e) { e?.preventDefault?.(); if (!rsOnce()) return; $("resume").classList.add("hidden"); clearSave(); state = "title"; safe(() => audio.release()); safe(() => audio.unlock()); safe(() => play()); }
+for (const [id, fn] of [["rs-cont", doCont], ["rs-new", doNew]]) { $(id).addEventListener("pointerup", fn); $(id).addEventListener("click", fn); }
 $("pause-btn").addEventListener("click", () => { $("pause").classList.add("hidden"); state = "playing"; game.resume(); controls.calibrate(); });
 
 // ---------- resize ----------
@@ -411,4 +418,6 @@ requestAnimationFrame(frame);
 
 // test hook for the headless verification scripts
 setInterval(() => { if (state === "playing" && !document.hidden) writeSave(); }, 4000);
+window.addEventListener("jet-tap", () => { try { game.lockNearest(); } catch { /* ignore */ } });
+window.addEventListener("keydown", (e) => { if (e.code === "KeyT" && !e.repeat) { try { game.lockNearest(); } catch { /* ignore */ } } });
 window.__ubu = { goBackground, readSave, writeSave, game, controls, audio, hud, loading, state: () => state, play, launch, levelNo: () => levelNo };

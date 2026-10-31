@@ -265,11 +265,12 @@ export function createAudio() {
     src.onended = () => { active--; try { src.disconnect(); f.disconnect(); g.disconnect(); } catch { /* ignore */ } };
     } catch (e) { /* never let audio break the game loop */ }
   }
+  const _gt = {}; const gate = (k, ms) => { const n = performance.now(); if (n - (_gt[k] || 0) < ms) return false; _gt[k] = n; return true; };
   function tone({ f0 = 440, f1 = null, dur = 0.2, peak = 0.2, type = "sine", a = 0.005, delay = 0, prio = 1 }) {
     if (!ctx || !sfxOn || ctx.state !== "running") return;
     if (active >= MAX_VOICES || (prio < 1 && active >= MAX_VOICES * 0.6)) return;
     try {
-    const t = ctx.currentTime + delay;
+    const t = ctx.currentTime + delay; a = Math.max(a, 0.015); if (type === "square" || type === "sawtooth") type = "sine";
     const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f0, t);
     if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
     const g = ctx.createGain(); env(g, t, a, peak, dur);
@@ -334,6 +335,16 @@ export function createAudio() {
           const wh = Math.sin(ph) * Math.min(1, t * 6) * (0.6 + 0.4 * t / 1.9) * 0.55 + n * 0.05 * t;
           const th = t < 0.2 ? (Math.sin(TAU * 85 * t) + n * 0.4) * Math.exp(-t / 0.05) * 1.2 : 0;
           d[i] = wh + th;
+        }
+      }),
+      pass: mk(3.0, (d) => {
+        let a = 0, b = 0, ph = 0;
+        for (let i = 0; i < d.length; i++) {
+          const t = i / sr, n = rnd() * 2 - 1; a += 0.14 * (n - a); b += 0.02 * (n - b);
+          const bell = Math.exp(-Math.pow((t - 1.25) / 0.62, 2)), tail = t > 1.25 ? 1 : 0;
+          ph += TAU * (780 + 520 * bell) / sr;
+          const roar = ((a - b) * 4.0 + b * 3.0) * bell * (0.8 + 0.4 * Math.abs(Math.sin(t * 71)));
+          d[i] = roar + Math.sin(ph) * 0.22 * bell + n * 0.12 * bell * bell - tail * 0;
         }
       }),
       hit: mk(0.14, (d) => { for (let i = 0; i < d.length; i++) { const t = i / sr, n = rnd() * 2 - 1; d[i] = n * Math.exp(-t / 0.004) * 0.8 + (Math.sin(TAU * 1850 * t) * 0.5 + Math.sin(TAU * 2740 * t) * 0.3 + Math.sin(TAU * 4100 * t) * 0.2) * Math.exp(-t / 0.03); } }),
@@ -403,10 +414,19 @@ export function createAudio() {
       const g = ctx.createGain(); g.gain.value = 0;
       o.connect(of); of.connect(g); n.connect(nf); nf.connect(g); g.connect(sfxGain);
       o.start(); n.start();
-      engine = { o, of, n, nf, g };
+      // wind / airflow: rush that rises with speed, plus a low buffet that pulses with G-load
+      const w = ctx.createBufferSource(); w.buffer = noiseBuf; w.loop = true; w.playbackRate.value = 0.83;
+      const wf = ctx.createBiquadFilter(); wf.type = "bandpass"; wf.frequency.value = 500; wf.Q.value = 0.45;
+      const wg = ctx.createGain(); wg.gain.value = 0; w.connect(wf); wf.connect(wg); wg.connect(sfxGain);
+      const b = ctx.createBufferSource(); b.buffer = noiseBuf; b.loop = true; b.playbackRate.value = 0.5;
+      const bf = ctx.createBiquadFilter(); bf.type = "lowpass"; bf.frequency.value = 260;
+      const bg = ctx.createGain(); bg.gain.value = 0; const lfo = ctx.createOscillator(); lfo.frequency.value = 9; const lg = ctx.createGain(); lg.gain.value = 0;
+      lfo.connect(lg); lg.connect(bg.gain); b.connect(bf); bf.connect(bg); bg.connect(sfxGain);
+      w.start(); b.start(0, 0.7); lfo.start();
+      engine = { o, of, n, nf, g, w, wf, wg, b, bg, lfo, lg };
       } catch { engine = null; }
     },
-    updateEngine(throttle, cockpit) {
+    updateEngine(throttle, cockpit, speed = 150, load = 0) {
       if (!engine || !ctx) return;
       const t = ctx.currentTime;
       if (t - lastEngineT < 0.1) return; // 10 Hz is plenty; avoids piling up AudioParam events (WebKit)
@@ -417,13 +437,19 @@ export function createAudio() {
         set(engine.nf.frequency, 600 + throttle * 900, 0.2);
         set(engine.of.frequency, cockpit ? 220 : 360, 0.3);
         set(engine.g.gain, (cockpit ? 0.05 : 0.08) + throttle * 0.06, 0.2);
+        const sk = Math.max(0, Math.min(1, (speed - 100) / 260)), ld = Math.max(0, Math.min(1, load));
+        set(engine.wf.frequency, 380 + sk * sk * 2400 + ld * 700, 0.15);
+        set(engine.wg.gain, (cockpit ? 0.035 : 0.06) + sk * sk * 0.3 + ld * 0.12, 0.15);
+        set(engine.bg.gain, 0.02 + sk * 0.05 + ld * 0.14, 0.15);
+        set(engine.lg.gain, ld * 0.12 + sk * 0.02, 0.15);
+        set(engine.lfo.frequency, 7 + sk * 6 + ld * 5, 0.2);
       } catch { /* ignore */ }
     },
     stopEngine() {
       if (!engine) return;
       const e = engine; engine = null;
       try { e.g.gain.cancelScheduledValues(ctx.currentTime); e.g.gain.setTargetAtTime(0, ctx.currentTime, 0.1); } catch { /* ignore */ }
-      setTimeout(() => { try { e.o.stop(); e.n.stop(); e.g.disconnect(); } catch { /* ignore */ } }, 400);
+      setTimeout(() => { try { e.o.stop(); e.n.stop(); e.w.stop(); e.b.stop(); e.lfo.stop(); e.g.disconnect(); e.wg.disconnect(); e.bg.disconnect(); } catch { /* ignore */ } }, 400);
     },
     gun() {
       if (!ctx || !sfxOn || ctx.state !== "running") return; const now = ctx.currentTime; gunT = now;
@@ -434,6 +460,8 @@ export function createAudio() {
       if (!gunTimer) { const chk = () => { if (!ctx || ctx.currentTime - gunT > 0.14) gunStop(); else gunTimer = setTimeout(chk, 50); }; gunTimer = setTimeout(chk, 90); }
     },
     rocket() { play("rocket", { gain: 0.75, rate: 1.08, rate2: 0.8, lp: 9000, lp2: 1800, dur: 2.6, prio: 2 }); tone({ f0: 90, f1: 55, dur: 0.35, peak: 0.3, type: "sine", a: 0.004 }); },
+    /** enemy jet streaking past: doppler roar (pitch falls as it passes); gain by closeness */
+    flyby(gain = 0.7) { play("pass", { gain, rate: 1.28, rate2: 0.72, lp: 14000, lp2: 3000, prio: 2 }); },
     bomb() { play("bomb", { gain: 0.6, rate: 1.0, rate2: 0.9, lp: 12000, lp2: 2500, prio: 2 }); },
     explosion(big = 1, dist = 0) {
       if (dist < 1800 && big >= 0.9) duck(big >= 1.5 ? 0.3 : 0.55, big >= 1.5 ? 1.2 : 0.7);
@@ -442,11 +470,12 @@ export function createAudio() {
       play(Math.random() < 0.5 ? "boomA" : "boomB", { gain: Math.min(1.0, (0.3 + 0.45 * Math.min(2, big)) * v * 1.4), rate: rate * (0.94 + Math.random() * 0.12), lp: lpf, lp2: lpf * 0.4, delay: Math.min(1.4, d / 2600), prio: 2 });
       if (big >= 1.2 && d < 2500) play(Math.random() < 0.5 ? "boomB" : "boomA", { gain: 0.5 * v, rate: rate * 0.7, lp: lpf * 0.6, delay: 0.05 + Math.min(1.4, d / 2600), prio: 2 });
     },
-    hit() { const n = ctx ? ctx.currentTime : 0; if (n - (this._lh || 0) < 0.05) return; this._lh = n; play("hit", { gain: 0.45, rate: 0.85 + Math.random() * 0.4, prio: 0 }); },
-    hurt() { tone({ f0: 220, f1: 90, dur: 0.25, peak: 0.25, type: "sawtooth" }); noise({ dur: 0.2, peak: 0.35, type: "lowpass", f0: 900 }); },
-    lock() { tone({ f0: 1320, dur: 0.07, peak: 0.08, type: "square" }); tone({ f0: 1760, dur: 0.07, peak: 0.08, type: "square", delay: 0.08 }); },
-    warn() { tone({ f0: 980, dur: 0.12, peak: 0.12, type: "square" }); tone({ f0: 740, dur: 0.12, peak: 0.12, type: "square", delay: 0.14 }); },
-    pullUp() { tone({ f0: 520, dur: 0.18, peak: 0.1, type: "triangle" }); },
+    hit() { if (!gate("hit", 140)) return; play("hit", { gain: 0.3, rate: 0.85 + Math.random() * 0.4, prio: 0 }); },
+    hurt() { if (!gate("hurt", 450)) return; noise({ dur: 0.28, peak: 0.28, type: "lowpass", f0: 600, f1: 250, a: 0.012 }); tone({ f0: 120, f1: 70, dur: 0.22, peak: 0.12, a: 0.015 }); },
+    lock() { if (!gate("lock", 900)) return; tone({ f0: 880, dur: 0.2, peak: 0.045, a: 0.03 }); },
+    rwr(v = 0.05, f = 900) { tone({ f0: f, dur: 0.1, peak: Math.min(0.08, v * 0.5), a: 0.02, prio: 2 }); },
+    warn() { if (!gate("warn", 2500)) return; tone({ f0: 660, dur: 0.3, peak: 0.05, a: 0.04 }); },
+    pullUp() { if (!gate("pu", 2500)) return; tone({ f0: 520, dur: 0.25, peak: 0.045, a: 0.04 }); },
     thunder() { noise({ dur: 3.2, peak: 0.7, type: "lowpass", f0: 400, f1: 60, a: 0.08, rate: 0.5 }); tone({ f0: 55, f1: 30, dur: 2.4, peak: 0.35, type: "sine", a: 0.1 }); },
     crash() {
       duck(0.15, 2.2);
@@ -454,11 +483,11 @@ export function createAudio() {
       play("boomA", { gain: 0.8, rate: 0.75, delay: 0.45, lp: 5000, prio: 2 }); play("boomB", { gain: 0.6, rate: 0.7, delay: 0.9, lp: 3000, prio: 2 });
       tone({ f0: 70, f1: 24, dur: 2.2, peak: 0.5, type: "sine", a: 0.01 });
     },
-    hiss() { noise({ dur: 1.1, peak: 0.32, type: "highpass", f0: 5000, f1: 2200, a: 0.02 }); tone({ f0: 340, f1: 170, dur: 0.22, peak: 0.07, type: "square" }); },
+    hiss() { noise({ dur: 0.9, peak: 0.2, type: "highpass", f0: 4500, f1: 2200, a: 0.03 }); },
     /** subtle rack-reload tick (missile / bomb back in the rack) and empty-rack click; both respect the Effects toggle */
-    reload(kind = "missile") { tone({ f0: kind === "bomb" ? 330 : 560, f1: kind === "bomb" ? 440 : 840, dur: 0.07, peak: 0.045, type: "triangle", prio: 0 }); tone({ f0: kind === "bomb" ? 660 : 1120, dur: 0.05, peak: 0.03, type: "sine", delay: 0.06, prio: 0 }); },
-    empty() { tone({ f0: 180, f1: 120, dur: 0.06, peak: 0.07, type: "square", prio: 0 }); },
-    cool() { tone({ f0: 880, f1: 1320, dur: 0.12, peak: 0.07, type: "sine" }); },
+    reload(kind = "missile") { if (!gate("rl", 600)) return; tone({ f0: kind === "bomb" ? 330 : 560, dur: 0.1, peak: 0.03, a: 0.02, prio: 0 }); },
+    empty() { if (!gate("em", 700)) return; tone({ f0: 200, dur: 0.08, peak: 0.035, prio: 0 }); },
+    cool() { if (!gate("cool", 2000)) return; tone({ f0: 760, f1: 980, dur: 0.18, peak: 0.04, a: 0.03 }); },
     whoosh() { noise({ dur: 1.4, peak: 0.25, type: "bandpass", f0: 400, f1: 1600, q: 0.8, a: 0.3 }); },
     respawn() { [0, 7, 12, 19].forEach((s, i) => tone({ f0: 659.25 * 2 ** (s / 12), dur: 0.25, peak: 0.09, type: "sine", delay: i * 0.07 })); noise({ dur: 0.6, peak: 0.15, type: "highpass", f0: 6000, a: 0.05 }); },
     /** Cockpit voice "Altitude, altitude, pull up, pull up" (pre-rendered with flite TTS -> audio/pullup.mp3). */
@@ -484,8 +513,8 @@ export function createAudio() {
       });
     },
     preloadVoice() { if (ensure()) load("pullup").catch(() => {}); },
-    click() { tone({ f0: 660, f1: 990, dur: 0.07, peak: 0.12, type: "sine" }); },
-    win() { [0, 4, 7, 12, 16].forEach((s, i) => tone({ f0: 523.25 * 2 ** (s / 12), dur: 0.35, peak: 0.13, type: "triangle", delay: i * 0.11 })); },
-    lose() { [7, 4, 0].forEach((s, i) => tone({ f0: 392 * 2 ** (s / 12), dur: 0.4, peak: 0.12, type: "triangle", delay: i * 0.16 })); },
+    click() { if (!gate("click", 90)) return; tone({ f0: 640, f1: 800, dur: 0.07, peak: 0.05, a: 0.015 }); },
+    win() { [0, 4, 7, 12, 16].forEach((s, i) => tone({ f0: 523.25 * 2 ** (s / 12), dur: 0.35, peak: 0.13, type: "sine", delay: i * 0.11 })); },
+    lose() { [7, 4, 0].forEach((s, i) => tone({ f0: 392 * 2 ** (s / 12), dur: 0.4, peak: 0.12, type: "sine", delay: i * 0.16 })); },
   };
 }

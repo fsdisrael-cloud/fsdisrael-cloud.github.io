@@ -44,7 +44,7 @@ export function createPost(renderer, opts = {}) {
       gl_FragColor = vec4(a * (k / 6.0), 1.0); }`, { t: { value: null }, px: { value: new THREE.Vector2() }, k: { value: 1 } },
   { blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor, transparent: true });
   const comp = mat(`varying vec2 vUv; uniform sampler2D tS, tB; uniform float uBloom, uBlur, uTime, uVig, uAsp, uCA, uHurt;
-    uniform vec3 uHaze; uniform vec3 uSun;
+    uniform vec3 uHaze; uniform vec3 uSun; uniform float uWhite; uniform vec3 uWhiteCol;
     float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233))) * 43758.5453); }
     void main(){
       vec2 uv = vUv; vec2 c = uv - 0.5;
@@ -70,6 +70,7 @@ export function createPost(renderer, opts = {}) {
         fl += vec3(1.0,0.85,0.65) * exp(-abs(uv.y - sp.y) * 70.0) * exp(-abs(uv.x - sp.x) * 2.2) * 0.35;
         col += fl * vis;
       }
+      col = mix(col, uWhiteCol * (0.85 + 0.15 * hash(floor(uv * 6.0) + floor(uTime * 3.0))), uWhite * 0.9);
       // grade: gentle filmic contrast, split toning (cool shadows, warm highlights), saturation
       float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
       col = mix(vec3(l), col, 1.14);
@@ -80,7 +81,7 @@ export function createPost(renderer, opts = {}) {
       #include <tonemapping_fragment>
       #include <colorspace_fragment>
       gl_FragColor.rgb += (hash(vUv * 1000.0 + uTime) - 0.5) / 200.0;
-    }`, { tS: { value: null }, tB: { value: null }, uBloom: { value: 0.5 }, uBlur: { value: 0 }, uTime: { value: 0 }, uVig: { value: 0.5 }, uAsp: { value: 1 }, uCA: { value: 0.012 }, uHurt: { value: 0 }, uHaze: { value: new THREE.Vector3() }, uSun: { value: new THREE.Vector3() } });
+    }`, { tS: { value: null }, tB: { value: null }, uBloom: { value: 0.5 }, uBlur: { value: 0 }, uTime: { value: 0 }, uVig: { value: 0.5 }, uAsp: { value: 1 }, uCA: { value: 0.012 }, uHurt: { value: 0 }, uHaze: { value: new THREE.Vector3() }, uWhite: { value: 0 }, uWhiteCol: { value: new THREE.Vector3(0.8, 0.82, 0.86) }, uSun: { value: new THREE.Vector3() } });
 
   const pass = (m, target) => { quad.material = m; renderer.setRenderTarget(target); renderer.render(qs, qc); };
   const _v = new THREE.Vector3(), _s = new THREE.Vector3();
@@ -99,6 +100,7 @@ export function createPost(renderer, opts = {}) {
     const u = comp.uniforms;
     u.tS.value = sceneRT.texture; u.tB.value = mips[0].texture;
     u.uBloom.value = p.bloom ?? 0.55; u.uBlur.value = p.blur || 0; u.uTime.value = (p.time || 0) % 100; u.uVig.value = p.vig ?? 0.5; u.uAsp.value = W / H; u.uHurt.value = p.hurt || 0;
+    u.uWhite.value = p.white || 0; if (p.whiteCol) u.uWhiteCol.value.set(p.whiteCol.r, p.whiteCol.g, p.whiteCol.b);
     if (p.haze) u.uHaze.value.set(p.haze.x, p.haze.y, p.haze.z); else u.uHaze.value.z = 0;
     // sun position on screen
     if (p.sunDir) {

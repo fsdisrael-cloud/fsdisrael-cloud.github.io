@@ -1,8 +1,8 @@
 // Time of day + weather: sky dome, sun/moon, stars, lights, fog, toon clouds, rain/snow, lightning.
-import { FX } from "./tex.js?v=17";
+import { FX } from "./tex.js?v=18";
 import * as THREE from "three";
-import { PartBuilder, G, getGradientMap, outlineMaterial } from "./toon.js?v=17";
-import { style, skyHueChunk } from "./surreal.js?v=17";
+import { PartBuilder, G, getGradientMap, outlineMaterial } from "./toon.js?v=18";
+import { style, skyHueChunk } from "./surreal.js?v=18";
 
 export const TIMES = ["dawn", "day", "dusk", "night"];
 export const WEATHERS = ["clear", "cloudy", "rain", "fog", "snow", "storm"];
@@ -157,18 +157,29 @@ export function createSky(scene, renderer) {
         vec3 col = base * (shade * 0.62 + uSunC * 0.55 * lit);
         float silver = pow(1.0 - f, 3.0) * pow(max(dot(-V, L), 0.0), 3.0);
         col += uSunC * silver * 0.5;
-        gl_FragColor = vec4(col, dens * 0.94);
+        float nearF = smoothstep(25.0, 260.0, distance(cameraPosition, vWp));
+        gl_FragColor = vec4(col, dens * 0.94 * nearF);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
         #include <fog_fragment>
       }`,
   });
-  let cloudGroup = null;
-  function buildClouds(count, center, half, dark, seed) {
+  let cloudGroup = null; let CP = new Float32Array(0);
+  /** 0..1 how deep the point is inside a cloud / fog bank (ellipsoid falloff) */
+  function cloudDensityAt(p) {
+    let m = 0;
+    for (let i = 0; i < CP.length; i += 6) {
+      const dy = (p.y - CP[i + 1]) / CP[i + 4]; if (dy > 1 || dy < -1) continue;
+      const dx = (p.x - CP[i]) / CP[i + 3], dz = (p.z - CP[i + 2]) / CP[i + 5];
+      const q = dx * dx + dy * dy + dz * dz; if (q < 1) { const v = 1 - q; if (v > m) m = v; }
+    }
+    return Math.min(1, m * 1.8);
+  }
+  function buildClouds(count, center, half, dark, seed, fogBanks = 0) {
     if (cloudGroup) { scene.remove(cloudGroup); cloudGroup.children[0].geometry.dispose(); }
     let s = seed;
     const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
-    const b = new PartBuilder();
+    const b = new PartBuilder(); const cpl = [];
     for (let i = 0; i < count; i++) {
       const cx = center.x + (rnd() * 2 - 1) * half * 1.3, cz = center.z + (rnd() * 2 - 1) * half * 1.3;
       const cy = (dark ? 750 : 1000) + rnd() * 700;
@@ -181,8 +192,20 @@ export function createSky(scene, renderer) {
           pos: [cx + (rnd() - 0.5) * size * 3, cy + (rnd() - 0.3) * size * 0.7, cz + (rnd() - 0.5) * size * 2],
           scale: [r * 1.3, r * 0.8, r],
         });
+        cpl.push(cx, cy, cz, r * 1.2, r * 0.75, r * 0.95);
       }
     }
+    // low fog / stratus banks you can fly through: wide flat puffs (more of them in murky weather)
+    const banks = fogBanks;
+    for (let i = 0; i < banks; i++) {
+      const cx = center.x + (rnd() * 2 - 1) * half * 0.9, cz = center.z + (rnd() * 2 - 1) * half * 0.9, cy = 380 + rnd() * 380, size = 260 + rnd() * 260;
+      for (let j = 0; j < 4; j++) {
+        const px = cx + (rnd() - 0.5) * size * 2.2, pz = cz + (rnd() - 0.5) * size * 1.6, py = cy + (rnd() - 0.5) * 40;
+        b.add(G.sphereLo, 0xf4f8ff, { pos: [px, py, pz], scale: [size * 1.1, size * 0.16, size * 0.8] });
+        cpl.push(px, py, pz, size * 1.0, size * 0.15, size * 0.75);
+      }
+    }
+    CP = new Float32Array(cpl);
     const geo = b.build();
     cloudGroup = new THREE.Group();
     const real = !style.surreal;
@@ -317,7 +340,7 @@ export function createSky(scene, renderer) {
     if (pl) ct.setHex(pl.cloud).multiplyScalar(nK);
     cloudMat.color.copy(ct); cloudReal.uniforms.uCol.value.copy(ct); cloudReal.uniforms.uDark.value = over > 0.5 ? 1 : 0; cloudReal.uniforms.uAmb.value.copy(hemiSkyColor(T, nK));
     cloudMat.emissive.copy(ct).multiplyScalar(time === "night" ? 0.12 : 0.28);
-    buildClouds(W.clouds, center, half, over > 0.5, seed);
+    buildClouds(W.clouds, center, half, over > 0.5, seed, time === "night" ? 2 : W.near < 500 ? 9 : over > 0.4 ? 5 : 3);
     rain.visible = W.rain > 0;
     rainMat.uniforms.uOp.value = 0.32 + 0.18 * Math.min(1, W.rain - 0.5);
     rainMat.uniforms.uCol.value.setHex(time === "night" ? 0x8aa0d0 : 0xd8e4ff);
@@ -355,7 +378,7 @@ export function createSky(scene, renderer) {
   }
 
   return {
-    apply, update, state: () => state,
+    apply, update, state: () => state, cloudDensityAt, cloudAt: (i) => CP.length > i * 6 ? [CP[i * 6], CP[i * 6 + 1], CP[i * 6 + 2]] : null, cloudColor: () => cloudReal.uniforms.uCol.value,
     reapply() { if (lastArgs) apply(...lastArgs); },
     setThunderHandler(fn) { onThunder = fn; },
     isNight: () => state.time === "night",

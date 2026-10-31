@@ -29,7 +29,7 @@ export function createControls() {
   const stick = { pitch: 0, roll: 0, yaw: 0 };
   const look = { yaw: 0, pitch: 0 };
   const keys = new Set();
-  let gyroOn = false, gotGyroEvent = false;
+  let gyroOn = false, gotGyroEvent = false, tiltPref = true; try { tiltPref = localStorage.getItem("jet-tilt") !== "0"; } catch { /* ignore */ }
   let rawPitch = 0, rawRoll = 0, smPitch = 0, smRoll = 0;
   let zeroPitch = 35, zeroRoll = 0, wantCal = true, calAt = 0;
   let mslHeld = false, bombHeld = false, gunHeld = false, rocketEdge = false, bombEdge = false, viewEdge = false, boostKey = false;
@@ -165,19 +165,19 @@ export function createControls() {
   function bindLookSurface(el) {
     el.addEventListener("pointerdown", (e) => {
       if (!enabled || e.target !== el || lk.active) return;
-      lk.active = true; lk.id = e.pointerId; lk.x = e.clientX; lk.y = e.clientY;
+      lk.active = true; lk.id = e.pointerId; lk.x = e.clientX; lk.y = e.clientY; lk.t0 = performance.now(); lk.moved = 0;
       try { el.setPointerCapture(e.pointerId); } catch {}
     });
     el.addEventListener("pointermove", (e) => {
       if (!lk.active || e.pointerId !== lk.id) return;
-      const dx = e.clientX - lk.x, dy = e.clientY - lk.y; lk.x = e.clientX; lk.y = e.clientY;
+      const dx = e.clientX - lk.x, dy = e.clientY - lk.y; lk.x = e.clientX; lk.y = e.clientY; lk.moved = (lk.moved || 0) + Math.hypot(dx, dy);
       const tnow = performance.now(); lk.v = (lk.v || 0) * 0.6 + 0.4 * Math.hypot(dx / innerWidth, dy / innerHeight) / Math.max(0.008, (tnow - (lk.t || tnow - 16)) / 1000); lk.t = tnow;
       const cock = lookMode === "cockpit", my = cock ? 2.4 : 3.1, mp = cock ? 1.1 : 0.95;
       look.yaw = Math.max(-my, Math.min(my, look.yaw - dx / innerWidth * C.lookYawPerScreen));
       look.pitch = Math.max(-mp, Math.min(mp, look.pitch - dy / innerHeight * C.lookPitchPerScreen));
       e.preventDefault();
     });
-    const end = (e) => { if (lk.active && e.pointerId === lk.id) { lk.active = false; lk.id = null; lk.rel = Math.min(1.6, (lk.v || 0) * 0.35); lk.v = 0; lk.t = 0; } };
+    const end = (e) => { if (lk.active && e.pointerId === lk.id) { if (e.type === "pointerup" && (lk.moved || 0) < 12 && performance.now() - (lk.t0 || 0) < 420) window.dispatchEvent(new Event("jet-tap")); lk.active = false; lk.id = null; lk.rel = Math.min(1.6, (lk.v || 0) * 0.35); lk.v = 0; lk.t = 0; } };
     for (const t of ["pointerup", "pointercancel", "lostpointercapture"]) el.addEventListener(t, end);
   }
 
@@ -192,7 +192,7 @@ export function createControls() {
     const ks = 1 - Math.exp(-dt * C.tiltSmoothing);
     smPitch += (rawPitch - smPitch) * ks; smRoll += (rawRoll - smRoll) * ks;
     let tp = 0, tr = 0;
-    if (gyroOn && gotGyroEvent) {
+    if (gyroOn && gotGyroEvent && tiltPref) {
       let dp = smPitch - zeroPitch, dr = smRoll - zeroRoll;
       const dz = C.tiltDeadZoneDeg;
       dp = Math.abs(dp) < dz ? 0 : dp - Math.sign(dp) * dz;
@@ -229,7 +229,9 @@ export function createControls() {
     consumeView() { const v = viewEdge; viewEdge = false; return v; },
     requestView() { viewEdge = true; },
     boost: () => boostKey,
-    gyroActive: () => gyroOn && gotGyroEvent,
+    gyroActive: () => gyroOn && gotGyroEvent && tiltPref,
+    tiltOn: () => tiltPref,
+    setTilt(v) { tiltPref = !!v; wantCal = true; try { localStorage.setItem("jet-tilt", tiltPref ? "1" : "0"); } catch { /* ignore */ } },
     gyroOn: () => gyroOn,
     needsPermission: () => typeof window.DeviceOrientationEvent?.requestPermission === "function",
     /** Call from the single first tap (iOS needs the user gesture). */

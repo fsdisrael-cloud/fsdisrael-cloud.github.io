@@ -2,8 +2,8 @@
 // Player + enemy jets: PBR-lit (metal, glossy canopy, environment reflections) with a thin illustrated outline.
 // Ground units: toon + outline. Illustrated look, readable colours.
 import * as THREE from "three";
-import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=17";
-import { patchDetail, missileTex } from "./tex.js?v=17";
+import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=18";
+import { patchDetail, missileTex } from "./tex.js?v=18";
 
 const PI = Math.PI;
 
@@ -117,7 +117,7 @@ const flameGeo = (() => { const g = new THREE.ConeGeometry(0.5, 1, 14, 1, true);
 const addMat = (color, op) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
 
 const PAL = {
-  player: { lo: 0x2c333c, hi: 0x8d97a3, wing: 0x66707c, dark: 0x12161b, glass: 0xc99a46, glow: 0x35c8e0, burn: [0xff7a2e, 0xffd27a, 0xcfeaff] },
+  player: { lo: 0x5d6671, hi: 0xb9c1cb, wing: 0x9aa3ae, dark: 0x1a1f25, glass: 0xc99a46, glow: 0x35c8e0, burn: [0xff7a2e, 0xffd27a, 0xcfeaff] },
   ally: { lo: 0x22302b, hi: 0x93a89c, wing: 0x56695f, dark: 0x0e1613, glass: 0x7acfa0, glow: 0x3dd98b, burn: [0x3dffb0, 0xb8ffe0, 0xeafff6] },
   enemy: { lo: 0x1c1f23, hi: 0x5a5148, wing: 0x3a3836, dark: 0x0d0f11, glass: 0xd8503c, glow: 0xff4030, burn: [0xff3a1a, 0xff9a40, 0xffe0b0] },
 };
@@ -185,6 +185,27 @@ function jetGeometry(kind, vk, pal) {
   return (jetGeo[ck] = G2);
 }
 
+let _decal = null;
+function decalTex() {
+  if (_decal) return _decal;
+  const c = document.createElement("canvas"); c.width = 256; c.height = 256; const g = c.getContext("2d");
+  // tail flash: diagonal bands + serial
+  g.save(); g.translate(0, 0);
+  g.fillStyle = "rgba(20,40,110,0.92)"; g.beginPath(); g.moveTo(0, 20); g.lineTo(256, 0); g.lineTo(256, 58); g.lineTo(0, 86); g.fill();
+  g.fillStyle = "rgba(235,235,240,0.95)"; g.beginPath(); g.moveTo(0, 86); g.lineTo(256, 58); g.lineTo(256, 78); g.lineTo(0, 106); g.fill();
+  g.fillStyle = "rgba(200,40,40,0.95)"; g.beginPath(); g.moveTo(0, 106); g.lineTo(256, 78); g.lineTo(256, 92); g.lineTo(0, 120); g.fill();
+  g.restore();
+  g.fillStyle = "rgba(30,34,40,0.92)"; g.font = "bold 72px Arial"; g.textAlign = "center"; g.fillText("JX", 128, 190); g.font = "bold 40px Arial"; g.fillText("01", 128, 236);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; _decal = t; return t;
+}
+let _round = null;
+function roundelTex() {
+  if (_round) return _round;
+  const c = document.createElement("canvas"); c.width = 128; c.height = 128; const g = c.getContext("2d");
+  const ring = (r, col) => { g.fillStyle = col; g.beginPath(); g.arc(64, 64, r, 0, 7); g.fill(); };
+  ring(60, "rgba(235,235,240,0.95)"); ring(48, "rgba(20,40,110,0.95)"); ring(30, "rgba(235,235,240,0.95)"); ring(14, "rgba(240,170,40,0.95)");
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; _round = t; return t;
+}
 function buildJet(kind, vk = "", variant = null) {
   const pal = { ...PAL[kind], ...(variant || {}) }, g = jetGeometry(kind, vk, pal), lean = kind === "enemy";
   const root = new THREE.Group();
@@ -203,11 +224,26 @@ function buildJet(kind, vk = "", variant = null) {
   };
   add(g.fus, body);
   const exotic = (pal.shape || 0) >= 3;
+  const stabs = [], flps = [], ails = [], ruds = [], petalsL = [];
+  let brake = null;
+  const ctlM = pbr({ color: new THREE.Color(pal.wing).multiplyScalar(0.92), metalness: 0.35, roughness: 0.46, emissive: 0x161c25, emissiveIntensity: 0.5, envMapIntensity: eK });
   for (const s of [-1, 1]) {
     add(g.wing, wingM, { pos: [0, -0.2, 0], scale: [s, 1, 1] });
-    add(g.stab, wingM, { pos: [0, -0.02, 0], scale: [s, 1, 1] });
+    { const sg = new THREE.Group(); sg.position.set(0, -0.02, 4.9); root.add(sg); stabs.push([sg, s]); add(g.stab, wingM, { pos: [0, 0, -4.9], scale: [s, 1, 1], parent: sg });
+      if ((pal.shape || 0) < 3) {
+        const w = WING_SHAPES[pal.shape || 0], slope = (w[5] - w[2]) / (w[3] - w[0]);
+        for (const [xa, xb, ch, list] of [[1.9, 3.7, 0.95, flps], [3.9, 5.6, 0.8, ails]]) {
+          const xm = (xa + xb) / 2, k = (xm - w[0]) / (w[3] - w[0]), th = (w[6] + (w[7] - w[6]) * k) * 0.5, hl = (xb - xa) / 2;
+          const gp = new THREE.Group(); gp.position.set(s * xm, -0.2 + w[8] * k * k + 0.005, w[2] + (w[5] - w[2]) * k - ch); gp.rotation.y = -s * Math.atan(slope); root.add(gp);
+          const fg = surfGeo(-hl, 0, ch, hl, 0, ch, th, th * 0.8, 0, 1, 7);
+          const fm = new THREE.Mesh(fg, ctlM); gp.add(fm); list.push([gp, s]);
+          gp.add(new THREE.Mesh(G.box, darkM)).scale.set(hl * 2, 0.02, 0.02);
+        }
+      } }
     add(g.strake, wingM, { pos: [0, 0.05, 0], scale: [s, 1, 1] });
     add(g.fin, wingM, { pos: [s * 1.0, 0.35, 0], scale: [s, 1, 1] });
+    { const rp = new THREE.Group(); rp.position.set(s * 1.55, 1.58, 5.15); rp.rotation.z = -s * 0.42; root.add(rp);
+      const rm = new THREE.Mesh(G.box, ctlM); rm.scale.set(0.09, 1.5, 0.78); rm.position.z = 0.39; rp.add(rm); ruds.push(rp); }
     // fin-tip band in team accent colour
     add(g.finTip, accentM, { pos: [s * 1.0 + s * 1.15, 2.5, 5.45], rot: [0, 0, -s * 0.42] });
     if (lean || exotic) add(g.canard, wingM, { pos: [0, 0.05, 0], scale: [s, 1, 1] });
@@ -217,8 +253,7 @@ function buildJet(kind, vk = "", variant = null) {
     add(G.box, metalM, { pos: [s * 1.02, -0.18, -2.4], scale: [0.04, 1.0, 2.4] });
     // nozzles
     add(g.shroud, metalM, { pos: [s * 0.9, -0.02, 5.7] });
-    const pet = add(g.petals, metalM, { pos: [s * 0.9, -0.02, 6.45] });
-    void pet;
+    const pet = add(g.petals, metalM, { pos: [s * 0.9, -0.02, 6.45] }); petalsL.push(pet);
     add(new THREE.CircleGeometry(0.46, 14), new THREE.MeshBasicMaterial({ color: 0x2a1006, fog: false }), { pos: [s * 0.9, -0.02, 6.78] });
     add(new THREE.TorusGeometry(0.47, 0.035, 5, 18), glowM, { pos: [s * 0.9, -0.02, 6.8] });
     // pylons + wing-tip rails
@@ -229,13 +264,23 @@ function buildJet(kind, vk = "", variant = null) {
     add(G.box, darkM, { pos: [s * 2.7, -0.02, 1.0], scale: [0.025, 0.02, 3.0], rot: [0, 0, 0] });
     if (exotic) add(G.box, glowM, { pos: [s * 3.45, -0.17, -0.75], scale: [0.05, 0.06, 6.0], rot: [0, s * 0.83, 0] });
   }
+  if (kind === "player" || kind === "ally") {
+    const dm = new THREE.MeshStandardMaterial({ map: decalTex(), transparent: true, roughness: 0.5, metalness: 0.1, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4, depthWrite: false });
+    const rm = new THREE.MeshStandardMaterial({ map: roundelTex(), transparent: true, roughness: 0.5, metalness: 0.1, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4, depthWrite: false });
+    for (const s of [-1, 1]) {
+      const piv = new THREE.Group(); piv.position.set(s * 1.55, 1.58, 4.6); piv.rotation.z = -s * 0.42; root.add(piv);
+      const d = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 2.0), dm); d.position.x = s * 0.13; d.rotation.y = s * PI / 2; piv.add(d);
+      const r = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), rm); r.position.set(s * 3.6, -0.045, 1.9); r.rotation.x = -PI / 2; root.add(r);
+    }
+  }
   // central tail sting between the engines, gun port, antennas, weapons-bay seams, spine
   add(new THREE.CylinderGeometry(0.08, 0.2, 2.8, 8).rotateX(PI / 2), metalM, { pos: [0, 0.1, 6.0] });
   add(G.box, darkM, { pos: [-0.95, 0.22, -1.9], scale: [0.14, 0.12, 0.4] });
   add(new THREE.CylinderGeometry(0.018, 0.03, 1.0, 6).rotateX(PI / 2), metalM, { pos: [0, 0, -9.0] });
   for (const z of [0.9, 3.2]) add(G.box, darkM, { pos: [0, 0.62, z], scale: [0.05, 0.28, 0.5], rot: [0.2, 0, 0] });
   for (const s of [-1, 1]) add(G.box, darkM, { pos: [s * 0.52, -0.55, 0.9], scale: [0.04, 0.03, 2.8] });
-  add(G.box, wingM, { pos: [0, 0.66, 2.4], scale: [1.1, 0.14, 3.6] });
+  add(G.box, wingM, { pos: [0, 0.62, 1.6], scale: [1.1, 0.14, 2.0] });
+  { brake = new THREE.Group(); brake.position.set(0, 0.7, 2.7); root.add(brake); const bp = new THREE.Mesh(G.box, ctlM); bp.scale.set(0.95, 0.07, 1.5); bp.position.z = 0.75; brake.add(bp); }
   // canopy: tinted glass bubble, frame, seat + pilot
   const canopy = new THREE.Group(); root.add(canopy);
   const cg = add(g.canopy, glassM, { pos: [0, 0.22, 0], parent: canopy });
@@ -256,6 +301,7 @@ function buildJet(kind, vk = "", variant = null) {
     const o = new THREE.Mesh(flameGeo, addMat(bc[0], 0.65)); o.position.set(s * 0.9, -0.02, 6.8); o.scale.set(1.0, 1.0, 5);
     const m = new THREE.Mesh(flameGeo, addMat(bc[1], 0.8)); m.position.copy(o.position); m.scale.set(0.75, 0.75, 3.4);
     const c = new THREE.Mesh(flameGeo, addMat(bc[2], 0.95)); c.position.copy(o.position); c.scale.set(0.42, 0.42, 2.0);
+    for (const z of [0.2, 0.42, 0.64]) { const dmd = new THREE.Mesh(G.sphere, addMat(0xe8f6ff, 0.9)); dmd.scale.set(1.0 * (1 - z), 1.0 * (1 - z), 0.1); dmd.position.set(0, 0, z); c.add(dmd); }
     flame.add(o, m); core.add(c); burners.push(o, m, c);
   }
   root.add(flame, core);
@@ -284,6 +330,15 @@ function buildJet(kind, vk = "", variant = null) {
       if (light) light.intensity = 0.8 + boost;
     },
     bodyMeshes: body0,
+    ctl(c) {
+      const L = (o, key, v) => { o.rotation[key] += (v - o.rotation[key]) * 0.28; };
+      for (const [o, sd] of stabs) L(o, "x", -c.pitch * 0.42 - sd * c.roll * 0.22);
+      for (const [o, sd] of flps) L(o, "x", -sd * c.roll * 0.35 + c.flap * 0.5);
+      for (const [o, sd] of ails) L(o, "x", -sd * c.roll * 0.6 + c.flap * 0.18);
+      for (const o of ruds) L(o, "y", -c.yaw * 0.4 - c.roll * 0.06);
+      if (brake) L(brake, "x", -c.brake * 0.95);
+      for (const o of petalsL) o.scale.setScalar(1 + c.burn * 0.16);
+    },
   };
   return root;
 }

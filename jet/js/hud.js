@@ -1,6 +1,6 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=17";
+import { LABEL } from "./missions.js?v=18";
 
 const ALLY = "#3dff8b";
 const COL = { jet: "#ff3b3b", tank: "#ff5a48", flak: "#ff4636", sam: "#ff3a2a", base: "#ff6a58", ship: "#ff5a48", pad: "#3dff8b", ring: "#ffe14d" };
@@ -57,17 +57,21 @@ export function createHud() {
       const pr = project(t.pos, cam);
       const color = COL[t.kind] || "#fff";
       if (pr.on && d < 9000) {
-        const r = Math.max(11, Math.min(40, 2200 / Math.max(d, 1) * (t.radius / 8)));
-        brackets(pr.x, pr.y, r, color, t.objective ? 3.2 : 2.2);
+        const air = t.kind === "jet";
         if (t === s.lockTarget) {
-          ctx.save(); ctx.translate(pr.x, pr.y); ctx.rotate(s.elapsed * 3);
-          ctx.setLineDash([8, 6]); circle(0, 0, r + 9, "#ff3b3b", 3); ctx.restore(); ctx.setLineDash([]);
-          label(pr.x, pr.y + r + 24, "LOCK", "#ff3b3b");
-        } else if (t === s.lockCand && s.lockTime > 0) {
-          circle(pr.x, pr.y, r + 9 - s.lockTime * 15, "rgba(255,80,80,0.8)", 2);
+          const R = Math.max(16, Math.min(46, 2600 / Math.max(d, 1) * (t.radius / 8) + 10)), pu = 1 + 0.06 * Math.sin(s.elapsed * 8);
+          if (air) diamond(pr.x, pr.y, R * pu * 1.15, "rgba(255,70,70,0.42)"); else brackets(pr.x, pr.y, R * pu * 1.15, "rgba(255,70,70,0.42)", 1.1);
+          label(pr.x, pr.y + R * pu + 15, `${air ? "AIR" : "GND"} ${d < 1000 ? Math.round(d) + "m" : (d / 1000).toFixed(1) + "km"}`, "rgba(255,208,208,0.55)", 11);
+        } else {
+          if (t === s.lockCand && s.lockTime > 0) { const R = 24 - s.lockTime * 60; if (R > 8) circle(pr.x, pr.y, R, "rgba(255,80,80,0.35)", 1.1); }
+          // tiny subtle tick above the model (never covers it): chevron for air, dot for ground
+          const ty = pr.y - Math.max(12, Math.min(30, 1800 / Math.max(d, 1) * (t.radius / 8) + 8));
+          ctx.save(); ctx.fillStyle = air ? "rgba(255,70,60,0.22)" : "rgba(255,160,70,0.2)"; ctx.strokeStyle = "rgba(0,0,0,0.12)"; ctx.lineWidth = 1; ctx.beginPath();
+          if (air) { ctx.moveTo(pr.x - 4.5, ty - 4); ctx.lineTo(pr.x + 4.5, ty - 4); ctx.lineTo(pr.x, ty + 3); ctx.closePath(); } else ctx.rect(pr.x - 2.5, ty - 2.5, 5, 5);
+          ctx.stroke(); ctx.fill(); ctx.restore();
         }
-        if (d < 2500 || t === s.lockTarget) label(pr.x, pr.y - r - 8, d < 1000 ? `${Math.round(d)}m` : `${(d / 1000).toFixed(1)}km`, "#fff", 11);
-      } else if (t.objective) arrows.push({ t, d, pr });
+      } else if (t.kind === "jet") arrows.push({ t, d: d * 0.6, dist: d, pr });
+      else if (t.objective) arrows.push({ t, d, pr });
     }
     // friendly forces: small green diamond markers (never targetable)
     for (const a of s.allies || []) {
@@ -94,7 +98,8 @@ export function createHud() {
       else arrows.push({ t: { kind: "ring", pos: r.pos }, d: r.pos.distanceTo(s.player.pos), pr });
     }
     arrows.sort((a, b) => a.d - b.d);
-    for (const a of arrows.slice(0, 3)) edgeArrow(a.t.pos, cam, COL[a.t.kind] || "#fff");
+    for (const a of arrows.slice(0, 3)) edgeArrow(a.t.pos, cam, a.t.kind === "jet" ? "#ff2a2a" : (COL[a.t.kind] || "#fff"), false, null, 1);
+    horizon(s, cam);
     // incoming missiles
     for (const m of s.missiles) if (m.active) { const pr = project(m.p, cam); if (pr.on) { circle(pr.x, pr.y, 10, "#ff2222", 3); label(pr.x, pr.y - 18, "MISSILE", "#ff4444", 11); } else edgeArrow(m.p, cam, "#ff2222", true); }
     // CCIP marker
@@ -110,7 +115,7 @@ export function createHud() {
   function brackets(x, y, r, color, w) {
     const k = r * 0.45;
     ctx.save(); ctx.lineCap = "round"; ctx.lineJoin = "round";
-    for (const [lw, st] of [[w + 2.2, "rgba(0,0,0,.65)"], [w, color]]) {
+    for (const [lw, st] of [[w + 1.6, "rgba(0,0,0,.18)"], [w, color]]) {
       ctx.lineWidth = lw; ctx.strokeStyle = st; ctx.beginPath();
       for (const sx of [-1, 1]) for (const sy of [-1, 1]) { ctx.moveTo(x + sx * r, y + sy * (r - k)); ctx.lineTo(x + sx * r, y + sy * r); ctx.lineTo(x + sx * (r - k), y + sy * r); }
       ctx.stroke();
@@ -118,23 +123,45 @@ export function createHud() {
     ctx.restore();
   }
 
+  function diamond(x, y, R, color) {
+    ctx.save(); ctx.lineJoin = "round"; ctx.beginPath(); ctx.moveTo(x, y - R); ctx.lineTo(x + R * 0.8, y); ctx.lineTo(x, y + R); ctx.lineTo(x - R * 0.8, y); ctx.closePath();
+    ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,0.14)"; ctx.stroke(); ctx.lineWidth = 1.2; ctx.strokeStyle = color; ctx.stroke(); ctx.restore();
+  }
+  // artificial horizon cue: a faint line through the world horizon, rolling with the camera; flashes when auto-leveling
+  const _h = new THREE.Vector3();
+  function horizon(s, cam) {
+    const pp = s.player.pos, f = s.fwd; const fl = Math.hypot(f.x, f.z) || 1; const fx = f.x / fl, fz = f.z / fl;
+    const pts = [];
+    for (let k = -7; k <= 7; k++) { const a = k * 0.13, c = Math.cos(a), sn = Math.sin(a); _h.set(pp.x + (fx * c - fz * sn) * 30000, pp.y, pp.z + (fx * sn + fz * c) * 30000); pts.push(project(_h, cam)); }
+    const al = 0.32 + 0.5 * Math.min(1, (s.recover || 0) * 2);
+    ctx.save(); ctx.lineCap = "round";
+    for (const side of [-1, 1]) {
+      ctx.beginPath(); let on = false;
+      for (let i = 0; i < pts.length; i++) { const k = i - 7; if (k * side < 1 || pts[i].behind) { on = false; continue; } if (!on) { ctx.moveTo(pts[i].x, pts[i].y); on = true; } else ctx.lineTo(pts[i].x, pts[i].y); }
+      ctx.lineWidth = 4.5; ctx.strokeStyle = `rgba(0,0,0,${al * 0.5})`; ctx.stroke(); ctx.lineWidth = 2; ctx.strokeStyle = `rgba(190,255,220,${al})`; ctx.stroke();
+    }
+    ctx.restore();
+    if ((s.recover || 0) > 0.25) label(W / 2, H * 0.3, "LEVELING", "#9dffc4", 15);
+  }
+
   function label(x, y, text, color, size = 13) {
     ctx.font = `900 ${size}px ui-rounded, "SF Pro Rounded", system-ui, sans-serif`;
     ctx.textAlign = "center"; ctx.lineWidth = 4; ctx.strokeStyle = "rgba(0,0,0,0.9)";
     ctx.strokeText(text, x, y); ctx.fillStyle = color; ctx.fillText(text, x, y);
   }
-  function edgeArrow(p, cam, color, warn = false) {
+  function edgeArrow(p, cam, color, warn = false, text = null, sc = 1) {
     // direction in camera space
     v.copy(p).applyMatrix4(cam.matrixWorldInverse);
     let ang = Math.atan2(-v.y, v.x);
     if (v.z > 0 && Math.abs(v.x) < 1e-3) ang = Math.PI / 2;
     const cx = W / 2, cy = H / 2, rx = W / 2 - 46, ry = H / 2 - 56;
     const x = cx + Math.cos(ang) * rx, y = cy + Math.sin(ang) * ry;
-    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    ctx.save(); ctx.globalAlpha = 0.6; ctx.translate(x, y); ctx.rotate(ang); ctx.scale(sc * 0.85, sc * 0.85);
     ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-8, -11); ctx.quadraticCurveTo(-2, 0, -8, 11); ctx.closePath();
     ctx.lineWidth = 3.5; ctx.strokeStyle = "#000"; ctx.lineJoin = "round"; ctx.stroke();
     ctx.fillStyle = color; ctx.fill(); ctx.restore();
     if (warn) label(x, y + 24, "!", color, 16);
+    if (text) label(x - Math.cos(ang) * 34, y - Math.sin(ang) * 26 + 4, text, "rgba(255,208,208,0.55)", 11);
   }
 
   // ---------- round radar (top left) ----------
@@ -251,9 +278,10 @@ export function createHud() {
       const hx = -Math.sin(t.yaw), hz = -Math.cos(t.yaw);
       const rx = hx * cs - hz * sn, rz = hx * sn + hz * cs;
       rctx.save(); rctx.translate(q.x, q.y); rctx.rotate(Math.atan2(rx, -rz));
-      const z = 6 * u;
+      const z = 8.4 * u;
       rctx.beginPath(); rctx.moveTo(0, -z * 1.15); rctx.lineTo(z * 0.85, z * 0.8); rctx.lineTo(-z * 0.85, z * 0.8); rctx.closePath();
-      rctx.fillStyle = "#ff2e2e"; rctx.fill(); outline(1.4); rctx.restore();
+      rctx.fillStyle = "#ff2e2e"; rctx.fill(); outline(2); rctx.strokeStyle = "rgba(255,255,255,0.9)"; rctx.lineWidth = 1.2 * u; rctx.stroke();
+      rctx.beginPath(); rctx.arc(0, 0, z * (1.3 + 0.35 * Math.sin(s.elapsed * 6)), 0, 7); rctx.strokeStyle = "rgba(255,60,60,0.55)"; rctx.stroke(); rctx.restore();
     }
     // FRIENDLY forces (green): jets = triangles pointing along their heading, ground forces = squares, ships = diamonds
     for (const a of s.allies || []) {

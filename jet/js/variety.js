@@ -44,9 +44,9 @@ export const PLANETS = {
 
 export const JET_TYPES = {
   // livery + airframe for the player; `wing` 0 = delta, 1 = swept, 2 = broad
-  viper: { name: "F-V Viper", lo: 0x12161c, hi: 0x434b57, wing: 0x1f252d, glow: 0xff9a3a, shape: 0 },
+  viper: { name: "F-V Viper", lo: 0x4e5762, hi: 0x98a2ae, wing: 0x7d8793, glow: 0xff9a3a, shape: 0 },
   raptor: { name: "R-22 Raptor", lo: 0x0c0e11, hi: 0x30353d, wing: 0x16191e, glow: 0xff6a2a, shape: 1 },
-  falcon: { name: "F-16 Falcon", lo: 0x3e3628, hi: 0x8a7d5c, wing: 0x54492f, glow: 0xffb040, shape: 2 },
+  falcon: { name: "F-16 Falcon", lo: 0x58606b, hi: 0x9aa3ae, wing: 0x7c858f, glow: 0xffb040, shape: 2 },
   tomcat: { name: "T-14 Tomcat", lo: 0x121c30, hi: 0x56688a, wing: 0x1e2c48, glow: 0x4ad0ff, shape: 1 },
   // sci-fi craft for alien worlds
   nova: { name: "NX-1 Nova", lo: 0x2a2f46, hi: 0xd9e6ff, wing: 0x4a5a8c, glow: 0x50e8ff, shape: 3 },
