@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="ubu-build" content="22" />
+  <meta name="ubu-build" content="23" />
   <meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -16,8 +16,8 @@
   <link rel="icon" type="image/png" sizes="192x192" href="img/icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png" />
   <link rel="preload" href="fonts/Fredoka.ttf" as="font" type="font/ttf" crossorigin />
-  <link rel="stylesheet" href="css/jet.css?v=22" />
-  <link rel="stylesheet" href="css/loading.css?v=22" />
+  <link rel="stylesheet" href="css/jet.css?v=23" />
+  <link rel="stylesheet" href="css/loading.css?v=23" />
   <script type="importmap">{ "imports": { "three": "./js/vendor/three.module.min.js" } }</script>
 </head>
 <body class="on-title tp-a">
@@ -54,7 +54,6 @@
 
   <!-- ===== Opening screen (one screen, shown once) ===== -->
   <section id="screen-title" class="screen title">
-    <div class="credit-b">TESSIE</div>
     <div class="ver-b" data-ver></div>
     <div class="sky-fx" aria-hidden="true"><i class="aurora a1"></i><i class="aurora a2"></i><i class="aurora a3"></i><i class="stars"></i><i class="cloud c1"></i><i class="cloud c2"></i><i class="cloud c3"></i><i class="horizon"></i></div>
     <div class="title-inner">
@@ -81,6 +80,9 @@
       <button type="button" class="view-btn" id="btn-view" aria-label="Camera view: cockpit or chase"><span class="vseg" data-v="cockpit">COCKPIT</span><span class="vseg" data-v="chase">CHASE</span></button>
       <div class="wcam" id="wcam" aria-label="Weapon camera"><canvas id="wcam-c" width="160" height="160"></canvas><i class="wcam-ring"></i></div>
     </div>
+    <canvas id="rain-canopy"></canvas>
+    <div id="splash" class="splash"></div>
+    <div id="hint" class="hint"></div>
     <div id="popups" class="popups"></div>
     <div id="hitmark" class="hitmark"><i></i><i></i><i></i><i></i></div>
     <div class="top-center">
@@ -96,7 +98,7 @@
     <div class="stats" id="stats">
       <div class="statrow"><span>HP</span><div class="bar"><i id="hud-hp"></i></div></div>
       <div class="statrow heat"><span id="hud-heat-label">GUN</span><div class="bar"><i id="hud-heat"></i></div></div>
-      <div class="nums"><span><b id="hud-spd">0</b> km/h</span><span><b id="hud-alt">0</b> m</span><span class="fl-c"><b id="hud-fl">12</b> flares</span></div>
+      <div class="nums"><span><b id="hud-spd">0</b> km/h</span><span><b id="hud-alt">0</b> m</span><span class="fl-c"><b id="hud-fl">12</b> flares</span><span class="kl-c"><b id="hud-kl">0</b> kills</span></div>
     </div>
     <!-- weapons: bottom left. One consistent ring cooldown on every button. -->
     <div id="weapons" class="weapons">
@@ -106,6 +108,7 @@
         <svg viewBox="0 0 24 24"><path d="M5 5v14M10 7v12M15 5v14M20 8v10" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg><em>GUN</em><b class="cnt">READY</b></button>
       <button type="button" class="wbtn w-bomb" data-w="bomb" aria-label="Bomb"><i class="ring"></i>
         <svg viewBox="0 0 24 24"><path d="M12 3v5M9 4h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><ellipse cx="12" cy="15" rx="5" ry="6.5" fill="currentColor"/><path d="M10 20.5 8.5 23M14 20.5 15.5 23" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><em>BOMB</em><b class="cnt">10/10</b></button>
+      <div class="tgt" aria-label="Target select"><button type="button" class="tgt-b" data-w="tgt-up" aria-label="Previous target"><svg viewBox="0 0 24 24"><path d="M5 16l7-8 7 8" stroke="currentColor" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button><small>TGT</small><button type="button" class="tgt-b" data-w="tgt-dn" aria-label="Next target"><svg viewBox="0 0 24 24"><path d="M5 8l7 8 7-8" stroke="currentColor" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
       <div class="thr" id="thr" aria-label="Throttle"><div class="thr-track" id="thr-track"><i class="thr-ticks"></i><i class="thr-fill"></i><b class="thr-knob" id="thr-knob"></b></div><div class="thr-info"><small>THR</small><b id="thr-spd">0</b><small>km/h</small></div></div>
     </div>
     <div id="stick" class="stick"></div>
@@ -162,6 +165,6 @@
     </div>
   </section>
   <div id="build-tag" class="build-tag"></div>
-  <script type="module" src="js/main.js?v=22"></script>
+  <script type="module" src="js/main.js?v=23"></script>
 </body>
 </html>

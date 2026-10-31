@@ -1,8 +1,8 @@
 // Time of day + weather: sky dome, sun/moon, stars, lights, fog, toon clouds, rain/snow, lightning.
-import { FX } from "./tex.js?v=22";
+import { FX } from "./tex.js?v=23";
 import * as THREE from "three";
-import { PartBuilder, G, getGradientMap, outlineMaterial } from "./toon.js?v=22";
-import { style, skyHueChunk } from "./surreal.js?v=22";
+import { PartBuilder, G, getGradientMap, outlineMaterial } from "./toon.js?v=23";
+import { style, skyHueChunk } from "./surreal.js?v=23";
 
 export const TIMES = ["dawn", "day", "dusk", "night"];
 export const WEATHERS = ["clear", "cloudy", "rain", "fog", "snow", "storm"];
@@ -14,12 +14,12 @@ const TOD = {
   night: { elev: 38, az: 200, top: 0x040a1c, hor: 0x1d2d55, bot: 0x26386a, sun: 0xa8c4ff, sunI: 0.9, hs: 0x5876c0, hg: 0x141828, hI: 0.75, fog: 0x15203c, tint: 0x8094c8, cloud: 0x6a7aa4, exp: 1.05, stars: 1 },
 };
 const WX = {
-  clear: { over: 0.0, near: 3000, far: 18000, clouds: 12, sunK: 1, rain: 0, snow: 0, lightning: false },
+  clear: { over: 0.0, near: 3000, far: 18000, clouds: 9, sunK: 1, rain: 0, snow: 0, lightning: false },
   cloudy: { over: 0.45, near: 2000, far: 12000, clouds: 30, sunK: 0.7, rain: 0, snow: 0, lightning: false },
-  rain: { over: 0.75, near: 300, far: 4200, clouds: 30, sunK: 0.45, rain: 1, snow: 0, lightning: false },
+  rain: { over: 0.78, near: 300, far: 4200, clouds: 46, sunK: 0.42, rain: 1, snow: 0, lightning: true },
   fog: { over: 0.65, near: 40, far: 1300, clouds: 6, sunK: 0.6, rain: 0, snow: 0, lightning: false },
   snow: { over: 0.6, near: 250, far: 3600, clouds: 24, sunK: 0.6, rain: 0, snow: 1, lightning: false },
-  storm: { over: 0.9, near: 250, far: 3000, clouds: 34, sunK: 0.35, rain: 1.6, snow: 0, lightning: true },
+  storm: { over: 0.92, near: 250, far: 3000, clouds: 50, sunK: 0.35, rain: 1.6, snow: 0, lightning: true },
 };
 
 function grey(c, amt, lum = null) {
@@ -201,8 +201,8 @@ export function createSky(scene, renderer) {
       const cx = center.x + (rnd() * 2 - 1) * half * 0.9, cz = center.z + (rnd() * 2 - 1) * half * 0.9, cy = 380 + rnd() * 380, size = 260 + rnd() * 260;
       for (let j = 0; j < 4; j++) {
         const px = cx + (rnd() - 0.5) * size * 2.2, pz = cz + (rnd() - 0.5) * size * 1.6, py = cy + (rnd() - 0.5) * 40;
-        b.add(G.sphereLo, 0xf4f8ff, { pos: [px, py, pz], scale: [size * 1.1, size * 0.16, size * 0.8] });
-        cpl.push(px, py, pz, size * 1.0, size * 0.15, size * 0.75);
+        b.add(G.sphereLo, 0xf4f8ff, { pos: [px, py, pz], scale: [size * 1.0, size * 0.34, size * 0.75] });
+        cpl.push(px, py, pz, size * 0.95, size * 0.32, size * 0.7);
       }
     }
     CP = new Float32Array(cpl);
@@ -340,7 +340,7 @@ export function createSky(scene, renderer) {
     if (pl) ct.setHex(pl.cloud).multiplyScalar(nK);
     cloudMat.color.copy(ct); cloudReal.uniforms.uCol.value.copy(ct); cloudReal.uniforms.uDark.value = over > 0.5 ? 1 : 0; cloudReal.uniforms.uAmb.value.copy(hemiSkyColor(T, nK));
     cloudMat.emissive.copy(ct).multiplyScalar(time === "night" ? 0.12 : 0.28);
-    buildClouds(W.clouds, center, half, over > 0.5, seed, W.near < 500 ? 9 : 0);   // b21: flat stratus banks seen edge-on read as thin bright streaks across the sky -> only in fog/rain/snow
+    buildClouds(W.clouds, center, half, over > 0.5, seed, W.near < 500 ? 12 : state.weather === "rain" || state.weather === "storm" ? 10 : state.weather === "cloudy" ? 5 : state.weather === "snow" ? 8 : state.weather === "clear" ? 2 : 0);   // b21: flat stratus banks seen edge-on read as thin bright streaks across the sky -> only in fog/rain/snow
     rain.visible = W.rain > 0;
     rainMat.uniforms.uOp.value = 0.32 + 0.18 * Math.min(1, W.rain - 0.5);
     rainMat.uniforms.uCol.value.setHex(time === "night" ? 0x8aa0d0 : 0xd8e4ff);
@@ -361,7 +361,7 @@ export function createSky(scene, renderer) {
     if (WX[state.weather]?.lightning) {
       nextBolt -= dt;
       if (nextBolt <= 0) {
-        flash = 1; nextBolt = 4 + Math.random() * 8;
+        flash = 1; nextBolt = state.weather === "storm" ? 3.5 + Math.random() * 7 : 9 + Math.random() * 12;
         const delay = 0.3 + Math.random() * 1.8;
         setTimeout(() => onThunder?.(), delay * 1000);
       }

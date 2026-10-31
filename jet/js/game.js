@@ -1,15 +1,15 @@
 // Ubu game world: flight model, camera, targets, AI, weapons, effects, objectives.
-import { createPost } from "./post.js?v=22";
+import { createPost } from "./post.js?v=23";
 import * as THREE from "three";
-import { buildTerrain } from "./terrain.js?v=22";
-import { createSky } from "./sky.js?v=22";
-import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createAlienWalker, createAlienTurret, createAlienSpire, createHive, createShip, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=22";
-import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=22";
-import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=22";
-import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=22";
-import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=22";
-import { setQuality, FX as FXQ } from "./tex.js?v=22";
-import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=22";
+import { buildTerrain } from "./terrain.js?v=23";
+import { createSky } from "./sky.js?v=23";
+import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createAlienWalker, createAlienTurret, createAlienSpire, createHive, createShip, createWarship, createSub, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=23";
+import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=23";
+import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=23";
+import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=23";
+import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=23";
+import { setQuality, FX as FXQ } from "./tex.js?v=23";
+import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=23";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V(), tE = V();
@@ -30,6 +30,8 @@ function segSphere(p0, p1, c, r) {
 
 export function createGame({ renderer, audio, controls, haptics, events }) {
   const scene = new THREE.Scene();
+  // b23: one pooled point light that flashes orange on every explosion (created at start so no shader recompile hitch mid-flight)
+  const boomLight = new THREE.PointLight(0xff9a48, 0, 400, 2); boomLight.position.set(0, -500, 0); scene.add(boomLight);
   const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.3, 32000);
   const sky = createSky(scene, renderer);
   sky.setThunderHandler(() => audio.thunder());
@@ -301,8 +303,9 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (big >= 1) spawnDebris(p, 8 + Math.round(big * 6), size * 3.6);
     const d = camera.position.distanceTo(p);
     audio.explosion(big, d);
-    if (d < 1500) { shake = Math.max(shake, Math.min(3.4, (1 - d / 1500) * (1.2 + big * 1.0))); }
-    if (d < 500 * (0.5 + big * 0.4)) events.onBoom?.(Math.min(1, (1 - d / 600) * (0.4 + big * 0.3)));
+    boomLight.position.copy(p); boomLight.position.y += size * 0.5; boomLight.distance = size * 22; boomLight.intensity = Math.max(boomLight.intensity, size * size * (14 + big * 8));
+    if (d < 2400) { shake = Math.max(shake, Math.min(3.8, (1 - d / 2400) * (1.6 + big * 1.2))); }
+    if (d < 900 * (0.5 + big * 0.4)) { const fk = Math.min(1, (1 - d / (900 * (0.5 + big * 0.4))) * (0.5 + big * 0.35)); events.onBoom?.(fk); if (fk > 0.35) haptics.boom?.(fk); }
   }
 
   // ---------- player ----------
@@ -457,6 +460,22 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   }
   // aircraft carrier: a friendly landing deck on open water
   let pad = null, landingOpen = false, landing = null;
+  // b23: enemy warships (bow wake, mast, guns) and submarines that surface and dive. They count as kills but are never mission objectives.
+  function spawnSea() {
+    if (alienT) return;
+    const n = (L && L.n) || 1;
+    const ships = Math.min(3, 1 + (n >= 3 ? 1 : 0) + (n >= 7 ? 1 : 0)), subs = Math.min(3, 1 + (n >= 5 ? 1 : 0) + (n >= 8 ? 1 : 0));
+    let placed = 0;
+    for (let i = 0; i < ships; i++) {
+      const c = waterSpot(center.x, center.z, half * 0.6); if (!c) break;
+      c.y = 0.5; const t = addTarget("ship", createWarship(), c, { heading: rng() * Math.PI * 2, speed: 3 + rng() * 2, hp: 12, sea: "war" }); t.objective = false; placed++;
+    }
+    for (let i = 0; i < subs; i++) {
+      const c = waterSpot(center.x, center.z, half * 0.6); if (!c) break;
+      c.y = 0.4; const t = addTarget("ship", createSub(), c, { heading: rng() * Math.PI * 2, speed: 2 + rng() * 1.5, hp: 6, sea: "sub", ph: rng() * 32 }); t.objective = false; placed++;
+    }
+    return placed;
+  }
   function spawnCarrier(zoneC) {
     const offs = [[0, 0], [0, 110], [0, -110], [0, 190], [0, -190], [45, 0], [-45, 0], [45, 150], [-45, -150]];
     for (let k = 0; k < 500; k++) {
@@ -777,6 +796,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     spawnGround("tank", g.tank || 0, zone);
     spawnGround("flak", g.flak || 0, zone);
     spawnGround("sam", g.sam || 0, zone);
+    try { spawnSea(); } catch (e) { console.warn(e); }
     for (const o of level.objectives) {
       if (o.kind === "land" || o.kind === "jet") continue;
       const have = targets.filter((t) => t.kind === o.kind).length;
@@ -917,7 +937,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   function lockNearest() {
     if (!player || crashing || ended) return false;
     let best = null, bd = 1e9;
-    for (const t of targets) { if (!t.alive || t.kind === "ally") continue; const d = t.pos.distanceTo(player.pos); const k = d * (t.kind === "jet" ? 0.5 : 1); if (d < 5200 && k < bd) { bd = k; best = t; } }
+    for (const t of targets) { if (!t.alive || t.submerged || t.kind === "ally") continue; const d = t.pos.distanceTo(player.pos); const k = d * (t.kind === "jet" ? 0.5 : 1); if (d < 5200 && k < bd) { bd = k; best = t; } }
     if (!best) return false;
     tapTarget = best; tapT = 5; lockTarget = best; lockCand = best; lockTime = 1; audio.lock(); events.toast?.("Target locked"); return true;
   }
@@ -1006,7 +1026,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     else {
       // pitch: stick Y = capped nose RATE with an instant onset (stick smoothing is ~30 ms); soft attitude limits make a stall / flip impossible
       const u = Math.max(0, Math.abs(st.pitch) - 0.06) / 0.94, maxPR = 1.5 - 0.35 * ez;
-      let pr = Math.sign(st.pitch) * Math.pow(u, 1.2) * maxPR * (1 - recover);
+      let pr = Math.sign(st.pitch) * Math.pow(u, 1.45) * maxPR * (1 - recover);   // b23: proportional + slight expo
       if (pr < 0) pr *= Math.max(0, 1 - assistDanger * 1.6);
       const upL = 0.95 + 0.1 * (1 - ez), dnL = -(0.9 + 0.05 * (1 - ez));   // b22: about +-52..57 degrees of real authority
       if (pr > 0 && player.pitch > upL - 0.2) pr *= Math.max(0, 1 - (player.pitch - (upL - 0.2)) / 0.2);
@@ -1018,7 +1038,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (recover > 0.05 && player.pitch < 0.7) pitchRate = Math.max(pitchRate, recover * 1.7);
     // b22 release: keep the heading, ease the nose back to level over ~1-1.5 s (no snap); nothing levels while the stick is held
     relT = Math.abs(st.pitch) < 0.08 ? relT + dt : 0;
-    if (!player.inverted && !(player.pitch > 0 && assistDanger > 0.05) && !loopPull) pitchRate -= THREE.MathUtils.clamp(player.pitch * 2.3, -0.85, 0.85) * THREE.MathUtils.clamp((relT - 0.12) / 0.35, 0, 1);
+    if (!player.inverted && !(player.pitch > 0 && assistDanger > 0.05) && !loopPull) pitchRate -= THREE.MathUtils.clamp(player.pitch * 1.05, -0.4, 0.4) * THREE.MathUtils.clamp((relT - 0.3) / 0.7, 0, 1);   // b23: only a gentle drift back to level
     // roll: capped bank, strong wing-leveller when the stick is released (also rights an inverted jet)
     let rr = aR * 1.8;
     // ARCADE TURNS: sideways stick = a smooth banked turn (stick sets the bank angle, up to ~55 deg; the jet pulls itself through the turn).
@@ -1028,16 +1048,16 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (wB > 0) {
       // ATTITUDE COMMAND: stick X = target bank angle (kids ~60 deg, adults ~52). The jet rolls there fast (rate cap ~200 deg/s, ~60 rad/s^2 onset),
       // a reversal uses the full rate straight away (no carried-over momentum), and the turn rate is a pure function of the bank (coordinated turn).
-      const u = Math.max(0, Math.abs(st.roll) - 0.06) / 0.94, maxB = 1.35 - 0.15 * ez, tb = Math.sign(st.roll) * Math.min(1, u * 1.1) * maxB;
-      const rmax = u < 0.02 ? 1.7 : 3.8;
-      const want = THREE.MathUtils.clamp((tb - player.bank) * (u < 0.02 ? 4.2 : 10), -rmax, rmax);   // b22: crisp while held, smooth wings-level on release
+      const u = Math.max(0, Math.abs(st.roll) - 0.06) / 0.94, maxB = 1.35 - 0.15 * ez, tb = Math.sign(st.roll) * Math.min(1, Math.pow(u, 1.35) * 1.08) * maxB;   // b23: expo
+      const rmax = u < 0.02 ? 0.95 : 0.8 + 3.2 * Math.pow(u, 0.85);   // b23: roll rate scales with deflection; release = slow drift
+      const want = THREE.MathUtils.clamp((tb - player.bank) * (u < 0.02 ? 2.0 : 9), -rmax, rmax);   // b22: crisp while held, smooth wings-level on release
       cpBV += THREE.MathUtils.clamp(want - cpBV, -60 * dt, 60 * dt);
       rr = rr * (1 - wB) + cpBV * wB;
     } else cpBV = 0;
     const BL = 1.5;
     if (Math.abs(st.roll) < 0.55 && !player.inverted && player.bank * rr > 0 && Math.abs(player.bank) > BL - 0.2) rr *= Math.max(0, 1 - (Math.abs(player.bank) - (BL - 0.2)) / 0.2);
     const hands = 1 - Math.min(1, Math.abs(aR) * 3);
-    if ((!held || Math.abs(st.roll) < 0.12 && Math.abs(st.pitch) < 0.12) && (wB < 0.5 || recover > 0.05 || player.inverted)) rr -= player.bank * ((0.9 + 3.0 * hands) * (0.7 + 0.5 * ak) + recover * 2.4);
+    if ((!held || Math.abs(st.roll) < 0.12 && Math.abs(st.pitch) < 0.12) && (wB < 0.5 || recover > 0.05 || player.inverted)) rr -= player.bank * ((0.45 + 1.4 * hands) * (0.7 + 0.5 * ak) + recover * 2.4);
     // gentle aim assist: ease the nose toward the nearest enemy in a wide cone, never fighting a firm stick
     let best = null, bs = 0.36 + 0.3 * ak + 0.25 * ez, bl = _vB, tapMode = false;
     if (!nearPad) {
@@ -1287,7 +1307,9 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       camera.position.x += (Math.random() - 0.5) * shake * 1.5;
       camera.position.y += (Math.random() - 0.5) * shake * 1.5;
       shake = Math.max(0, shake - dt * 1.8);
+      camera.rotateZ((Math.random() - 0.5) * shake * 0.012);
     }
+    if (boomLight.intensity > 0.5) boomLight.intensity *= Math.exp(-dt * 4.5); else if (boomLight.intensity) boomLight.intensity = 0;
     if (dbgCam) dbgCam(camera);
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
@@ -1434,16 +1456,52 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     watchWeapon(r, "MSL " + (hi + 1));
     audio.rocket();
   }
+  // b23: ground-target selection. Nearest is automatic; the TGT rocker (or a tap on a target) picks another one without firing.
+  let selTgt = null, tgtFlash = 0;
+  const GROUND_NO = { jet: 1, drone: 1, ally: 1, balloon: 1 };
+  function groundList() {
+    const l = [];
+    for (const t of targets) { if (!t.alive || GROUND_NO[t.kind] || t.submerged) continue; const d = t.pos.distanceTo(player.pos); if (d > 5200 || d < 60) continue; l.push([d, t]); }
+    l.sort((a, b) => a[0] - b[0]);
+    return l.map((x) => x[1]);
+  }
+  const KIND_NAME = { tank: "TANK", jeep: "TANK", flak: "FLAK", sam: "SAM", base: "BASE", jet: "JET", ship: "SHIP", sub: "SUB", drone: "DRONE" };
+  const kindName = (t) => (t.kind === "ship" && t.sea === "sub" ? "SUB" : KIND_NAME[t.kind] || String(t.kind).toUpperCase());
+  function cycleTgt(dir) {
+    if (!player || crashing) return;
+    const l = groundList(); if (!l.length) { events.toast?.("No ground target"); return; }
+    let i = l.indexOf(bombLock && !selTgt ? bombLock : selTgt);
+    i = i < 0 ? (dir > 0 ? 0 : l.length - 1) : (i + (dir > 0 ? 1 : -1) + l.length) % l.length;
+    selTgt = l[i]; tgtFlash = 1.2; audio.click?.();
+    events.toast?.(`TGT ${kindName(selTgt)} ${Math.round(selTgt.pos.distanceTo(player.pos))} m`);
+  }
+  function tapSelect(x, y) {
+    if (!player || crashing || !camera) return false;
+    let best = null, bd = 110;
+    for (const t of targets) {
+      if (!t.alive || t.submerged) continue;
+      tC.copy(t.pos).project(camera); if (tC.z > 1 || tC.z < -1) continue;
+      const sx = (tC.x * 0.5 + 0.5) * innerWidth, sy = (0.5 - tC.y * 0.5) * innerHeight, d = Math.hypot(sx - x, sy - y);
+      if (d < bd) { bd = d; best = t; }
+    }
+    if (!best) return false;
+    if (!GROUND_NO[best.kind]) { selTgt = best; tgtFlash = 1.2; }
+    if (GROUND_NO[best.kind]) { tapTarget = best; tapT = 5; }   // aim assist only steers toward tapped air targets; ground picks only select
+    lockTarget = best; lockCand = best; lockTime = 1; audio.lock(); haptics.lock?.();
+    events.toast?.(`${kindName(best)} selected`);
+    return true;
+  }
   function pickBombLock(cc) {
+    if (selTgt && (!selTgt.alive || selTgt.submerged || bombs.some((b) => b.active && b.target === selTgt) || selTgt.pos.distanceTo(player.pos) > 5600)) selTgt = null;
+    if (selTgt) return selTgt;
     const fw = fwdFrom(player.yaw, player.pitch, tD); let best = null, bs = 1e9;
     for (const t of targets) {
-      if (!t.alive || t.kind === "jet" || t.kind === "drone" || t.kind === "ally") continue;
+      if (!t.alive || GROUND_NO[t.kind] || t.submerged) continue;
       if (bombs.some((b) => b.active && b.target === t)) continue;   // already has a bomb on the way: move on to the next one
-      tB.subVectors(t.pos, player.pos); const d = tB.length(); if (d > 4200 || d < 120) continue;
-      const ang = tB.normalize().angleTo(fw); if (ang > 0.75) continue;
-      const sc = cc ? Math.hypot(t.pos.x - cc.x, t.pos.z - cc.z) / Math.max(1, t.radius * 0.5 + 60) : ang * 2000;   // closest to the bomb aim line / impact point
-      const sc2 = sc * (t === bombLock ? 0.7 : 1) + ang * 1.5;
-      if (sc2 < bs) { bs = sc2; best = t; }
+      tB.subVectors(t.pos, player.pos); const d = tB.length(); if (d > 5200 || d < 100) continue;
+      const ang = tB.normalize().angleTo(fw); if (ang > 1.35) continue;
+      const sc = d * (1 + ang * 0.6) * (t === bombLock ? 0.85 : 1);   // nearest ahead of the jet wins
+      if (sc < bs) { bs = sc; best = t; }
     }
     return best;
   }
@@ -1471,7 +1529,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     b.target = bt;
     b.o.visible = true;
     watchWeapon(b, "BOMB");
-    audio.bombRelease(); events.toast?.("BOMB AWAY"); b.o.scale.setScalar(1.35);
+    audio.bombRelease(); haptics.bomb?.(); events.toast?.("BOMB AWAY"); b.o.scale.setScalar(1.35);
     for (let i = 0; i < 5; i++) puff(b.p, tB.set((Math.random() - 0.5) * 6, 2 + Math.random() * 3, (Math.random() - 0.5) * 6), 1, 5, 1.2, 0xdadde2);
     fx(b.p, null, 6, 1, 0.18, 0xffe0a0, 0, 0);
   }
@@ -1606,14 +1664,15 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     const allowed = L.weapons;
     muzzle.visible = false;
     // machine gun: unlimited ammo, but it heats up (full in ~4 s) and cools (~2.5 s from full)
-    const wantGun = (controls.gunHeld() || (autoGun && heat < 0.8)) && allowed.includes("gun");
+    const wantGun = controls.gunHeld() && allowed.includes("gun");   // b23: push-to-fire only
     if (wantGun && !overheated) { fireGun(dt); heat = Math.min(1, heat + dt / HEAT_UP); }
     else heat = Math.max(0, heat - dt / HEAT_DOWN);
     if (!overheated && heat >= 1) { overheated = true; audio.hiss(); haptics.pulse?.(); events.onOverheat?.(true); }
     else if (overheated && heat < HEAT_RESUME) { overheated = false; audio.cool(); events.onOverheat?.(false); }
-    rocketCd -= dt; bombCd -= dt; emptyT -= dt;
+    rocketCd -= dt; bombCd -= dt; emptyT -= dt; tgtFlash = Math.max(0, tgtFlash - dt);
     if (controls.consumeRocket() && allowed.includes("rocket")) fireRocket();
     if (controls.consumeBomb() && allowed.includes("bomb")) dropBomb();
+    { const tg = controls.consumeTgt ? controls.consumeTgt() : 0; if (tg) cycleTgt(tg); }
     // slow refill, one at a time, whenever below max (timer only runs while below max)
     if (player.rockets < RACK) { rocketRegen += dt; if (rocketRegen >= ROCKET_REGEN) { rocketRegen = 0; player.rockets++; audio.reload("missile"); } } else rocketRegen = 0;
     if (player.bombs < RACK) { bombRegen += dt; if (bombRegen >= BOMB_REGEN) { bombRegen = 0; player.bombs++; audio.reload("bomb"); } } else bombRegen = 0;
@@ -1626,14 +1685,14 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     const fwd = fwdFrom(player.yaw, player.pitch, tD);
     let cand = null, candA = assist ? 0.36 + 0.26 * akv() + 0.3 * ezv() : 0.36;
     for (const t of targets) {
-      if (!t.alive) continue;
+      if (!t.alive || t.submerged) continue;
       tA.subVectors(t.pos, player.pos);
       const d = tA.length();
       if (d > 4200 || d < 60) continue;
       const a = tA.normalize().angleTo(fwd) - (t.objective ? 0.04 : 0);
       if (a < candA) { candA = a; cand = t; }
     }
-    if (cand && cand === lockCand) { lockTime += dt; if (lockTime > 0.07 && lockTarget !== cand) { lockTarget = cand; if (allowed.includes("rocket")) audio.lock(); } }
+    if (cand && cand === lockCand) { lockTime += dt; if (lockTime > 0.07 && lockTarget !== cand) { lockTarget = cand; if (allowed.includes("rocket")) { audio.lock(); haptics.lock?.(); } } }
     else { lockCand = cand; lockTime = 0; if (lockTarget && (!lockTarget.alive || !cand)) lockTarget = null; }
     if (tapT > 0) { tapT -= dt; if (tapTarget && tapTarget.alive) lockTarget = tapTarget; else tapT = 0; }
 
@@ -1663,7 +1722,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     // bomb auto-lock: the ground target closest to the impact point (or to the nose) gets the aim marker; bombs are guided onto it
     bombLock = (allowed.includes("bomb") && player.bombs > 0 && !crashing && !nearPad) ? pickBombLock(ccip) : null;
     const aimP = bombLock ? bombLock.pos : ccip; aimPos = aimP ? aimP.clone() : null;
-    ccipRing.visible = !!aimP && aimP.distanceTo(player.pos) < 4500;
+    ccipRing.visible = !!aimP && aimP.distanceTo(player.pos) < 5600;
     if (ccipRing.visible) { ccipRing.position.copy(aimP).add(tA.set(0, bombLock ? bombLock.radius * 0.4 + 2 : 2, 0)).add(tA.set(0, 2, 0)); ccipRing.scale.setScalar(1 + 0.15 * Math.sin(elapsed * 6)); }
     ccipLine.visible = ccipRing.visible;
     if (ccipLine.visible) { const a = ccipLine.geometry.attributes.position; a.setXYZ(0, player.pos.x, player.pos.y - 4, player.pos.z); a.setXYZ(1, ccipRing.position.x, ccipRing.position.y, ccipRing.position.z); a.needsUpdate = true; }
@@ -1774,6 +1833,15 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
           else { t.vel.set(nx - t.pos.x, 0, nz - t.pos.z).divideScalar(dt); t.pos.x = nx; t.pos.z = nz; }
           t.pos.y = 0.5 + Math.sin(t.t * 0.8) * 0.4 + waveAt(t.pos.x, t.pos.z);
           t.obj.rotation.set(Math.sin(t.t * 0.7) * 0.02, t.heading + Math.PI, Math.sin(t.t) * 0.03);
+          if (t.sea === "sub") {   // surface / dive cycle: dives (untargetable) for ~10 s, leaving a bubble trail
+            const cyc = (t.t + t.ph) % 32, dep = cyc < 14 ? 0 : cyc < 18 ? (cyc - 14) / 4 : cyc < 26 ? 1 : 1 - (cyc - 26) / 6;
+            const was = t.submerged; t.submerged = dep > 0.55; t.obj.visible = dep < 0.6;
+            t.pos.y = 0.3 - dep * 4 + waveAt(t.pos.x, t.pos.z);
+            const wk = t.obj.getObjectByName("wake"); if (wk) wk.visible = dep < 0.3;
+            if (was !== t.submerged && (cyc < 14 || cyc > 14)) for (let i = 0; i < 6; i++) puff(tA.copy(t.pos).add(tB.set((rng() - 0.5) * 8, 1, (rng() - 0.5) * 14)), null, 2, 9, 1.6, 0xffffff);
+            if (t.submerged && rng() < dt * 1.5) puff(tA.copy(t.pos).add(tB.set(0, 0.8, 0)), null, 1.5, 5, 1.4, 0xdff0ff);
+            break;
+          }
           if (rng() < dt * 2) puff(tA.copy(t.pos).add(tB.set(-Math.sin(t.heading) * 20, 1, -Math.cos(t.heading) * 20)), null, 3, 9, 1.8, 0xffffff);
           // anti-air tracers
           const d = t.pos.distanceTo(player.pos);
@@ -1918,11 +1986,26 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   function wcNext() { while (wcQ.length) { const q = wcQ.shift(); if (q.obj.active || q.obj.result == null) { wcStart(q.obj, q.label); return true; } } return false; }
   function watchWeapon(obj, label) { if (WC.state === "follow" || WC.state === "boom") wcQ.push({ obj, label }); else wcStart(obj, label); }
   function wcStart(obj, label) { wcResize(false); WC.obj = obj; WC.label = label; WC.state = "follow"; WC.t = 0; WC.lastP.copy(obj.p); WC.lastV.copy(obj.v); WC.camP.copy(obj.p); }
+  function previewTarget() {
+    const ok = (t) => t && t.alive && !t.submerged && t.kind !== "ally" && t.kind !== "balloon" && t.pos.distanceTo(player.pos) < 5200;
+    if (ok(lockTarget)) return lockTarget;
+    if (ok(selTgt)) return selTgt;
+    if (ok(bombLock)) return bombLock;
+    return null;
+  }
   function updateWeaponCam(dt) {
     // slow-mo for the last ~0.45 s (game time) before impact, and briefly into the explosion
     { let want = 1; if (WC.state === "follow" && WC.obj && WC.obj.active && WC.tgt && WC.tgt.alive) { const sp = Math.max(60, WC.obj.v.length()); if (WC.dist / sp < 0.45) want = 0.38; } else if (WC.state === "boom" && WC.t < 0.5) want = 0.45;
       wcSlow += (want - wcSlow) * Math.min(1, 6 * dt / Math.max(0.05, wcSlow)); }
-    if (WC.state === "idle" || !WC.canvas) return;
+    // b23: with nothing in flight, the round screen previews the locked / selected target (green render + label)
+    if (WC.canvas && player && !crashing) {
+      if (WC.state === "idle" || WC.state === "pre") {
+        const pv = previewTarget();
+        if (pv) { if (WC.state === "idle") { wcResize(false); WC.state = "pre"; WC.lastDraw = 0; } WC.tgt = pv; WC.dist = pv.pos.distanceTo(player.pos); }
+        else if (WC.state === "pre") { WC.state = "idle"; wcStandby(); }
+      }
+    } else if (WC.state === "pre") { WC.state = "idle"; if (WC.canvas) wcStandby(); }
+    if (WC.state === "idle" || WC.state === "pre" || !WC.canvas) return;
     WC.t += dt;
     if (WC.state === "follow") {
       const o = WC.obj;
@@ -1933,18 +2016,24 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   }
   function renderWeaponCam() {
     if (WC.state === "idle" || !WC.canvas) return;
-    const now = performance.now();
-    if (now - WC.lastDraw < 33) return;
+    const now = performance.now(), pre = WC.state === "pre";
+    if (now - WC.lastDraw < (pre ? 90 : 33)) return;
     WC.lastDraw = now;
     const cam = WC.cam;
     cam.position.copy(WC.camP);
     let fov = 50;
-    if (WC.state === "follow") {
+    if (pre) {
+      // slow orbit around the target so its shape is easy to recognise from far away
+      const tg = WC.tgt, R = Math.max(8, tg.radius) * 2.7, a = elapsed * 0.7;
+      WC.camP.set(tg.pos.x + Math.cos(a) * R, tg.pos.y + R * 0.42 + 1.5, tg.pos.z + Math.sin(a) * R); cam.position.copy(WC.camP);
+      cam.lookAt(tg.pos.x, tg.pos.y + Math.max(2, tg.radius * 0.18), tg.pos.z);
+      fov = 36;
+    } else if (WC.state === "follow") {
       if (WC.tgt && WC.tgt.alive) {
         // look at the target and zoom so the tank / ship / jet stays recognisable as the weapon closes in
         cam.lookAt(WC.tgt.pos);
         const dd = Math.max(25, WC.tgt.pos.distanceTo(WC.camP));
-        fov = THREE.MathUtils.clamp(2 * Math.atan((Math.max(7, WC.tgt.radius) * 1.9) / dd) * 57.3, 4, 38);   // narrow: target fills the view and zooms in as it closes
+        fov = THREE.MathUtils.clamp(2 * Math.atan((Math.max(7, WC.tgt.radius) * 1.45) / dd) * 57.3, 2.6, 34);   // narrow: target fills the view and zooms in as it closes
       } else cam.lookAt(tA.copy(WC.lastP).addScaledVector(tB.copy(WC.lastV).normalize(), 40));
     } else { cam.lookAt(WC.lastP); if (WC.state === "boom") fov = 72; }   // b22: wide view on impact so the fireball does not wash out the frame
     if (Math.abs(cam.fov - fov) > 0.05) { cam.fov += (fov - cam.fov) * 0.6; cam.updateProjectionMatrix(); }
@@ -1958,22 +2047,24 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     {
       // green-tinted scene; the target itself stays full colour, brighter and high-contrast inside a focus circle (plus brackets drawn below)
       const bf = WC.buf, dt8 = WC.img.data, n = WCS; let fx = -1, fy = -1, fr = 0;
-      if (WC.state === "follow" && WC.tgt && WC.tgt.alive) {
+      if ((WC.state === "follow" || pre) && WC.tgt && WC.tgt.alive) {
         tC.copy(WC.tgt.pos).project(cam);
         if (tC.z < 1 && tC.z > -1) { fx = (tC.x * 0.5 + 0.5) * n; fy = (0.5 - tC.y * 0.5) * n; const dd = Math.max(5, WC.tgt.pos.distanceTo(WC.camP)); fr = Math.max(n * 0.1, (Math.max(5, WC.tgt.radius) * 1.15 / dd) * (n / 2) / Math.tan(cam.fov * Math.PI / 360)); fr = Math.min(fr, n * 0.46); }
       }
       WC.fx = fx; WC.fy = fy; WC.fr = fr;
-      const night = (L && L.time === "night" ? 1.5 : 1) * (WC.state === "boom" ? 0.55 : 1);
+      const night = (L && L.time === "night" ? 1.5 : 1) * (WC.state === "boom" ? 0.55 : 1), kt = pre ? 1 : 0.42;   // b23: light green cast (pre-fire preview = full green)
       for (let y = 0; y < n; y++) {
         const sy = n - 1 - y;
         for (let x = 0; x < n; x++) {
           const i4 = (sy * n + x) * 4, o4 = (y * n + x) * 4;
           const r = bf[i4], g = bf[i4 + 1], bl = bf[i4 + 2], l = Math.min(255, (r * 0.3 + g * 0.59 + bl * 0.11) * night);
           let m = 0;
-          if (fr > 0) { const dx = x - fx, dy = y - fy, dr = Math.sqrt(dx * dx + dy * dy); m = dr < fr ? 1 : dr < fr * 1.35 ? 1 - (dr - fr) / (fr * 0.35) : 0; }
+          if (fr > 0 && !pre) { const dx = x - fx, dy = y - fy, dr = Math.sqrt(dx * dx + dy * dy); m = dr < fr ? 1 : dr < fr * 1.35 ? 1 - (dr - fr) / (fr * 0.35) : 0; }
           const tr = l * 0.2, tg = Math.min(255, l * 0.95 + 14), tb = l * 0.3;   // phosphor green
           const k = 1.18, cr = Math.min(255, (r * night - 110) * k + 120), cg = Math.min(255, (g * night - 110) * k + 120), cb = Math.min(255, (bl * night - 110) * k + 120);   // contrast boost on the target
-          dt8[o4] = tr + (cr - tr) * m; dt8[o4 + 1] = tg + (cg - tg) * m; dt8[o4 + 2] = tb + (cb - tb) * m; dt8[o4 + 3] = 255;
+          const nr = Math.min(255, (r * night - 12) * 1.08 + 10), ng = Math.min(255, (g * night - 12) * 1.08 + 10), nb = Math.min(255, (bl * night - 12) * 1.08 + 10);
+          const pr2 = tr * kt + nr * (1 - kt), pg2 = tg * kt + ng * (1 - kt), pb2 = tb * kt + nb * (1 - kt);
+          dt8[o4] = pr2 + (cr - pr2) * m; dt8[o4 + 1] = pg2 + (cg - pg2) * m; dt8[o4 + 2] = pb2 + (cb - pb2) * m; dt8[o4 + 3] = 255;
         }
       }
     }
@@ -1990,10 +2081,10 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     c.stroke();
     c.shadowColor = "rgba(0,0,0,.9)"; c.shadowBlur = 3 * K;
     c.fillStyle = "rgba(160,255,180,0.95)"; c.font = "bold " + Math.round(11 * K) + "px monospace"; c.textAlign = "center";
-    c.fillText(WC.label, WCS / 2, 20 * K);
-    if (WC.state === "follow" && WC.tgt && WC.tgt.alive) { const nm = { tank: "TANK", jeep: "JEEP", flak: "FLAK", sam: "SAM", base: "BASE", jet: "JET", ship: "SHIP", drone: "DRONE", ally: "ALLY" }[WC.tgt.kind] || String(WC.tgt.kind || "").toUpperCase(); c.fillStyle = "rgba(255,230,120,1)"; c.fillText(nm, WCS / 2, 33 * K); }
+    c.fillText(pre ? (lockTarget === WC.tgt ? "LOCKED" : "TARGET") : WC.label, WCS / 2, 20 * K);
+    if ((WC.state === "follow" || pre) && WC.tgt && WC.tgt.alive) { const nm = kindName(WC.tgt); c.fillStyle = "rgba(255,230,120,1)"; c.fillText(nm, WCS / 2, 33 * K); }
     c.fillStyle = WC.state === "boom" ? "rgba(255,200,120,1)" : "rgba(160,255,180,0.95)";
-    c.fillText(WC.state === "follow" ? (WC.dist > 0 ? Math.round(WC.dist) + " M" : "TRACKING") : WC.state === "boom" ? "IMPACT" : "LOST", WCS / 2, WCS - 14 * K);
+    c.fillText(pre ? (WC.dist > 1000 ? (WC.dist / 1000).toFixed(1) + " KM" : Math.round(WC.dist) + " M") : WC.state === "follow" ? (WC.dist > 0 ? Math.round(WC.dist) + " M" : "TRACKING") : WC.state === "boom" ? "IMPACT" : "LOST", WCS / 2, WCS - 14 * K);
     c.shadowBlur = 0;
     WC.canvas.dataset.live = "1";
     WC.canvas.style.opacity = WC.state === "fade" ? Math.max(0, 1 - WC.t / 0.9).toFixed(2) : 1;
@@ -2021,7 +2112,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
           if (segSphere(p0, b.p, player.pos, assist ? 5.5 : 8)) { dead = true; damagePlayer(1.6 * Math.max(0.4, L.hostile) * gunDmgK()); audio.hitFar?.(); }
         } else {
           for (const t of targets) {
-            if (t.alive && segSphere(p0, b.p, t.pos, t.radius * 1.3 + 2)) { damageTarget(t, 1, "gun"); audio.hit(); dead = true; break; }
+            if (t.alive && !t.submerged && segSphere(p0, b.p, t.pos, t.radius * 1.3 + 2)) { damageTarget(t, 1, "gun"); audio.hit(); dead = true; break; }
           }
           if (!dead) for (const a of allies) if (a.alive && segSphere(p0, b.p, a.pos, a.radius * 1.2 + 2)) { friendlyHit(a, 0.8, 60); dead = true; break; }
           if (!dead) {
@@ -2075,7 +2166,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
         } else { r.trail = 0.02; fx(r.p, null, 2.2, 0.4, 0.5, WS.fx, 0, 0); fx(r.p, tB.set((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8), 0.9, 0.2, 0.35, 0xffffff, 0, 1); }
       }
       let hit = null;
-      for (const t of targets) if (t.alive && segSphere(p0, r.p, t.pos, t.radius + 6)) { hit = t; break; }
+      for (const t of targets) if (t.alive && !t.submerged && segSphere(p0, r.p, t.pos, t.radius + 6)) { hit = t; break; }
       if (!hit) for (const a of allies) if (a.alive && segSphere(p0, r.p, a.pos, a.radius + 6)) { friendlyHit(a, 12, 250); r.life = Math.max(r.life, 0.01); r.p.copy(a.pos); hit = { fake: true }; break; }
       const gh = groundAt(r.p.x, r.p.z);
       if (hit || r.p.y < gh || r.life <= 0) {
@@ -2128,7 +2219,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       b.o.lookAt(tA.copy(b.p).add(b.v)); b.o.rotateY(Math.PI);
       const gh = groundAt(b.p.x, b.p.z);
       let near = false;
-      for (const t of targets) if (t.alive && t.kind !== "jet" && t.pos.distanceTo(b.p) < t.radius + 8) { near = true; break; }
+      for (const t of targets) if (t.alive && !t.submerged && t.kind !== "jet" && t.pos.distanceTo(b.p) < t.radius + 8) { near = true; break; }
       if (WS.kind !== "std" && (b.trail = (b.trail || 0) - dt) <= 0) { b.trail = 0.03; fx(b.p, tB.set((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10), 1.6, 0.2, 0.3, WS.fx, 0, 1); }
       if (b.p.y <= gh + 1 || near) {
         b.active = false; b.o.visible = false; b.result = "hit";
@@ -2265,7 +2356,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   function hudState() {
     return {
       throttle, combo, recover, gload, tier: tierOf(), player, targets, rings, progress, objectives: L?.objectives || [], timeLeft, score, viewMode,
-      lockTarget, lockCand, lockTime, track: trackOn, ccip, bombAim: aimPos, bombLocked: !!bombLock, alert: alertMsg, camera, missiles, half, center, elapsed,
+      lockTarget, lockCand, lockTime, track: trackOn, ccip, bombAim: aimPos, bombLocked: !!bombLock, bombName: bombLock ? kindName(bombLock) : "", bombDist: bombLock ? bombLock.pos.distanceTo(player.pos) : 0, bombSel: !!selTgt, tgtFlash, alert: alertMsg, camera, missiles, half, center, elapsed,
       fwd: player ? fwdFrom(player.yaw, player.pitch, V()) : null,
       heat, overheated, crashing: !!crashing, pad, baseCenters, landingOpen, landing: !!landing, autoGun, rack: RACK, rockets: player ? player.rockets : 0, bombs: player ? player.bombs : 0,
       rocketRefill: player && player.rockets < RACK ? rocketRegen / ROCKET_REGEN : 0, bombRefill: player && player.bombs < RACK ? bombRegen / BOMB_REGEN : 0, rocketCd: Math.max(0, rocketCd), bombCd: Math.max(0, bombCd), endless, allies, lowAlt, maneuver: maneuver ? maneuver.dir : 0,
@@ -2295,7 +2386,8 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   return {
     scene, camera, load, update, render, hudState, attachWeaponCam, runLabel,
     /** seconds > 0 = mission countdown; 0 / null = endless (timer counts up) */
-    lockNearest, skillInfo: () => ({ skill, tier: tierOf() }),
+    weather: () => (sky.state ? sky.state().weather : "clear"), cloudIn: () => inCloud,
+    lockNearest, tapSelect, cycleTgt, killCount: () => Object.values(stats.kills).reduce((a, c) => a + c, 0), skillInfo: () => ({ skill, tier: tierOf() }),
     setThrottle(v) { throttle = Math.max(0, Math.min(1, v)); },
     getThrottle: () => throttle,
     snapshot() {
@@ -2328,6 +2420,6 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     loop: (d) => startLoop(d),
     roll: (d) => startRoll(d),
     stats: () => stats,
-    dbg: { sky, fire: () => fireRocket(), flareN: () => flares.length, spawnMissile: () => { const m = missiles.find((x) => !x.active); if (!m) return false; m.active = true; m.life = 12; m.decoy = null; m.p.copy(player.pos).addScaledVector(fwdFrom(player.yaw, 0, V()), -900); m.p.y += 30; m.v.copy(player.vel).setLength(260); m.o.visible = true; return true; }, missilesLive: () => missiles.filter((x) => x.active).length, setG: (v) => { dbgG = v; }, setCam: (f) => { dbgCam = f; }, rockets: () => rockets.filter((r) => r.active).map((r) => ({ p: r.p.clone(), v: r.v.clone() })), tips: () => { const u = plane.userData; return [u.navL, u.navR].map((n) => n.getWorldPosition(new THREE.Vector3())); }, plane: () => plane, fl: () => ({ t: elapsed, pitch: player.pitch, bank: player.bank, speed: player.speed, y: player.pos.y, agl: player.pos.y - groundAt(player.pos.x, player.pos.z), hp: player.hp, yaw: player.yaw, crashing }), jets: () => targets.filter((t) => t.kind === "jet" && t.alive).map((t) => { const f = fwdFrom(player.yaw, 0, V()); const d = tA.subVectors(t.pos, player.pos); return { mode: t.mode, dist: Math.round(d.length()), ahead: Math.round(d.dot(f)), side: Math.round(d.x * f.z - d.z * f.x), sp: Math.round(t.speed) }; }), warpAt: (t, d) => { player.pos.set(t.pos.x, t.pos.y + d * 0.12 + 20, t.pos.z + d); player.q.setFromEuler(new THREE.Euler(-0.1, 0, 0, "YXZ")); return true; }, inCloud: () => inCloud, agl: () => player.pos.y - groundAt(player.pos.x, player.pos.z), warpNear: (kinds) => { const c = targets.filter((t) => t.alive && kinds.includes(t.kind)).sort((a, b) => a.pos.distanceTo(player.pos) - b.pos.distanceTo(player.pos))[0]; if (!c) return false; player.pos.set(c.pos.x, c.pos.y + 340, c.pos.z + 700); player.q.setFromEuler(new THREE.Euler(-0.3, 0, 0, "YXZ")); return true; }, hurtAlly: () => { const a = allies.find((x) => x.alive); if (a) friendlyHit(a, 1, 250); return !!a; }, killNear: (n) => targets.filter((t) => t.alive).sort((a, b) => a.pos.distanceTo(player.pos) - b.pos.distanceTo(player.pos)).slice(0, n).forEach((t) => kill(t)), hardState: () => ({ idx: hardIdx, rockets: player.rockets, live: rockets.filter((r) => r.active).map((r) => r.hp), wc: WC.state, world: L.run ? runLabel(L.run) : "" }), finish: (r) => finish(r), targets, allies, bullets, damageAlly: (a, n) => damageAlly(a, n), get player() { return player; }, get pad() { return pad; }, fxCount: () => fxs.length, openLanding() { landingOpen = true; }, explodeAt: (p, s, b) => explode(p, s, b), get landing() { return !!landing; }, get progress() { return progress; } },
+    dbg: { sky, wsp: () => { const c = waterSpot(center.x, center.z, half * 0.6); return [half, center.x, center.z, terrain.isWater(center.x, center.z), c && [c.x, c.z]]; }, tg: () => targets.map((t) => ({ kind: t.kind, sea: t.sea, alive: t.alive })), selTgt: () => selTgt && selTgt.kind, wcState: () => WC.state, fire: () => fireRocket(), flareN: () => flares.length, spawnMissile: () => { const m = missiles.find((x) => !x.active); if (!m) return false; m.active = true; m.life = 12; m.decoy = null; m.p.copy(player.pos).addScaledVector(fwdFrom(player.yaw, 0, V()), -900); m.p.y += 30; m.v.copy(player.vel).setLength(260); m.o.visible = true; return true; }, missilesLive: () => missiles.filter((x) => x.active).length, setG: (v) => { dbgG = v; }, setCam: (f) => { dbgCam = f; }, rockets: () => rockets.filter((r) => r.active).map((r) => ({ p: r.p.clone(), v: r.v.clone() })), tips: () => { const u = plane.userData; return [u.navL, u.navR].map((n) => n.getWorldPosition(new THREE.Vector3())); }, plane: () => plane, fl: () => ({ t: elapsed, pitch: player.pitch, bank: player.bank, speed: player.speed, y: player.pos.y, agl: player.pos.y - groundAt(player.pos.x, player.pos.z), hp: player.hp, yaw: player.yaw, crashing }), jets: () => targets.filter((t) => t.kind === "jet" && t.alive).map((t) => { const f = fwdFrom(player.yaw, 0, V()); const d = tA.subVectors(t.pos, player.pos); return { mode: t.mode, dist: Math.round(d.length()), ahead: Math.round(d.dot(f)), side: Math.round(d.x * f.z - d.z * f.x), sp: Math.round(t.speed) }; }), warpAt: (t, d) => { player.pos.set(t.pos.x, t.pos.y + d * 0.12 + 20, t.pos.z + d); player.q.setFromEuler(new THREE.Euler(-0.1, 0, 0, "YXZ")); return true; }, inCloud: () => inCloud, agl: () => player.pos.y - groundAt(player.pos.x, player.pos.z), warpNear: (kinds) => { const c = targets.filter((t) => t.alive && kinds.includes(t.kind)).sort((a, b) => a.pos.distanceTo(player.pos) - b.pos.distanceTo(player.pos))[0]; if (!c) return false; player.pos.set(c.pos.x, c.pos.y + 340, c.pos.z + 700); player.q.setFromEuler(new THREE.Euler(-0.3, 0, 0, "YXZ")); return true; }, hurtAlly: () => { const a = allies.find((x) => x.alive); if (a) friendlyHit(a, 1, 250); return !!a; }, killNear: (n) => targets.filter((t) => t.alive).sort((a, b) => a.pos.distanceTo(player.pos) - b.pos.distanceTo(player.pos)).slice(0, n).forEach((t) => kill(t)), hardState: () => ({ idx: hardIdx, rockets: player.rockets, live: rockets.filter((r) => r.active).map((r) => r.hp), wc: WC.state, world: L.run ? runLabel(L.run) : "" }), finish: (r) => finish(r), targets, allies, bullets, damageAlly: (a, n) => damageAlly(a, n), get player() { return player; }, get pad() { return pad; }, fxCount: () => fxs.length, openLanding() { landingOpen = true; }, explodeAt: (p, s, b) => explode(p, s, b), get landing() { return !!landing; }, get progress() { return progress; } },
   };
 }

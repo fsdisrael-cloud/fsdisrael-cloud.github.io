@@ -73,7 +73,8 @@ export function createPost(renderer, opts = {}) {
       col = mix(col, uWhiteCol * (0.85 + 0.15 * hash(floor(uv * 6.0) + floor(uTime * 3.0))), uWhite * 0.9);
       // grade: gentle filmic contrast, split toning (cool shadows, warm highlights), saturation
       float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
-      col = mix(vec3(l), col, 1.14);
+      col = max((col - 0.16) * 1.07 + 0.16, 0.0);   // b23: a touch more punch
+      col = mix(vec3(l), col, 1.16);
       col *= mix(vec3(0.93, 0.99, 1.07), vec3(1.07, 1.0, 0.92), smoothstep(0.05, 0.9, l));
       col *= 1.0 - uVig * smoothstep(0.18, 0.62, r2) * 1.1;
       col = mix(col, col * vec3(1.6, 0.35, 0.3), uHurt * smoothstep(0.05, 0.4, r2));

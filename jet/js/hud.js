@@ -1,6 +1,6 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=22";
+import { LABEL } from "./missions.js?v=23";
 
 const ALLY = "#3dff8b";
 const COL = { jet: "#ff3b3b", tank: "#ff5a48", flak: "#ff4636", sam: "#ff3a2a", base: "#ff6a58", ship: "#ff5a48", pad: "#3dff8b", ring: "#ffe14d" };
@@ -107,9 +107,14 @@ export function createHud() {
     // b21: bomb aim: line from the impact point to the snapped ground target + a bright cross on the target
     if (s.bombAim) {
       const pa = project(s.bombAim, cam), pc = s.ccip ? project(s.ccip, cam) : null;
+      if (!pa.on) edgeArrow(s.bombAim, cam, "#ffa040", false, null, 1);
       if (pa.on) {
         ctx.save(); ctx.strokeStyle = "#ffa040"; ctx.fillStyle = "#ffa040"; ctx.shadowColor = "rgba(0,0,0,.8)"; ctx.shadowBlur = 3;
-        if (pc && pc.on && s.bombLocked) { ctx.lineWidth = 2; ctx.setLineDash([7, 6]); ctx.beginPath(); ctx.moveTo(pc.x, pc.y); ctx.lineTo(pa.x, pa.y); ctx.stroke(); ctx.setLineDash([]); }
+        // b23: always a clear line from the aim point (or the jet) to the selected ground target
+        { const fx = pc && pc.on ? pc.x : W / 2, fy = pc && pc.on ? pc.y : H * 0.62;
+          ctx.lineWidth = 2.5; ctx.setLineDash(s.bombSel ? [] : [9, 6]); ctx.globalAlpha = 0.95; ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(pa.x, pa.y); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
+        if (s.tgtFlash > 0) { ctx.lineWidth = 3; ctx.globalAlpha = Math.min(1, s.tgtFlash); ctx.beginPath(); ctx.arc(pa.x, pa.y, 24 + (1.2 - s.tgtFlash) * 40, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
+        if (s.bombName) { ctx.font = "700 12px 'Black Ops One', Fredoka, sans-serif"; ctx.textAlign = "left"; ctx.fillText(`TGT ${s.bombName} ${s.bombDist > 1000 ? (s.bombDist / 1000).toFixed(1) + " km" : Math.round(s.bombDist) + " m"}`, pa.x + 22, pa.y - 14); }
         const r = s.bombLocked ? 15 : 10; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(pa.x - r, pa.y - r); ctx.lineTo(pa.x + r, pa.y + r); ctx.moveTo(pa.x + r, pa.y - r); ctx.lineTo(pa.x - r, pa.y + r); ctx.stroke();
         ctx.beginPath(); ctx.arc(pa.x, pa.y, r + 5, 0, 7); ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
       }

@@ -228,7 +228,7 @@ export async function buildTerrain(lat, lon, { quality = "high", onProgress } = 
   }
   const heightAt = (x, z) => { const h = bil(grid, x, z); return h == null ? Math.max(0, rawAt(x, z)) : h; };
   const rawHeight = (x, z) => { const h = bil(rawGrid, x, z); return h == null ? rawAt(x, z) : h; };
-  const isWater = (x, z) => rawHeight(x, z) < -1.5;
+  const isWater = (x, z) => rawHeight(x, z) < 0.15;   // b23: same test as the water shader (sea level), so seas without bathymetry still count
 
   onProgress?.(1);
   return {

@@ -2,8 +2,8 @@
 // Surreal = pastel hue-shifting palette, gently wavy/melting terrain, soft outlines,
 // floating dream shapes and a cheap CSS glow. All GPU-cheap: a few shader lines + 4 draw calls.
 import * as THREE from "three";
-import { noiseTex, FX, terrainPhotos, BUMP_GLSL } from "./tex.js?v=22";
-import { outlineUniforms, toonMaterial, PartBuilder, G, outlineMaterial } from "./toon.js?v=22";
+import { noiseTex, FX, terrainPhotos, BUMP_GLSL } from "./tex.js?v=23";
+import { outlineUniforms, toonMaterial, PartBuilder, G, outlineMaterial } from "./toon.js?v=23";
 
 const KEY = "jet-style";
 export const style = {
@@ -105,6 +105,14 @@ export function patchTerrain(mat) {
             float sp = pow(max(dot(wn, H), 0.0), 140.0) * 2.2 + pow(max(dot(wn, H), 0.0), 18.0) * 0.12;
             float fr = pow(1.0 - clamp(dot(wn, V), 0.0, 1.0), 3.0);
             ubuGlint = uSunC * sp + diffuseColor.rgb * fr * 0.6;
+            // b23: deeper teal sea, sky reflection at grazing angles, soft white-caps
+            diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.62, 0.98, 1.22) + vec3(0.0, 0.025, 0.045), 0.55);
+            #ifdef USE_FOG
+              vec3 skyR = fogColor * 1.08;
+              float lumF = dot(fogColor, vec3(0.333));
+              float cap = smoothstep(0.80, 0.97, w1.g * 0.55 + w2.r * 0.45) * (1.0 - smoothstep(600.0, 3500.0, dd));
+              ubuGlint += skyR * fr * 0.7 + vec3(cap * 0.3 * lumF);
+            #endif
           }
         }
         #endif

@@ -26,6 +26,10 @@ export function createHaptics() {
       try { navigator.vibrate?.([120, 60, 220, 80, 120]); } catch { /* ignore */ }
       if (label && input) { [0, 140, 320].forEach((d) => setTimeout(() => { try { label.click(); } catch { /* ignore */ } }, d)); }
     },
+    /** b23: missile lock, bomb release, near explosion (navigator.vibrate only; silently skipped on iOS) */
+    lock() { if (!on) return; try { navigator.vibrate?.([18, 40, 18]); } catch { /* ignore */ } },
+    bomb() { if (!on) return; try { navigator.vibrate?.([50, 30, 90]); } catch { /* ignore */ } },
+    boom(k = 1) { if (!on) return; try { navigator.vibrate?.([Math.round(40 + 90 * k), 35, Math.round(20 + 40 * k)]); } catch { /* ignore */ } },
     tick() {
       if (!on) return;
       try { navigator.vibrate?.(8); } catch { /* ignore */ }

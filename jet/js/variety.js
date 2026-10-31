@@ -21,6 +21,17 @@ export const EARTH_PLACES = [
   { name: "Santorini", lat: 36.4, lon: 25.4, sea: true, biome: "valley" },
   { name: "Patagonia", lat: -50.9, lon: -73.0, sea: true, biome: "mountains" },
   { name: "Amazon river", lat: -3.1, lon: -60.0, biome: "valley" },
+  // b23: more oceans and coasts (water at sea level), more snow
+  { name: "Amalfi coast", lat: 40.63, lon: 14.6, sea: true, biome: "valley" },
+  { name: "Hawaii open ocean", lat: 20.8, lon: -156.4, sea: true, biome: "valley" },
+  { name: "Greenland fjords", lat: 61.2, lon: -45.4, biome: "snow" },
+  { name: "Cape Town coast", lat: -34.0, lon: 18.4, sea: true, biome: "mountains" },
+  { name: "Hong Kong islands", lat: 22.25, lon: 114.2, sea: true, biome: "valley" },
+  { name: "Faroe Islands", lat: 62.0, lon: -6.8, biome: "snow" },
+  { name: "Croatian coast", lat: 43.5, lon: 16.4, sea: true, biome: "valley" },
+  { name: "Bora Bora lagoon", lat: -16.5, lon: -151.74, sea: true, biome: "valley" },
+  { name: "Kamchatka", lat: 53.0, lon: 158.6, biome: "snow" },
+  { name: "Alaska Range", lat: 63.07, lon: -151.0, biome: "snow" },
 ];
 
 // Seasons tint the real imagery (multiplied, values above 1 brighten).
@@ -85,6 +96,7 @@ export function rollRun(rng = Math.random) {
   if (planetKey !== "earth") weather = wpick([["clear", 60], ["cloudy", 24], ["fog", 16]], rng);
   else if (weather === "snow" && !SEASONS[season].snowOk && place.biome !== "snow") weather = "cloudy";
   else if (season === "winter" && weather === "clear" && rng() < 0.4) weather = "snow";
+  if (season === "summer" && weather === "cloudy" && rng() < 0.7) weather = "clear";   // b23: summer gets clearer skies
   const alien = planetKey !== "earth";
   const jet = pick(alien ? ["nova", "wraith", "ion"] : ["viper", "raptor", "falcon", "tomcat", "arctic"], rng);   // modern fighters on Earth, sci-fi craft on alien worlds
   const foe = pick(alien ? ["voidhawk", "drone"] : ["red", "camo", "black", "sand"], rng);

@@ -2,8 +2,8 @@
 // Player + enemy jets: PBR-lit (metal, glossy canopy, environment reflections) with a thin illustrated outline.
 // Ground units: toon + outline. Illustrated look, readable colours.
 import * as THREE from "three";
-import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=22";
-import { patchDetail, missileTex } from "./tex.js?v=22";
+import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=23";
+import { patchDetail, missileTex } from "./tex.js?v=23";
 
 const PI = Math.PI;
 
@@ -504,18 +504,31 @@ function cached(name, fn) { return geoCache[name] || (geoCache[name] = fn()); }
 
 export function createTank(ally = false) {
   const geo = cached(ally ? "tank-ally" : "tank", () => {
-    const olive = ally ? 0x2f9a7e : 0x7f8e4b, dark = 0x34362f, sand = ally ? 0xe9f6ef : 0xb7a76a;
+    const olive = ally ? 0x2f9a7e : 0x7f8e4b, dark = 0x34362f, sand = ally ? 0xe9f6ef : 0xb7a76a, camo = ally ? 0x1f7a60 : 0x5a6a38, steel = 0x6a6e66;
     const b = new PartBuilder();
-    b.add(G.sphere, olive, { pos: [0, 0.9, 0], scale: [1.7, 0.62, 2.6] });
+    b.add(G.box, olive, { pos: [0, 0.95, 0.1], scale: [2.3, 0.7, 4.0] });                       // hull
+    b.add(G.sphere, olive, { pos: [0, 0.95, -2.1], scale: [1.25, 0.5, 0.9] });                  // sloped glacis
+    b.add(G.box, camo, { pos: [0.45, 1.32, 0.3], scale: [0.9, 0.05, 1.7] });                    // camo patches
     for (const s of [-1, 1]) {
-      b.add(G.capsule, dark, { pos: [s * 1.55, 0.55, 0], rot: [PI / 2, 0, 0], scale: [0.55, 1.15, 0.55] });
-      for (let i = -1; i <= 1; i++) b.add(G.sphereLo, 0x55574d, { pos: [s * 1.95, 0.55, i * 1.2], scale: [0.12, 0.38, 0.38] });
+      b.add(G.box, dark, { pos: [s * 1.38, 0.5, 0], scale: [0.62, 0.6, 4.5] });                 // track run
+      b.add(G.box, olive, { pos: [s * 1.38, 0.95, 0], scale: [0.7, 0.14, 4.2] });               // side skirt / fender
+      for (let i = -2; i <= 2; i++) b.add(G.sphereLo, steel, { pos: [s * 1.72, 0.55, i * 0.85], scale: [0.12, 0.42, 0.42] });   // road wheels
+      b.add(G.sphereLo, steel, { pos: [s * 1.72, 0.7, 2.25], scale: [0.14, 0.34, 0.34] });
+      b.add(G.sphereLo, steel, { pos: [s * 1.72, 0.7, -2.25], scale: [0.14, 0.34, 0.34] });
     }
-    b.add(G.sphere, sand, { pos: [0, 1.55, 0.3], scale: [1.1, 0.62, 1.25] });
-    b.add(G.capsule, olive, { pos: [0, 1.65, -1.9], rot: [PI / 2, 0, 0], scale: [0.16, 0.85, 0.16] });
-    b.add(G.sphere, dark, { pos: [0, 1.65, -3.6], scale: [0.22, 0.22, 0.3] });
-    b.add(G.sphere, ally ? 0x3dff8b : 0xff4d3d, { pos: [0.45, 2.15, 0.6], scale: [0.18, 0.18, 0.18] });
-    if (ally) b.add(G.box, 0x3dff8b, { pos: [0, 2.0, 0.3], scale: [0.9, 0.08, 0.9] });
+    b.add(G.sphere, sand, { pos: [0, 1.75, 0.2], scale: [1.25, 0.58, 1.45] });                  // turret
+    b.add(G.box, olive, { pos: [0, 1.7, 0.95], scale: [1.5, 0.5, 0.9] });                       // turret bustle
+    b.add(G.sphere, dark, { pos: [0, 1.82, -0.8], scale: [0.5, 0.36, 0.4] });                   // gun mantlet
+    b.add(G.capsule, olive, { pos: [0, 1.85, -2.5], rot: [PI / 2, 0, 0], scale: [0.15, 1.15, 0.15] });   // barrel
+    b.add(G.cyl, dark, { pos: [0, 1.85, -3.85], rot: [PI / 2, 0, 0], scale: [0.24, 0.32, 0.24] });       // muzzle brake
+    b.add(G.cyl, dark, { pos: [-0.45, 2.36, 0.55], scale: [0.3, 0.14, 0.3] });                  // commander hatch
+    b.add(G.cyl, steel, { pos: [0.45, 2.3, 0.3], scale: [0.22, 0.1, 0.22] });                   // loader hatch
+    b.add(G.cyl, dark, { pos: [-0.45, 2.55, 0.55], rot: [PI / 2, 0, 0], scale: [0.05, 0.4, 0.05] });     // machine gun
+    b.add(G.cyl, dark, { pos: [1.05, 3.0, 1.15], scale: [0.03, 1.9, 0.03] });                   // antenna
+    for (const s of [-1, 1]) for (let i = 0; i < 3; i++) b.add(G.cyl, dark, { pos: [s * 1.2, 1.9, -0.55 + i * 0.08], rot: [0, 0, PI / 2], scale: [0.07, 0.16, 0.07] });  // smoke launchers
+    b.add(G.box, 0x4a4d3a, { pos: [-1.1, 1.45, 1.75], scale: [0.35, 0.3, 0.6] });               // stowage
+    b.add(G.sphere, ally ? 0x3dff8b : 0xff4d3d, { pos: [0.45, 2.65, 0.9], scale: [0.14, 0.14, 0.14] });
+    if (ally) b.add(G.box, 0x3dff8b, { pos: [0, 2.45, 0.3], scale: [0.9, 0.08, 0.9] });
     return b.build();
   });
   const g = tm(geo, {}, ally);
@@ -580,13 +593,21 @@ export function createSamSite() {
     return b.build();
   });
   const lnGeo = cached("samLauncher", () => {
-    const olive = 0x8a8f4e, white = 0xf4f4f0, red = 0xff4a3d;
+    const olive = 0x8a8f4e, white = 0xf4f4f0, red = 0xff4a3d, dark = 0x2a2c26, steel = 0x6a6e66;
     const b = new PartBuilder();
-    b.add(G.sphere, olive, { pos: [0, 0.8, 0], scale: [1.4, 0.8, 1.4] });
-    for (const x of [-0.7, 0, 0.7]) {
-      b.add(G.capsule, white, { pos: [x, 1.9, -0.3], rot: [PI / 2 - 0.6, 0, 0], scale: [0.25, 0.9, 0.25] });
-      b.add(G.sphere, red, { pos: [x, 3.05, -2.0], scale: [0.25, 0.25, 0.3] });
+    b.add(G.box, olive, { pos: [0, 0.95, 0.4], scale: [1.9, 0.5, 4.2] });                      // truck chassis
+    b.add(G.box, olive, { pos: [0, 1.5, -1.5], scale: [1.7, 0.9, 1.2] });                      // cab
+    b.add(G.box, 0x1b2a30, { pos: [0, 1.65, -2.12], scale: [1.5, 0.4, 0.1] });                 // windscreen
+    for (const sx of [-1, 1]) for (const z of [-1.5, 0.2, 1.8]) b.add(G.sphereLo, dark, { pos: [sx * 1.0, 0.55, z], scale: [0.26, 0.55, 0.55] });
+    b.add(G.cyl, steel, { pos: [0, 1.35, 1.0], scale: [0.7, 0.3, 0.7] });                      // turntable
+    b.add(G.box, olive, { pos: [0, 1.75, 1.0], scale: [1.6, 0.35, 1.6] });                     // elevating frame
+    for (const x of [-0.55, 0.55]) for (const y of [0, 0.5]) {
+      b.add(G.box, steel, { pos: [x, 2.1 + y, 0.2], rot: [-0.55, 0, 0], scale: [0.5, 0.5, 3.2] });          // canister
+      b.add(G.sphere, white, { pos: [x, 2.1 + y + 1.0, -1.1], scale: [0.2, 0.2, 0.3] });                     // missile nose
+      b.add(G.sphere, red, { pos: [x, 2.1 + y + 1.1, -1.45], scale: [0.14, 0.14, 0.18] });
     }
+    b.add(G.cyl, dark, { pos: [0.9, 2.6, 2.0], scale: [0.05, 1.4, 0.05] });                    // radar mast
+    b.add(G.sphere, white, { pos: [0.9, 3.4, 2.0], rot: [0.2, 0.6, 0], scale: [0.9, 0.9, 0.12] });          // radar dish
     return b.build();
   });
   const g = new THREE.Group();
@@ -731,4 +752,78 @@ export function createHive(sub = "hangar") {
   pod(g, ALN.lime, 0, 6, 0, 14); pod(g, ALN.mag, 0, 12, 0, 8);
   g.userData.radius = sub === "hangar" || sub === "barracks" ? 14 : 10;
   return g;
+}
+
+
+/** b23: enemy warship (destroyer / frigate): long grey hull, bow gun, mast + radar, CIWS, missile cells, bow wake. */
+export function createWarship() {
+  const geo = cached("warship", () => {
+    const hull = 0x6f7b88, deck = 0x59636f, light = 0xc9d0d8, dark = 0x23272e, red = 0x8f3a34;
+    const b = new PartBuilder();
+    b.add(G.sphere, hull, { pos: [0, 0.5, 0], scale: [2.5, 1.7, 13.5] });                       // hull
+    b.add(G.sphere, hull, { pos: [0, 1.1, -10.6], scale: [0.95, 1.5, 4.2] });                   // raked bow
+    b.add(G.sphere, red, { pos: [0, -0.35, 0], scale: [2.55, 0.5, 13.2] });                     // anti-fouling waterline
+    b.add(G.box, deck, { pos: [0, 1.75, 0.5], scale: [2.9, 0.12, 15.5] });                      // main deck
+    b.add(G.box, light, { pos: [0, 2.9, 1.6], scale: [2.3, 1.7, 4.4] });                        // superstructure
+    b.add(G.box, light, { pos: [0, 4.3, 0.9], scale: [1.7, 1.2, 2.4] });                        // bridge
+    b.add(G.box, dark, { pos: [0, 4.45, -0.38], scale: [1.75, 0.38, 0.18] });                   // bridge windows
+    b.add(G.cyl, dark, { pos: [0, 6.6, 1.1], scale: [0.14, 3.2, 0.14] });                       // mast
+    b.add(G.box, light, { pos: [0, 7.4, 1.1], scale: [1.9, 0.14, 0.1] });                       // yardarm
+    b.add(G.box, dark, { pos: [0, 8.2, 1.1], scale: [1.5, 0.35, 0.12] });                       // radar
+    b.add(G.cyl, dark, { pos: [0, 5.6, 3.1], scale: [0.55, 1.3, 0.55] });                       // funnel
+    b.add(G.sphere, light, { pos: [0, 2.3, -6.6], scale: [1.15, 0.75, 1.5] });                  // main gun turret
+    b.add(G.capsule, dark, { pos: [0, 2.4, -8.5], rot: [PI / 2, 0, 0], scale: [0.17, 1.4, 0.17] });
+    b.add(G.sphere, light, { pos: [0, 2.1, -3.6], scale: [0.9, 0.5, 0.9] });                    // fwd missile cells
+    for (const x of [-0.5, 0.5]) for (let i = 0; i < 3; i++) b.add(G.box, dark, { pos: [x, 2.0, -4.3 + i * 0.75], scale: [0.5, 0.06, 0.6] });
+    b.add(G.sphere, 0xe8ecf0, { pos: [0, 3.3, 4.6], scale: [0.7, 0.8, 0.7] });                  // CIWS dome
+    b.add(G.cyl, dark, { pos: [0, 2.0, 6.8], scale: [1.1, 0.08, 1.1] });                        // helipad
+    b.add(G.sphere, light, { pos: [0, 2.35, 8.6], scale: [0.9, 0.6, 1.0] });                    // hangar
+    b.add(G.sphere, light, { pos: [0, 2.2, 5.8], scale: [0.55, 0.4, 0.6] });                    // aft gun
+    return b.build();
+  });
+  const g = tm(geo, {}, false);
+  g.scale.setScalar(1.7);
+  g.add(makeWake(1));
+  g.userData.radius = 24;
+  return g;
+}
+
+/** b23: submarine: black hull, sail, periscope. Surfaces and dives (handled in game.js). */
+export function createSub() {
+  const geo = cached("sub", () => {
+    const hull = 0x2b333d, dark = 0x1a1e24, steel = 0x59616c;
+    const b = new PartBuilder();
+    b.add(G.capsule, hull, { pos: [0, 0.3, 0], rot: [PI / 2, 0, 0], scale: [1.6, 5.4, 1.6] });  // pressure hull
+    b.add(G.sphere, dark, { pos: [0, 0.75, 0], scale: [1.35, 0.35, 8.0] });                     // casing
+    b.add(G.sphere, hull, { pos: [0, 1.8, -0.8], scale: [0.78, 1.15, 2.0] });                   // sail
+    b.add(G.box, dark, { pos: [0, 1.9, -2.6], scale: [0.5, 0.16, 0.12] });
+    b.add(G.cyl, steel, { pos: [0, 3.2, -0.5], scale: [0.07, 1.4, 0.07] });                     // periscope
+    b.add(G.cyl, steel, { pos: [0.2, 3.0, -0.2], scale: [0.05, 1.0, 0.05] });                   // mast
+    b.add(G.box, dark, { pos: [0, 1.95, -0.6], scale: [2.6, 0.07, 0.6] });                      // sail planes
+    b.add(G.box, dark, { pos: [0, 0.55, 7.6], scale: [3.4, 0.08, 0.9] });                       // stern planes
+    b.add(G.box, dark, { pos: [0, 1.2, 7.8], scale: [0.08, 1.6, 0.9] });                        // rudder
+    return b.build();
+  });
+  const g = tm(geo, {}, false);
+  g.scale.setScalar(1.6);
+  g.add(makeWake(0.55));
+  g.userData.radius = 14;
+  return g;
+}
+
+/** flat white V wake trailing behind a ship (model forward = -z, so the wake streams toward +z) */
+function makeWake(k = 1) {
+  const key = "wake" + k;
+  if (!geoCache[key]) {
+    const c = document.createElement("canvas"); c.width = 128; c.height = 256;
+    const x = c.getContext("2d"), gr = x.createLinearGradient(0, 0, 0, 256);
+    gr.addColorStop(0, "rgba(255,255,255,0.95)"); gr.addColorStop(0.35, "rgba(235,248,255,0.5)"); gr.addColorStop(1, "rgba(235,248,255,0)");
+    x.fillStyle = gr; x.beginPath(); x.moveTo(52, 0); x.lineTo(76, 0); x.lineTo(124, 256); x.lineTo(4, 256); x.closePath(); x.fill();
+    for (let i = 0; i < 90; i++) { x.fillStyle = `rgba(255,255,255,${Math.random() * 0.35})`; x.beginPath(); x.arc(64 + (Math.random() - 0.5) * (20 + i * 0.9), Math.random() * 256, 1 + Math.random() * 3, 0, 7); x.fill(); }
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+    geoCache[key] = tex;
+  }
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: geoCache[key], transparent: true, depthWrite: false, fog: true }));
+  m.rotation.x = -Math.PI / 2; m.scale.set(9 * k, 40 * k, 1); m.position.set(0, 0.35, 21 * k); m.renderOrder = 3; m.name = "wake";
+  return m;
 }

@@ -1,15 +1,16 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=22";
-import { createHud } from "./hud.js?v=22";
-import { createControls } from "./controls.js?v=22";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene } from "./variety.js?v=22";
-import { createAudio, trackFor } from "./audio.js?v=22";
-import { createHaptics } from "./haptics.js?v=22";
-import { createLoading } from "./loading.js?v=22";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=22";
-import { setSurreal, tickStyle } from "./surreal.js?v=22";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=22";
+import { createGame } from "./game.js?v=23";
+import { createHud } from "./hud.js?v=23";
+import { createControls } from "./controls.js?v=23";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene } from "./variety.js?v=23";
+import { createAudio, trackFor } from "./audio.js?v=23";
+import { createHaptics } from "./haptics.js?v=23";
+import { createRain2D } from "./rain2d.js?v=23";
+import { createLoading } from "./loading.js?v=23";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=23";
+import { setSurreal, tickStyle } from "./surreal.js?v=23";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=23";
 
 const $ = (id) => document.getElementById(id);
 
@@ -27,7 +28,7 @@ try {
   for (let i = 0; i < 500; i++) { w.fillStyle = `rgba(${rn() < 0.5 ? "255,255,255" : "0,0,0"},${0.03 + rn() * 0.08})`; w.fillRect(rn() * 256, rn() * 256, 1 + rn() * 2, 1 + rn() * 2); }
   document.documentElement.style.setProperty("--worn", `url(${wc.toDataURL("image/png")})`);
 } catch (e) { /* plain gradients if canvas is unavailable */ }
-const BUILD = 22;
+const BUILD = 23;
 { const t = $("build-tag"); if (t) t.textContent = "JET-X b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;
@@ -81,6 +82,7 @@ const game = createGame({
     onEmpty: (kind) => { const b = document.querySelector(kind === "bomb" ? ".w-bomb" : ".w-msl"); if (b) { b.classList.remove("shake"); void b.offsetWidth; b.classList.add("shake"); } },
     onHit: (kill) => { const h = $("hitmark"); if (!h) return; h.classList.toggle("kill", !!kill); h.classList.remove("on"); void h.offsetWidth; h.classList.add("on"); if (kill) haptics.tick?.(); },
     onPop: (pts, combo, kind) => {
+      if (pts >= 0) { const sp = $("splash"); if (sp) { sp.textContent = "SPLASH " + game.killCount(); sp.classList.remove("on"); void sp.offsetWidth; sp.classList.add("on"); } }
       const box = $("popups"); if (!box) return;
       const d = document.createElement("div"); d.className = "pop" + (pts < 0 ? " bad" : combo >= 3 ? " big" : "") + (combo >= 2 && pts >= 0 ? " streak" : "");
       const SK = ["", "", "DOUBLE KILL", "TRIPLE KILL", "QUAD KILL", "RAMPAGE", "RAMPAGE", "UNSTOPPABLE", "UNSTOPPABLE", "UNSTOPPABLE", "GODLIKE"];
@@ -379,18 +381,33 @@ window.addEventListener("orientationchange", () => setTimeout(onResize, 250));
 // ---------- loop (adaptive resolution) ----------
 let liveLoad = false, previewOn = false, saveT = 0, last = performance.now(), fpsAcc = 0, fpsN = 0, slowT = 0;
 const hudCv = document.getElementById("hud-canvas");
+const rainCv = $("rain-canopy"), rain2d = createRain2D(rainCv); let lastKc = 0, inCloudS = false;
+// b23: one-time hint the first time each control is used
+const HINTS = { stick: "Drag the stick: a small push = gentle turn, a full push = hard turn", gun: "Hold GUN to shoot. Let go to stop", missile: "MISSILE: tap to fire at the locked target", bomb: "BOMB: drops on the orange TGT marker. Fly over the target", tgt: "TGT arrows pick the next ground target. You can also tap a target" };
+let hintsSeen = {}; try { hintsSeen = JSON.parse(localStorage.getItem("jet-hints") || "{}") || {}; } catch { /* ignore */ }
+let hintTO = 0;
+window.addEventListener("jet-ctl", (e) => {
+  const k = e.detail; if (state !== "playing" || !HINTS[k] || hintsSeen[k]) return;
+  hintsSeen[k] = 1; try { localStorage.setItem("jet-hints", JSON.stringify(hintsSeen)); } catch { /* ignore */ }
+  const h = $("hint"); if (!h) return; h.textContent = HINTS[k]; h.classList.add("on"); clearTimeout(hintTO); hintTO = setTimeout(() => h.classList.remove("on"), 3200);
+});
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   tickStyle(now / 1000);
+  if (state !== "playing" && rainCv.style.opacity !== "0") rainCv.style.opacity = "0";
   { const hv = (state === "playing" || state === "paused" || state === "results") ? "" : "hidden"; if (hudCv.style.visibility !== hv) { hudCv.style.visibility = hv; if (hv) hud.clear?.(); } }   // no gameplay markers on the menu / loading screens
   if (state === "playing") {
     game.update(dt);
     game.render();
     if ((saveT += dt) > 4) { saveT = 0; writeSave(); }
     { const vb = $("btn-view"), vv = game.view(); if (vb.dataset.view !== vv) vb.dataset.view = vv; }
-    hud.draw(game.hudState(), dt);
+    { const hs = game.hudState(); hud.draw(hs, dt);
+      const wx = game.weather(), spd = hs.player ? hs.player.speed : 150;
+      rain2d.update(dt, wx === "rain" || wx === "storm" ? 1 : 0, game.view(), spd);
+      const kc = game.killCount(); if (kc !== lastKc) { lastKc = kc; const k = $("hud-kl"); if (k) k.textContent = String(kc); }
+      const ci = game.cloudIn(); if (ci > 0.35 && !inCloudS) { inCloudS = true; try { audio.whoosh(); } catch { /* ignore */ } } else if (ci < 0.12) inCloudS = false; }
     fpsAcc += dt; fpsN++;
     if (fpsAcc > 2) {
       const fps = fpsN / fpsAcc; fpsAcc = 0; fpsN = 0;
@@ -456,6 +473,6 @@ requestAnimationFrame(frame);
 
 // test hook for the headless verification scripts
 setInterval(() => { if (state === "playing" && !document.hidden) writeSave(); }, 4000);
-window.addEventListener("jet-tap", () => { try { game.lockNearest(); } catch { /* ignore */ } });
+window.addEventListener("jet-tap", (e) => { try { const d = e.detail; if (!(d && typeof d.x === "number" && game.tapSelect(d.x, d.y))) game.lockNearest(); } catch { /* ignore */ } });
 window.addEventListener("keydown", (e) => { if (e.code === "KeyT" && !e.repeat) { try { game.lockNearest(); } catch { /* ignore */ } } });
 window.__ubu = { goBackground, readSave, writeSave, game, controls, audio, hud, loading, state: () => state, play, launch, levelNo: () => levelNo };

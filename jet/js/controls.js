@@ -33,7 +33,7 @@ export function createControls() {
   let invertPitch = false; try { invertPitch = localStorage.getItem("jet-invert-v3") === "1"; } catch { /* ignore */ }
   let rawPitch = 0, rawRoll = 0, smPitch = 0, smRoll = 0;
   let zeroPitch = 35, zeroRoll = 0, wantCal = true, calAt = 0;
-  let mslHeld = false, bombHeld = false, gunHeld = false, rocketEdge = false, bombEdge = false, viewEdge = false, boostKey = false;
+  let tgtEdge = 0, mslHeld = false, bombHeld = false, gunHeld = false, rocketEdge = false, bombEdge = false, viewEdge = false, boostKey = false;
   const joy = { x: 0, y: 0, active: false, id: null, sx: 0, sy: 0 };
   const lk = { active: false, id: null, x: 0, y: 0 };
   let lookMode = "chase";
@@ -122,64 +122,78 @@ export function createControls() {
   </g>
 </svg>`;
 
+  // build 23: pointer (mouse) + touch events by identifier, so several fingers never interfere with each other
+  function bindTP(el, h) {
+    el.addEventListener("pointerdown", (e) => { if (e.pointerType === "touch") return; try { el.setPointerCapture(e.pointerId); } catch {} h.down(e, "p" + e.pointerId, e.clientX, e.clientY); e.preventDefault(); e.stopPropagation(); });
+    el.addEventListener("pointermove", (e) => { if (e.pointerType === "touch") return; h.move?.(e, "p" + e.pointerId, e.clientX, e.clientY); });
+    for (const t of ["pointerup", "pointercancel"]) el.addEventListener(t, (e) => { if (e.pointerType === "touch") return; h.up?.(e, "p" + e.pointerId, t); });
+    el.addEventListener("lostpointercapture", (e) => { if (e.pointerType === "touch") return; h.up?.(e, "p" + e.pointerId, "pointercancel"); });
+    el.addEventListener("touchstart", (e) => { for (const t of e.changedTouches) h.down(e, "t" + t.identifier, t.clientX, t.clientY); if (e.cancelable) e.preventDefault(); e.stopPropagation(); }, { passive: false });
+    el.addEventListener("touchmove", (e) => { for (const t of e.changedTouches) h.move?.(e, "t" + t.identifier, t.clientX, t.clientY); if (e.cancelable) e.preventDefault(); }, { passive: false });
+    for (const n of ["touchend", "touchcancel"]) el.addEventListener(n, (e) => { for (const t of e.changedTouches) h.up?.(e, "t" + t.identifier, n); if (e.cancelable) e.preventDefault(); }, { passive: false });
+  }
+  const say = (name) => { try { window.dispatchEvent(new CustomEvent("jet-ctl", { detail: name })); } catch { /* ignore */ } };
   /** Builds the joystick UI inside `root` (the stick only: no weapon buttons on it). */
   function mountStick(root) {
     root.innerHTML = `<div class="stick-persp"><div class="stick-3d">${SVG}</div></div>`;
     joyEl = root; gripEl = root.querySelector(".stick-grip"); shadowEl = root.querySelector(".stick-shadow");
 
-    root.addEventListener("pointerdown", (e) => {
-      if (!enabled || joy.active) return;
-      joy.active = true; joy.id = e.pointerId; joy.sx = e.clientX; joy.sy = e.clientY;
-      try { root.setPointerCapture(e.pointerId); } catch {}
-      e.preventDefault(); e.stopPropagation();
+    // build 23: touches are tracked by identifier (touch events) so the stick thumb and any weapon thumb work at the same time
+    bindTP(root, {
+      down(e, id, x, y) {
+        if (!enabled || joy.active) return;
+        joy.active = true; joy.id = id; joy.sx = x; joy.sy = y;
+        say("stick");
+      },
+      move(e, id, x, y) {
+        if (!joy.active || id !== joy.id) return;
+        let dx = (x - joy.sx) / C.stickRadiusPx, dy = (y - joy.sy) / C.stickRadiusPx;
+        const m = Math.hypot(dx, dy);
+        if (m > 1) { dx /= m; dy /= m; }
+        const dist = Math.hypot(x - joy.sx, y - joy.sy), over = dist - C.stickRadiusPx * 1.6;
+        if (over > 0) { const k = over / dist; joy.sx += (x - joy.sx) * k; joy.sy += (y - joy.sy) * k; }
+        joy.x = dx; joy.y = dy;
+      },
+      up(e, id) { if (joy.active && id === joy.id) { joy.active = false; joy.id = null; } },
     });
-    root.addEventListener("pointermove", (e) => {
-      if (!joy.active || e.pointerId !== joy.id) return;
-      let dx = (e.clientX - joy.sx) / C.stickRadiusPx, dy = (e.clientY - joy.sy) / C.stickRadiusPx;
-      const m = Math.hypot(dx, dy);
-      if (m > 1) { dx /= m; dy /= m; }
-      // the stick follows the thumb: if the thumb drifts past the radius, drag the anchor along
-      const over = Math.hypot(e.clientX - joy.sx, e.clientY - joy.sy) - C.stickRadiusPx * 1.6;
-      if (over > 0) { const k = over / Math.hypot(e.clientX - joy.sx, e.clientY - joy.sy); joy.sx += (e.clientX - joy.sx) * k; joy.sy += (e.clientY - joy.sy) * k; }
-      joy.x = dx; joy.y = dy;
-      e.preventDefault();
-    });
-    const end = (e) => { if (joy.active && e.pointerId === joy.id) { joy.active = false; joy.id = null; } };
-    for (const t of ["pointerup", "pointercancel", "lostpointercapture"]) root.addEventListener(t, end);
     root.addEventListener("contextmenu", (e) => e.preventDefault());
   }
 
-  /** Weapon buttons (bottom left): `root` holds .wbtn[data-w=gun|missile|bomb]. Gun = hold, missile / bomb = tap. */
+  /** Weapon buttons (bottom left): `root` holds .wbtn[data-w=gun|missile|bomb]. Gun = hold (push-to-fire), missile / bomb = tap. Each button tracks its own touch. */
   function bindWeapons(root) {
-    const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
     const press = (b, on) => b.classList.toggle("pressed", on);
     const bGun = root.querySelector('[data-w="gun"]'), bMsl = root.querySelector('[data-w="missile"]'), bBomb = root.querySelector('[data-w="bomb"]');
-    bGun.addEventListener("pointerdown", (e) => { stop(e); gunHeld = true; press(bGun, true); try { bGun.setPointerCapture(e.pointerId); } catch {} });
-    for (const t of ["pointerup", "pointercancel", "lostpointercapture"]) bGun.addEventListener(t, () => { gunHeld = false; press(bGun, false); });
-    bMsl.addEventListener("pointerdown", (e) => { stop(e); if (enabled) { rocketEdge = true; mslHeld = true; } press(bMsl, true); });
-    bBomb.addEventListener("pointerdown", (e) => { stop(e); if (enabled) { bombEdge = true; bombHeld = true; } press(bBomb, true); });
-    for (const b of [bMsl, bBomb]) for (const t of ["pointerup", "pointercancel", "pointerleave"]) b.addEventListener(t, () => { press(b, false); if (b === bMsl) mslHeld = false; else bombHeld = false; });
-    for (const b of [bGun, bMsl, bBomb]) b.addEventListener("contextmenu", (e) => e.preventDefault());
+    const own = { gun: null, msl: null, bomb: null, up: null, dn: null };
+    bindTP(bGun, { down(e, id) { own.gun = id; gunHeld = true; press(bGun, true); say("gun"); }, up(e, id) { if (id === own.gun) { own.gun = null; gunHeld = false; press(bGun, false); } } });
+    bindTP(bMsl, { down(e, id) { own.msl = id; if (enabled) { rocketEdge = true; mslHeld = true; } press(bMsl, true); say("missile"); }, up(e, id) { if (id === own.msl) { own.msl = null; mslHeld = false; press(bMsl, false); } } });
+    bindTP(bBomb, { down(e, id) { own.bomb = id; if (enabled) { bombEdge = true; bombHeld = true; } press(bBomb, true); say("bomb"); }, up(e, id) { if (id === own.bomb) { own.bomb = null; bombHeld = false; press(bBomb, false); } } });
+    const bUp = root.querySelector('[data-w="tgt-up"]'), bDn = root.querySelector('[data-w="tgt-dn"]');
+    if (bUp) bindTP(bUp, { down(e, id) { tgtEdge = -1; press(bUp, true); say("tgt"); }, up(e, id) { press(bUp, false); } });
+    if (bDn) bindTP(bDn, { down(e, id) { tgtEdge = 1; press(bDn, true); say("tgt"); }, up(e, id) { press(bDn, false); } });
+    for (const b of [bGun, bMsl, bBomb, bUp, bDn]) b && b.addEventListener("contextmenu", (e) => e.preventDefault());
   }
 
-  /** HEAD-LOOK: a swipe on the bare game surface turns only the view (look.yaw: + = look left, look.pitch: + = look up). */
+  /** HEAD-LOOK: a swipe on the bare game surface turns only the view (look.yaw: + = look left, look.pitch: + = look up). A short tap selects a target. */
   function bindLookSurface(el) {
-    el.addEventListener("pointerdown", (e) => {
-      if (!enabled || e.target !== el || lk.active) return;
-      lk.active = true; lk.id = e.pointerId; lk.x = e.clientX; lk.y = e.clientY; lk.t0 = performance.now(); lk.moved = 0;
-      try { el.setPointerCapture(e.pointerId); } catch {}
+    bindTP(el, {
+      down(e, id, x, y) {
+        if (!enabled || e.target !== el || lk.active) return;
+        lk.active = true; lk.id = id; lk.x = x; lk.y = y; lk.t0 = performance.now(); lk.moved = 0; lk.sx = x; lk.sy = y;
+      },
+      move(e, id, x, y) {
+        if (!lk.active || id !== lk.id) return;
+        const dx = x - lk.x, dy = y - lk.y; lk.x = x; lk.y = y; lk.moved = (lk.moved || 0) + Math.hypot(dx, dy);
+        const tnow = performance.now(); lk.v = (lk.v || 0) * 0.6 + 0.4 * Math.hypot(dx / innerWidth, dy / innerHeight) / Math.max(0.008, (tnow - (lk.t || tnow - 16)) / 1000); lk.t = tnow;
+        const cock = lookMode === "cockpit", my = cock ? 2.4 : 3.1, mp = cock ? 1.1 : 0.95;
+        look.yaw = Math.max(-my, Math.min(my, look.yaw - dx / innerWidth * C.lookYawPerScreen));
+        look.pitch = Math.max(-mp, Math.min(mp, look.pitch - dy / innerHeight * C.lookPitchPerScreen));
+      },
+      up(e, id, type) {
+        if (!lk.active || id !== lk.id) return;
+        if (!/cancel/.test(type || "") && (lk.moved || 0) < 12 && performance.now() - (lk.t0 || 0) < 420) window.dispatchEvent(new CustomEvent("jet-tap", { detail: { x: lk.sx, y: lk.sy } }));
+        lk.active = false; lk.id = null; lk.rel = Math.min(1.6, (lk.v || 0) * 0.35); lk.v = 0; lk.t = 0;
+      },
     });
-    el.addEventListener("pointermove", (e) => {
-      if (!lk.active || e.pointerId !== lk.id) return;
-      const dx = e.clientX - lk.x, dy = e.clientY - lk.y; lk.x = e.clientX; lk.y = e.clientY; lk.moved = (lk.moved || 0) + Math.hypot(dx, dy);
-      const tnow = performance.now(); lk.v = (lk.v || 0) * 0.6 + 0.4 * Math.hypot(dx / innerWidth, dy / innerHeight) / Math.max(0.008, (tnow - (lk.t || tnow - 16)) / 1000); lk.t = tnow;
-      const cock = lookMode === "cockpit", my = cock ? 2.4 : 3.1, mp = cock ? 1.1 : 0.95;
-      look.yaw = Math.max(-my, Math.min(my, look.yaw - dx / innerWidth * C.lookYawPerScreen));
-      look.pitch = Math.max(-mp, Math.min(mp, look.pitch - dy / innerHeight * C.lookPitchPerScreen));
-      e.preventDefault();
-    });
-    const end = (e) => { if (lk.active && e.pointerId === lk.id) { if (e.type === "pointerup" && (lk.moved || 0) < 12 && performance.now() - (lk.t0 || 0) < 420) window.dispatchEvent(new Event("jet-tap")); lk.active = false; lk.id = null; lk.rel = Math.min(1.6, (lk.v || 0) * 0.35); lk.v = 0; lk.t = 0; } };
-    for (const t of ["pointerup", "pointercancel", "lostpointercapture"]) el.addEventListener(t, end);
   }
 
   function paintStick() {
@@ -233,6 +247,7 @@ export function createControls() {
     consumeRocket() { const v = rocketEdge || mslHeld; rocketEdge = false; return v; },
     consumeBomb() { const v = bombEdge || bombHeld; bombEdge = false; return v; },
     consumeLoop() { return 0; },
+    consumeTgt() { const v = tgtEdge; tgtEdge = 0; return v; },
     consumeView() { const v = viewEdge; viewEdge = false; return v; },
     requestView() { viewEdge = true; },
     boost: () => boostKey,
