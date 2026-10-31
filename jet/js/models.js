@@ -2,7 +2,8 @@
 // Player + enemy jets: PBR-lit (metal, glossy canopy, environment reflections) with a thin illustrated outline.
 // Ground units: toon + outline. Illustrated look, readable colours.
 import * as THREE from "three";
-import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=14";
+import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=15";
+import { patchDetail, missileTex } from "./tex.js?v=15";
 
 const PI = Math.PI;
 
@@ -12,7 +13,7 @@ let targetStyle = "army";
 export function setTargetStyle(s) { targetStyle = TSTYLE[s] !== undefined ? s : "army"; }
 const tm = (geo, o = {}, ally = false) => {
   const st = ally ? null : TSTYLE[targetStyle];
-  return toonModel(geo, st ? { ...o, material: toonMaterial(st) } : o);
+  return toonModel(geo, st ? { ...o, material: toonMaterial({ ...st, detail: { kind: "panel", s: 0.14, k: 0.8 } }) } : { detail: { kind: "panel", s: 0.14, k: 0.8 }, ...o });
 };
 
 // ---------- environment reflections (tiny gradient sky, prefiltered once) ----------
@@ -29,7 +30,7 @@ export function initEnv(renderer) {
     if (y > 0) mid.copy(hor).lerp(top, Math.pow(y, 0.7)); else mid.copy(hor).lerp(bot, Math.min(1, -y * 2.2));
     // prismatic band so metal picks up a hint of colour
     const hue = (Math.atan2(p.getZ(i), p.getX(i)) / (2 * PI) + 1) % 1;
-    mid.lerp(new THREE.Color().setHSL(hue, 0.9, 0.6), 0.16 * Math.max(0, 1 - Math.abs(y) * 2.5));
+    mid.lerp(new THREE.Color().setHSL(hue, 0.9, 0.6), 0.05 * Math.max(0, 1 - Math.abs(y) * 2.5));
     col.push(mid.r, mid.g, mid.b);
   }
   geo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
@@ -41,7 +42,7 @@ export function initEnv(renderer) {
   pm.dispose();
   return ENV;
 }
-function pbr(o) { const m = new THREE.MeshStandardMaterial({ envMapIntensity: 0.75, ...o }); if (ENV) m.envMap = ENV; return m; }
+function pbr(o, det) { const m = new THREE.MeshStandardMaterial({ envMapIntensity: 0.75, ...o }); if (ENV) m.envMap = ENV; if (det) patchDetail(m, det); return m; }
 
 function withOutline(geo) {
   const g = geo.index ? geo.toNonIndexed() : geo;
@@ -149,8 +150,8 @@ function buildJet(kind, vk = "", variant = null) {
   const pal = { ...PAL[kind], ...(variant || {}) }, g = jetGeometry(kind, vk, pal), lean = kind === "enemy";
   const root = new THREE.Group();
   const eK = kind === "ally" ? 0.75 : 0.3;
-  const body = pbr({ vertexColors: true, metalness: 0.4, roughness: 0.45, emissive: 0x05080c, emissiveIntensity: 0.4, envMapIntensity: eK });
-  const wingM = pbr({ color: pal.wing, metalness: 0.4, roughness: 0.45, emissive: 0x05080c, emissiveIntensity: 0.4, envMapIntensity: eK });
+  const body = pbr({ vertexColors: true, metalness: 0.4, roughness: 0.45, emissive: 0x05080c, emissiveIntensity: 0.4, envMapIntensity: eK }, { kind: "panel", s: 0.2, k: 0.9 });
+  const wingM = pbr({ color: pal.wing, metalness: 0.4, roughness: 0.45, emissive: 0x05080c, emissiveIntensity: 0.4, envMapIntensity: eK }, { kind: "panel", s: 0.26, k: 0.9 });
   const darkM = pbr({ color: pal.dark, metalness: 0.8, roughness: 0.4 });
   const glassM = pbr({ color: pal.glass, metalness: 1, roughness: 0.04, envMapIntensity: 1.8 });
   const glowM = new THREE.MeshBasicMaterial({ color: pal.glow, toneMapped: false, fog: false });
@@ -233,7 +234,7 @@ export const HARDPOINTS = [[-4.3, -0.62, 1.2], [-2.5, -0.72, 0.8], [2.5, -0.72, 
 export function createPlayerJet(vk = "viper", variant = null) {
   const j = buildJet("player", vk, variant);
   // four underwing pylons, each carrying a visible missile that disappears when it is launched
-  const pyl = pbr({ color: 0x15181d, metalness: 0.7, roughness: 0.5 }), mis = pbr({ color: 0xe9ecef, metalness: 0.2, roughness: 0.45 });
+  const pyl = pbr({ color: 0x15181d, metalness: 0.7, roughness: 0.5 }), mis = pbr({ color: 0xffffff, map: missileTex(), metalness: 0.3, roughness: 0.42, envMapIntensity: 0.9 });
   const missGeo = new THREE.CapsuleGeometry(0.13, 1.5, 3, 8).rotateX(PI / 2);
   const noseGeo = new THREE.ConeGeometry(0.13, 0.4, 8).rotateX(-PI / 2);
   const loaded = [];
@@ -289,7 +290,7 @@ export function createCarrier() {
   const pb = new PartBuilder();
   pb.add(hg, 0x6f7a88);
   pb.add(G.box, 0xc3412f, { pos: [0, -5, 0], scale: [1, 0, 1] }); // placeholder (zero-size) keeps builder happy
-  const hull = toonModel(new PartBuilder().add(hg, 0x6f7a88).build(), { outlineScale: 1.6 });
+  const hull = toonModel(new PartBuilder().add(hg, 0x6f7a88).build(), { outlineScale: 1.6, detail: { kind: "panel", s: 0.05, k: 0.85 } });
   root.add(hull);
   const ib = new PartBuilder();
   ib.add(G.box, 0x9aa5b2, { pos: [25, 24, -10], scale: [9, 16, 28] });
@@ -491,7 +492,7 @@ export function createRocket(color = 0xe6e9ec, tip = 0x2b3036) {
     b.add(G.cyl, 0x1a1c20, { pos: [0, 0, 1.32], rot: [PI / 2, 0, 0], scale: [0.14, 0.18, 0.14] });
     return b.build();
   });
-  const g = toonModel(geo, { outlineScale: 0.5 });
+  const g = toonModel(geo, { outlineScale: 0.5, detail: { kind: "panel", s: 1.6, k: 0.8 } });
   const fl = new THREE.Mesh(G.cone, new THREE.MeshBasicMaterial({ color: 0xffa030, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
   fl.rotation.x = PI / 2; fl.position.z = 2.4; fl.scale.set(0.2, 1.6, 0.2);
   const glw = glowSprite(0xffc070, 2.6, 0.9); glw.position.z = 1.8;
@@ -508,7 +509,7 @@ export function createBomb() {
     for (const r of [0, PI / 2]) b.add(G.sphere, 0x3a4229, { pos: [0, 0, 1.05], rot: [0, 0, r], scale: [0.65, 0.06, 0.3] });
     return b.build();
   });
-  const g = toonModel(geo, { outlineScale: 0.7 });
+  const g = toonModel(geo, { outlineScale: 0.7, detail: { kind: "panel", s: 1.2, k: 0.8 } });
   g.scale.setScalar(1.8);
   return g;
 }
@@ -521,7 +522,7 @@ export { toonMaterial };
 
 // ---------- ALIEN ground forces (organic / bio-mechanical, glowing pods) ----------
 const ALN = { dark: 0x3a2258, flesh: 0x8a3fb0, bone: 0xc9b6e0, lime: 0xb8ff3a, mag: 0xff3fd8, cyan: 0x3dffe0, rust: 0x7a2c58 };
-const alienModel = (geo) => toonModel(geo, { outlineScale: 1.05 });
+const alienModel = (geo) => toonModel(geo, { outlineScale: 1.05, detail: { kind: "skin", s: 0.22, k: 0.8 } });
 const pod = (g, color, x, y, z, size) => { const s = glowSprite(color, size, 0.9); s.position.set(x, y, z); g.add(s); return s; };
 
 export function createAlienWalker(small = false) {

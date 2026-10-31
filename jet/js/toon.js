@@ -1,13 +1,16 @@
 // Ubu toon toolkit: soft cel shading + thick black screen-space outlines.
 import * as THREE from "three";
+import { patchDetail } from "./tex.js?v=15";
 
 let gradientMap = null;
 export function getGradientMap() {
   if (gradientMap) return gradientMap;
-  const data = new Uint8Array([90, 90, 90, 255, 170, 170, 170, 255, 235, 235, 235, 255, 255, 255, 255, 255]);
-  gradientMap = new THREE.DataTexture(data, 4, 1, THREE.RGBAFormat);
-  gradientMap.minFilter = THREE.NearestFilter;
-  gradientMap.magFilter = THREE.NearestFilter;
+  // build 15: soft 16-step ramp (near-continuous Lambert wrap) instead of 4 hard cel bands
+  const N = 16, data = new Uint8Array(N * 4);
+  for (let i = 0; i < N; i++) { const t = i / (N - 1), v = Math.round(255 * (0.26 + 0.74 * Math.pow(t, 0.75))); data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = v; data[i * 4 + 3] = 255; }
+  gradientMap = new THREE.DataTexture(data, N, 1, THREE.RGBAFormat);
+  gradientMap.minFilter = THREE.LinearFilter;
+  gradientMap.magFilter = THREE.LinearFilter;
   gradientMap.generateMipmaps = false;
   gradientMap.needsUpdate = true;
   return gradientMap;
@@ -17,14 +20,16 @@ const toonCache = new Map();
 export function toonMaterial(opts = {}) {
   const key = JSON.stringify(opts);
   if (toonCache.has(key)) return toonCache.get(key);
-  const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: getGradientMap(), ...opts });
+  const { detail, ...mo } = opts;
+  const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: getGradientMap(), ...mo });
+  if (detail) patchDetail(m, typeof detail === "object" ? detail : { kind: "panel", s: 0.2, k: 0.75 });
   toonCache.set(key, m);
   return m;
 }
 
 export const outlineUniforms = {
   uRes: { value: new THREE.Vector2(844, 390) },
-  uPx: { value: 2.6 },
+  uPx: { value: 1.5 },
   uSoft: { value: 0 }, // 0 = crisp black Ubu outline (realistic), 1 = soft dreamy outline (surreal)
 };
 
@@ -150,9 +155,9 @@ export function smoothNormals(pos, nor) {
 }
 
 // One toon mesh + one outline mesh (2 draw calls per model).
-export function toonModel(geo, { outline = 0x111111, outlineScale = 1, material } = {}) {
+export function toonModel(geo, { outline = 0x111111, outlineScale = 1, material, detail } = {}) {
   const group = new THREE.Group();
-  const body = new THREE.Mesh(geo, material || toonMaterial());
+  const body = new THREE.Mesh(geo, material || toonMaterial(detail ? { detail } : {}));
   group.add(body);
   if (outline !== null) {
     const ol = new THREE.Mesh(geo, outlineMaterial(outline, outlineScale));

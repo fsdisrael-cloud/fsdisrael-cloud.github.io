@@ -1,7 +1,8 @@
 // Time of day + weather: sky dome, sun/moon, stars, lights, fog, toon clouds, rain/snow, lightning.
+import { FX } from "./tex.js?v=15";
 import * as THREE from "three";
-import { PartBuilder, G, getGradientMap, outlineMaterial } from "./toon.js?v=14";
-import { style, skyHueChunk } from "./surreal.js?v=14";
+import { PartBuilder, G, getGradientMap, outlineMaterial } from "./toon.js?v=15";
+import { style, skyHueChunk } from "./surreal.js?v=15";
 
 export const TIMES = ["dawn", "day", "dusk", "night"];
 export const WEATHERS = ["clear", "cloudy", "rain", "fog", "snow", "storm"];
@@ -231,6 +232,7 @@ export function createSky(scene, renderer) {
     const el = THREE.MathUtils.degToRad(T.elev), az = THREE.MathUtils.degToRad(T.az);
     const dir = new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el));
     skyMat.uniforms.sunDir.value.copy(dir);
+    FX.sunDir.value.copy(dir); FX.sunCol.value.setHex(pl ? pl.sun : T.sun).multiplyScalar(Math.min(1.6, T.sunI * 0.55) * (1 - over * 0.85));
     sun.position.copy(dir).multiplyScalar(5000);
     sun.color.setHex(T.sun);
     baseSun = T.sunI * W.sunK;
@@ -268,7 +270,7 @@ export function createSky(scene, renderer) {
   function update(dt, camPos, camVel) {
     sky.position.copy(camPos);
     const t = (performance.now() - t0) / 1000;
-    psy.uPsy.value = t;
+    psy.uPsy.value = t; FX.time.value = t;
     rainMat.uniforms.uTime.value = t; rainMat.uniforms.uCam.value.copy(camPos);
     if (camVel) rainMat.uniforms.uVel.value.copy(camVel).multiplyScalar(-1);
     snowMat.uniforms.uTime.value = t; snowMat.uniforms.uCam.value.copy(camPos);

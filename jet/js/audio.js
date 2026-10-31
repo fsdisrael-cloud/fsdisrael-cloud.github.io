@@ -1,13 +1,16 @@
 // Ubu audio: looped music files (pre-rendered offline by tools/make_music.py, one style
 // per scene/weather) + procedural WebAudio sound effects. Separate music / SFX toggles.
 const TRACK_FOR = {
-  menu: "menu", day: "day", dawn: "dawn", dusk: "dusk", night: "night",
+  menu: "m15/menu", day: "day", dawn: "dawn", dusk: "dusk", night: "night",
   rain: "rain", fog: "fog", snow: "snow", storm: "storm",
 };
 export function trackFor(time, weather) {
   if (weather === "rain" || weather === "fog" || weather === "snow" || weather === "storm") return weather;
   return time;
 }
+
+// build 15: original offline-rendered melodic techno / trance tracks (tools/make_techno15.py), one random per game
+const GAME_TRACKS = ["afterburn", "vector", "redline", "skyline", "nightfall", "zenith"];
 
 export function createAudio() {
   let ctx = null, master, musicGain, sfxGain, noiseBuf = null;
@@ -26,6 +29,15 @@ export function createAudio() {
   let lastGun = 0;
   // iOS robustness: cap simultaneous one-shot voices, remember whether the app wants sound running
   let active = 0, sessionSet = false, wantRunning = false, lastEngineT = 0;
+  // build 15: while the app is in the background / exited, ALL audio is held (context suspended); only release() lets it run again
+  let held = false, techFile = null;
+  const pickTrack = () => {
+    let last = null; try { last = sessionStorage.getItem("jet-last-track"); } catch { /* ignore */ }
+    const pool = GAME_TRACKS.filter((n) => n !== last);
+    const n = pool[Math.floor(Math.random() * pool.length)];
+    try { sessionStorage.setItem("jet-last-track", n); } catch { /* ignore */ }
+    return n;
+  };
   const MAX_VOICES = 40;
 
   function ensure() {
@@ -34,7 +46,11 @@ export function createAudio() {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
     try { ctx = new AC(); } catch { return null; }
-    ctx.onstatechange = () => { if (ctx && ctx.state !== "running" && wantRunning && !document.hidden) kick(); };
+    ctx.onstatechange = () => {
+      if (!ctx) return;
+      if (held && ctx.state === "running") { try { ctx.suspend(); } catch { /* ignore */ } return; }
+      if (ctx.state !== "running" && wantRunning && !document.hidden && !held) kick();
+    };
     master = ctx.createGain(); master.gain.value = 0.9; master.connect(ctx.destination);
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -14; comp.ratio.value = 4; comp.connect(master);
@@ -48,20 +64,56 @@ export function createAudio() {
 
   /** Try to get the context running again (works without a gesture after an iOS interruption ends). */
   function kick() {
-    if (!ctx) return;
-    if (ctx.state === "closed") { ensure(); tech = null; if (wanted) playTrack(wanted, wantedOpts); return; }
+    if (!ctx || held) return;
+    if (ctx.state === "closed") { ensure(); tech = null; if (wanted) playTrack(wanted, { ...(wantedOpts || {}), again: true }); return; }
     if (ctx.state !== "running") { try { const r = ctx.resume(); if (r && r.catch) r.catch(() => {}); } catch { /* ignore */ } }
   }
   // resume on every touch / visibility change + a light watchdog while the page is visible
   for (const ev of ["touchstart", "touchend", "pointerdown", "click", "keydown"]) window.addEventListener(ev, () => { if (ctx) kick(); }, { capture: true, passive: true });
-  document.addEventListener("visibilitychange", () => { if (!document.hidden && ctx) kick(); });
-  window.addEventListener("pageshow", () => { if (ctx) kick(); });
-  window.addEventListener("focus", () => { if (ctx) kick(); });
+  // leaving the app (home button, app switch, lock, tab change, window blur, page exit): silence everything NOW
+  // iOS: a silent looping <audio> element switches the page to the "playback" audio category (ringer switch no longer mutes WebAudio)
+  let keep = null;
+  const SILENT = "data:audio/wav;base64,UklGRmQfAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YUAfAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==";
+  function keepAlive(on) {
+    try {
+      if (on) {
+        if (!keep) { keep = new Audio(SILENT); keep.loop = true; keep.setAttribute("playsinline", ""); keep.volume = 0.01; }
+        keep.muted = false; const r = keep.play(); if (r && r.catch) r.catch(() => {});
+      } else if (keep) { keep.pause(); keep.muted = true; }
+    } catch { /* ignore */ }
+  }
+  function hold() {
+    held = true;
+    keepAlive(false);
+    for (const el of document.querySelectorAll("audio,video")) { try { el.pause(); el.muted = true; } catch { /* ignore */ } }
+    if (!ctx) return;
+    const c = ctx;
+    try { master.gain.cancelScheduledValues(0); master.gain.setValueAtTime(0, c.currentTime); } catch { /* ignore */ }
+    if (tech) { try { clearInterval(tech.timer); } catch { /* ignore */ } tech = null; }
+    if (engine) { try { engine.o.stop(); engine.n.stop(); } catch { /* ignore */ } engine = null; }
+    if (current) { try { current.src.stop(); } catch { /* ignore */ } current = null; }
+    // suspend first (instant), then close the context for good; a fresh one is built on CONT / NEW (inside the tap)
+    try { const r = c.suspend(); if (r && r.then) r.then(() => { try { return c.close(); } catch { /* ignore */ } }).catch(() => {}); } catch { /* ignore */ }
+  }
+  function release() {
+    if (!held) return;
+    held = false;
+    for (const el of document.querySelectorAll("audio,video")) { try { el.muted = false; } catch { /* ignore */ } }
+    if (!ctx) return;
+    if (ctx.state === "closed" || ctx.state === "suspended") { if (ctx.state === "closed") { ensure(); if (wanted) playTrack(wanted, { ...(wantedOpts || {}), again: true }); } }
+    else { try { master.gain.cancelScheduledValues(0); master.gain.setValueAtTime(0.9, ctx.currentTime); } catch { /* ignore */ } }
+    kick();
+  }
+  document.addEventListener("visibilitychange", () => { if (document.hidden) hold(); });
+  document.addEventListener("webkitvisibilitychange", () => { if (document.hidden || document.webkitHidden) hold(); });
+  window.addEventListener("pagehide", hold);
+  window.addEventListener("freeze", hold);
+  window.addEventListener("blur", hold);
   setInterval(() => {
-    if (!ctx || document.hidden || !wantRunning) return;
+    if (!ctx || held || document.hidden || !wantRunning) return;
     if (ctx.state !== "running") kick();
     // music source died (iOS can drop sources after an interruption): restart it
-    if (wanted && wanted !== "techno" && ctx.state === "running" && (!current || current.dead)) { current = null; playTrack(wanted); }
+    if (wanted && !tech && ctx.state === "running" && (!current || current.dead)) { current = null; playTrack(wanted, { ...(wantedOpts || {}), again: true }); }
   }, 1000);
 
   async function load(name) {
@@ -156,17 +208,22 @@ export function createAudio() {
 
   async function playTrack(name, opts) {
     wanted = name; wantedOpts = opts || null;
-    if (name !== "techno") stopTechno();
+    stopTechno();
     if (!ctx) return;
+    let file = TRACK_FOR[name] || "m15/menu";
     if (name === "techno") {
-      if (current) { const old = current; old.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.3); old.retired = true; setTimeout(() => { try { old.src.stop(); } catch { /* ignore */ } }, 2000); current = null; }
-      startTechno(opts || {});
+      if (!(opts && opts.again) || !techFile) techFile = pickTrack();
+      file = "m15/" + techFile;
+    }
+    if (current && !current.dead && current.name === name && current.file === file) return;
+    let buf;
+    try { buf = await load(file); } catch (e) {
+      console.warn("music load failed", e);
+      if (name === "techno" && wanted === name && ctx) startTechno(opts || {});   // offline fallback: old synth
       return;
     }
-    if (current && current.name === name) return;
-    let buf;
-    try { buf = await load(TRACK_FOR[name] || "day"); } catch (e) { console.warn("music load failed", e); return; }
-    if (wanted !== name) return;
+    if (wanted !== name || held || !ctx) return;
+    if (current && !current.dead && current.name === name && current.file === file) return;
     const t = ctx.currentTime;
     if (current) {
       const old = current;
@@ -177,7 +234,7 @@ export function createAudio() {
     const src = ctx.createBufferSource();
     src.buffer = buf; src.loop = true;
     const g = ctx.createGain(); g.gain.value = 0;
-    const entry = { name, src, gain: g, dead: false };
+    const entry = { name, file, src, gain: g, dead: false };
     src.onended = () => { entry.dead = true; try { src.disconnect(); g.disconnect(); } catch { /* ignore */ } };
     g.gain.setTargetAtTime(1, t, 0.5);
     src.connect(g); g.connect(musicGain);
@@ -223,9 +280,12 @@ export function createAudio() {
   }
 
   return {
+    hold, release, isHeld: () => held,
     async unlock() {
+      if (held) return;
       const c = ensure();
       if (!c) return;
+      keepAlive(true);
       wantRunning = true;
       if (!sessionSet) { sessionSet = true; try { if (navigator.audioSession && navigator.audioSession.type !== "playback") navigator.audioSession.type = "playback"; } catch { /* ignore */ } }
       if (c.state !== "running") {
@@ -233,13 +293,14 @@ export function createAudio() {
         // iOS: play a silent buffer inside the gesture
         try { const b = c.createBuffer(1, 1, 22050); const s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0); } catch { /* ignore */ }
       }
-      if (wanted && (wanted === "techno" ? !tech : (!current || current.name !== wanted))) playTrack(wanted, wantedOpts);
+      if (!held && wanted && !tech && (!current || current.name !== wanted)) playTrack(wanted, { ...(wantedOpts || {}), again: true });
     },
     unlocked: () => !!ctx && ctx.state === "running",
     state: () => (ctx ? ctx.state : "none"),
     voices: () => active,
     techno: () => (tech ? { bpm: tech.bpm } : null),
     playTrack, preload(name) { if (ctx) load(TRACK_FOR[name] || name).catch(() => {}); },
+    trackFile: () => techFile,
     currentTrack: () => current?.name || null,
     setMusic(v) { musicOn = !!v; save(); if (musicGain) musicGain.gain.setTargetAtTime(musicOn ? 0.55 : 0, ctx.currentTime, 0.1); },
     setSfx(v) { sfxOn = !!v; save(); if (sfxGain) sfxGain.gain.setTargetAtTime(sfxOn ? 0.9 : 0, ctx.currentTime, 0.05); },

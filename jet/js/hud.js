@@ -1,6 +1,6 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=14";
+import { LABEL } from "./missions.js?v=15";
 
 const ALLY = "#3dff8b";
 const COL = { jet: "#ff3b3b", tank: "#ff5a48", flak: "#ff4636", sam: "#ff3a2a", base: "#ff6a58", ship: "#ff5a48", pad: "#3dff8b", ring: "#ffe14d" };
@@ -141,14 +141,42 @@ export function createHud() {
   // Rotates with the jet heading (up = where the nose points). Red triangles = enemy planes (pointing along their heading),
   // orange squares = ground targets, orange base icon = army base, green ship icon = carrier. Sweep line + fading trail.
   const RADAR_RANGE = 6500;
+  // build 15: brushed-steel bezel with machined chamfer, specular arcs, bolts and dial ticks (pre-rendered once per size)
+  let bezelCv = null, bezelS = 0;
+  function bezelFor(S, Ro) {
+    if (bezelCv && bezelS === S) return bezelCv;
+    const cv2 = document.createElement("canvas"); cv2.width = cv2.height = S; bezelS = S; bezelCv = cv2;
+    const b = cv2.getContext("2d"), c = S / 2;
+    b.beginPath(); b.arc(c, c, Ro, 0, 7); b.fillStyle = "#1a1f26"; b.fill();
+    b.save(); b.beginPath(); b.arc(c, c, Ro, 0, 7); b.clip();
+    // brushed circular grain: many hairline arcs of varying grey
+    let sd = 7; const rnd = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+    for (let i = 0; i < 170; i++) {
+      const r = Ro * (0.7 + rnd() * 0.3), l = 60 + rnd() * 90;
+      b.strokeStyle = `rgba(${l},${l + 6},${l + 14},${0.22 + rnd() * 0.25})`; b.lineWidth = 0.6 + rnd() * 0.7;
+      b.beginPath(); b.arc(c, c, r, rnd() * 6.28, rnd() * 6.28 + 2); b.stroke();
+    }
+    // anisotropic highlight (conic) top-left + lower-right
+    const cg = b.createConicGradient ? b.createConicGradient(-2.4, c, c) : null;
+    if (cg) { cg.addColorStop(0, "rgba(255,255,255,.55)"); cg.addColorStop(0.1, "rgba(255,255,255,0)"); cg.addColorStop(0.42, "rgba(0,0,0,.42)"); cg.addColorStop(0.55, "rgba(255,255,255,.28)"); cg.addColorStop(0.7, "rgba(0,0,0,.4)"); cg.addColorStop(1, "rgba(255,255,255,.55)"); b.fillStyle = cg; b.fillRect(0, 0, S, S); }
+    b.restore();
+    // chamfer rim + inner shadow lip
+    b.lineWidth = Math.max(1, Ro * 0.03); b.strokeStyle = "rgba(255,255,255,.35)"; b.beginPath(); b.arc(c, c, Ro - b.lineWidth * 0.5, 0, 7); b.stroke();
+    b.lineWidth = Math.max(1.5, Ro * 0.05); b.strokeStyle = "rgba(0,0,0,.65)"; b.beginPath(); b.arc(c, c, Ro * 0.9, 0, 7); b.stroke();
+    // four hex bolts
+    for (let i = 0; i < 4; i++) {
+      const a = Math.PI / 4 + i * Math.PI / 2, x = c + Math.cos(a) * Ro * 0.93, y = c + Math.sin(a) * Ro * 0.93, r = Math.max(1.2, Ro * 0.03);
+      b.beginPath(); b.arc(x, y, r, 0, 7); b.fillStyle = "#59616b"; b.fill(); b.lineWidth = 0.8; b.strokeStyle = "rgba(0,0,0,.8)"; b.stroke();
+    }
+    return cv2;
+  }
   function drawRadar(s) {
     const S = radar.width, c = S / 2, R = c - 4 * dpr, u = dpr;
     rctx.setTransform(1, 0, 0, 1, 0, 0);
     rctx.clearRect(0, 0, S, S);
     // bezel
-    let g = rctx.createLinearGradient(0, 0, S, S);
-    g.addColorStop(0, "#e9eef4"); g.addColorStop(0.35, "#7c8795"); g.addColorStop(0.6, "#2c333c"); g.addColorStop(1, "#aab4c0");
-    rctx.beginPath(); rctx.arc(c, c, R + 3 * u, 0, 7); rctx.fillStyle = g; rctx.fill();
+    let g;
+    rctx.drawImage(bezelFor(S, R + 3 * u), 0, 0);
     rctx.beginPath(); rctx.arc(c, c, R - 1 * u, 0, 7); rctx.fillStyle = "#06100d"; rctx.fill();
     // scope
     rctx.save(); rctx.beginPath(); rctx.arc(c, c, R - 4 * u, 0, 7); rctx.clip();
@@ -251,8 +279,16 @@ export function createHud() {
     rctx.fillStyle = "#ffffff"; rctx.fill(); outline(1.3); rctx.restore();
     // glass glare
     g = rctx.createLinearGradient(0, 0, S, S * 0.6);
-    g.addColorStop(0, "rgba(255,255,255,0.16)"); g.addColorStop(0.5, "rgba(255,255,255,0)");
+    g.addColorStop(0, "rgba(255,255,255,0.20)"); g.addColorStop(0.5, "rgba(255,255,255,0)");
     rctx.beginPath(); rctx.arc(c, c, R - 4 * u, 0, 7); rctx.fillStyle = g; rctx.fill();
+    // curved glass: dark edge vignette + soft sky reflection ellipse
+    g = rctx.createRadialGradient(c, c, R * 0.62, c, c, R - 3 * u);
+    g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.5)");
+    rctx.beginPath(); rctx.arc(c, c, R - 4 * u, 0, 7); rctx.fillStyle = g; rctx.fill();
+    rctx.save(); rctx.beginPath(); rctx.arc(c, c, R - 5 * u, 0, 7); rctx.clip();
+    rctx.translate(c - R * 0.22, c - R * 0.5); rctx.rotate(-0.5); rctx.scale(1, 0.38);
+    g = rctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.62); g.addColorStop(0, "rgba(220,240,255,0.16)"); g.addColorStop(1, "rgba(220,240,255,0)");
+    rctx.beginPath(); rctx.arc(0, 0, R * 0.62, 0, 7); rctx.fillStyle = g; rctx.fill(); rctx.restore();
   }
 
   function updateDom(s) {

@@ -1,13 +1,14 @@
 // Ubu game world: flight model, camera, targets, AI, weapons, effects, objectives.
 import * as THREE from "three";
-import { buildTerrain } from "./terrain.js?v=14";
-import { createSky } from "./sky.js?v=14";
-import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createAlienWalker, createAlienTurret, createAlienSpire, createHive, createShip, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=14";
-import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=14";
-import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=14";
-import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=14";
-import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=14";
-import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=14";
+import { buildTerrain } from "./terrain.js?v=15";
+import { createSky } from "./sky.js?v=15";
+import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createAlienWalker, createAlienTurret, createAlienSpire, createHive, createShip, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=15";
+import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=15";
+import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=15";
+import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=15";
+import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=15";
+import { setQuality } from "./tex.js?v=15";
+import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=15";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V();
@@ -596,13 +597,13 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     scene.add(terrain.detail, terrain.far);
     half = terrain.half; center.copy(terrain.center);
     style.uCenter.value.set(center.x, center.z);
-    for (const m of terrain.materials) patchTerrain(m);
+    setQuality(opts.quality); for (const m of terrain.materials) patchTerrain(m);
     smokeMat.uniforms.uLight.value = level.time === "night" ? 0.3 : level.time === "dusk" || level.time === "dawn" ? 0.75 : 1;
     sky.apply(level.time, level.weather, { center, half, seed: (level.seed % 100000) + 1, terrain: terrain.materials, planet: level.run?.planet, season: level.run?.planetKey === "earth" ? SEASONS[level.run.season] : null });
 
     for (const o of level.objectives) progress[o.kind] = 0;
     setTargetStyle(level.run?.tgt || "army");
-    alienT = !!level.run?.planet && level.run.planet !== "earth";
+    alienT = !!level.run?.planetKey && level.run.planetKey !== "earth";
     applyWeaponStyle(level.run?.planet);
     makePlayer(level.run?.jet || "viper");
 

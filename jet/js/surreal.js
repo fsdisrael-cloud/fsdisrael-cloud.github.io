@@ -2,7 +2,8 @@
 // Surreal = pastel hue-shifting palette, gently wavy/melting terrain, soft outlines,
 // floating dream shapes and a cheap CSS glow. All GPU-cheap: a few shader lines + 4 draw calls.
 import * as THREE from "three";
-import { outlineUniforms, toonMaterial, PartBuilder, G, outlineMaterial } from "./toon.js?v=14";
+import { noiseTex, FX } from "./tex.js?v=15";
+import { outlineUniforms, toonMaterial, PartBuilder, G, outlineMaterial } from "./toon.js?v=15";
 
 const KEY = "jet-style";
 export const style = {
@@ -47,16 +48,52 @@ const HUE = /* glsl */ `
 export function patchTerrain(mat) {
   mat.onBeforeCompile = (sh) => {
     sh.uniforms.uTime = style.uTime; sh.uniforms.uSur = style.uSur; sh.uniforms.uCenter = style.uCenter;
+    sh.uniforms.uNoise = { value: noiseTex() }; sh.uniforms.uT2 = FX.time; sh.uniforms.uSunD = FX.sunDir; sh.uniforms.uSunC = FX.sunCol;
+    const HI = (FX.hi ? "#define UBU_HI\n" : "") + (/[?&]nodet/.test(location.search) ? "#define UBU_OFF\n" : "");
     sh.vertexShader = sh.vertexShader
-      .replace("#include <common>", "#include <common>\nuniform float uTime; uniform float uSur; uniform vec2 uCenter; varying vec2 vWorldXZ;")
+      .replace("#include <common>", "#include <common>\nuniform float uTime; uniform float uSur; uniform vec2 uCenter; varying vec2 vWorldXZ; varying vec3 vWP; varying vec3 vWN;")
       .replace("#include <begin_vertex>", `#include <begin_vertex>
         vec4 ubuW = modelMatrix * vec4(position, 1.0);
         vec2 l = ubuW.xz - uCenter;
-        vWorldXZ = ubuW.xz;
+        vWorldXZ = ubuW.xz; vWP = ubuW.xyz; vWN = normal;
         transformed.y += uSur * (sin(l.x * 0.0035 + uTime * 0.55) * 22.0 + cos(l.y * 0.0042 + uTime * 0.4) * 18.0 + sin((l.x + l.y) * 0.0011 - uTime * 0.3) * 14.0);`);
     sh.fragmentShader = sh.fragmentShader
-      .replace("#include <common>", "#include <common>\nuniform float uTime; uniform float uSur; varying vec2 vWorldXZ;" + HUE)
+      .replace("#include <common>", HI + "#include <common>\nuniform float uTime; uniform float uSur; varying vec2 vWorldXZ; varying vec3 vWP; varying vec3 vWN; uniform sampler2D uNoise; uniform float uT2; uniform vec3 uSunD; uniform vec3 uSunC;" + HUE)
+      .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
+        totalEmissiveRadiance += ubuGlint;`)
       .replace("#include <map_fragment>", `#include <map_fragment>
+        vec3 ubuGlint = vec3(0.0);
+        #ifndef UBU_OFF
+        {
+          float dd = length(vWP - cameraPosition);
+          vec4 n1 = texture2D(uNoise, vWP.xz * 0.0019);
+          vec4 n2 = texture2D(uNoise, vWP.xz * 0.014);
+          float fade2 = 1.0 - smoothstep(900.0, 6000.0, dd);
+          float det = (n1.r - 0.5) * 0.2 + (n2.g - 0.5) * 0.42 * fade2;
+          #ifdef UBU_HI
+            vec4 n3 = texture2D(uNoise, vWP.xz * 0.09);
+            det += (n3.b - 0.5) * 0.55 * (1.0 - smoothstep(250.0, 2600.0, dd));
+          #endif
+          bool wat = vWP.y < 0.12 && uSur < 0.5;
+          float slope = 1.0 - clamp(normalize(vWN).y, 0.0, 1.0);
+          float rock = smoothstep(0.22, 0.5, slope) * (wat ? 0.0 : 1.0);
+          vec3 base = diffuseColor.rgb;
+          float lum = dot(base, vec3(0.3, 0.59, 0.11));
+          diffuseColor.rgb = mix(base, vec3(lum) * vec3(1.0, 0.95, 0.88) * 0.95, rock * 0.35);
+          diffuseColor.rgb *= 1.0 + (wat ? (n1.r - 0.5) * 0.08 : det * (1.0 + rock * 0.6));
+          if (wat) {
+            vec2 q1 = vWP.xz * 0.011 + vec2(uT2 * 0.012, uT2 * 0.006);
+            vec2 q2 = vWP.xz * 0.037 - vec2(uT2 * 0.02, -uT2 * 0.01);
+            vec4 w1 = texture2D(uNoise, q1), w2 = texture2D(uNoise, q2);
+            vec3 wn = normalize(vec3((w1.r - w1.g) * 0.3 + (w2.b - w2.a) * 0.22, 1.0, (w1.b - w1.a) * 0.3 + (w2.r - w2.g) * 0.22));
+            vec3 V = normalize(cameraPosition - vWP);
+            vec3 H = normalize(normalize(uSunD) + V);
+            float sp = pow(max(dot(wn, H), 0.0), 140.0) * 2.2 + pow(max(dot(wn, H), 0.0), 18.0) * 0.12;
+            float fr = pow(1.0 - clamp(dot(wn, V), 0.0, 1.0), 3.0);
+            ubuGlint = uSunC * sp + diffuseColor.rgb * fr * 0.6;
+          }
+        }
+        #endif
         if (uSur > 0.5) {
           float a = uTime * 0.25 + vWorldXZ.x * 0.0004 + vWorldXZ.y * 0.0003;
           vec3 c = ubuHue(diffuseColor.rgb, a);

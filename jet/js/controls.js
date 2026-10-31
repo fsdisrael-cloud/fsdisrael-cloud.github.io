@@ -12,7 +12,7 @@ const D2R = Math.PI / 180;
 
 // ---- easy-to-adjust configuration ----
 export const CONTROL_CFG = {
-  stickDragUpIsNoseUp: true, // joystick: drag up = nose up (set false for real-aircraft "pull back = up" feel)
+  stickDragUpIsNoseUp: false, // build 15: real aircraft - drag DOWN (pull back) = nose UP, drag up = nose down
   stickRadiusPx: 56,         // drag distance for full deflection
   tiltRangePitchDeg: 22,     // degrees of tilt for full pitch input
   tiltRangeRollDeg: 26,      // degrees of tilt for full roll input
@@ -204,8 +204,9 @@ export function createControls() {
     if (!joy.active) { const k = Math.exp(-dt * C.stickReturn); joy.x *= k; joy.y *= k; }
     const jp = (C.stickDragUpIsNoseUp ? -joy.y : joy.y), jr = joy.x;
     let kp = 0, kr = 0;
-    if (keys.has("w") || keys.has("arrowup")) kp += 1;
-    if (keys.has("s") || keys.has("arrowdown")) kp -= 1;
+    const kd = C.stickDragUpIsNoseUp ? 1 : -1;
+    if (keys.has("w") || keys.has("arrowup")) kp += kd;
+    if (keys.has("s") || keys.has("arrowdown")) kp -= kd;
     if (keys.has("a") || keys.has("arrowleft")) kr -= 1;
     if (keys.has("d") || keys.has("arrowright")) kr += 1;
     const p = Math.max(-1, Math.min(1, tp + jp + kp)), r = Math.max(-1, Math.min(1, tr + jr + kr));

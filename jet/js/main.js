@@ -1,19 +1,32 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=14";
-import { createHud } from "./hud.js?v=14";
-import { createControls } from "./controls.js?v=14";
-import { runLabel, PLANETS, JET_TYPES } from "./variety.js?v=14";
-import { createAudio, trackFor } from "./audio.js?v=14";
-import { createHaptics } from "./haptics.js?v=14";
-import { createLoading } from "./loading.js?v=14";
-import { setSurreal, tickStyle } from "./surreal.js?v=14";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=14";
+import { createGame } from "./game.js?v=15";
+import { createHud } from "./hud.js?v=15";
+import { createControls } from "./controls.js?v=15";
+import { runLabel, PLANETS, JET_TYPES } from "./variety.js?v=15";
+import { createAudio, trackFor } from "./audio.js?v=15";
+import { createHaptics } from "./haptics.js?v=15";
+import { createLoading } from "./loading.js?v=15";
+import { setSurreal, tickStyle } from "./surreal.js?v=15";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=15";
 
 const $ = (id) => document.getElementById(id);
 
 // ---------- build / version check ----------
-const BUILD = 14;
+// build 15: generated brushed-steel texture for the instrument plates (CSS var --brushed)
+try {
+  const bc = document.createElement("canvas"); bc.width = 128; bc.height = 64;
+  const b = bc.getContext("2d"); let sd = 3; const rn = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 260; i++) { const y = rn() * 64, x = rn() * 128, l = 20 + rn() * 90; b.fillStyle = rn() < 0.5 ? `rgba(255,255,255,${0.02 + rn() * 0.07})` : `rgba(0,0,0,${0.05 + rn() * 0.12})`; b.fillRect(x, y, l, 1); b.fillRect(x - 128, y, l, 1); }
+  document.documentElement.style.setProperty("--brushed", `url(${bc.toDataURL("image/png")})`);
+  const wc = document.createElement("canvas"); wc.width = wc.height = 256;
+  const w = wc.getContext("2d"); sd = 11;
+  for (let i = 0; i < 90; i++) { const x = rn() * 256, y = rn() * 256, r = 4 + rn() * 26; const g = w.createRadialGradient(x, y, 0, x, y, r); const c = rn() < 0.45 ? "120,70,30" : "0,0,0"; g.addColorStop(0, `rgba(${c},${0.05 + rn() * 0.1})`); g.addColorStop(1, `rgba(${c},0)`); w.fillStyle = g; w.fillRect(x - r, y - r, r * 2, r * 2); }
+  for (let i = 0; i < 70; i++) { const x = rn() * 256, y = rn() * 256, a = rn() * 6.28, l = 8 + rn() * 40; w.strokeStyle = `rgba(210,215,220,${0.05 + rn() * 0.16})`; w.lineWidth = 0.6 + rn() * 0.5; w.beginPath(); w.moveTo(x, y); w.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); w.stroke(); }
+  for (let i = 0; i < 500; i++) { w.fillStyle = `rgba(${rn() < 0.5 ? "255,255,255" : "0,0,0"},${0.03 + rn() * 0.08})`; w.fillRect(rn() * 256, rn() * 256, 1 + rn() * 2, 1 + rn() * 2); }
+  document.documentElement.style.setProperty("--worn", `url(${wc.toDataURL("image/png")})`);
+} catch (e) { /* plain gradients if canvas is unavailable */ }
+const BUILD = 15;
 { const t = $("build-tag"); if (t) t.textContent = "JET-X b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;
@@ -82,11 +95,11 @@ function startPreload(n, run0) {
 }
 
 // ---------- audio / input unlock ----------
-const unlock = () => { audio.unlock(); };
+const unlock = () => { if (audio.isHeld() && state !== "paused") audio.release(); audio.unlock(); };
 for (const ev of ["pointerdown", "touchend", "keydown"]) window.addEventListener(ev, unlock, { capture: true });
 audio.playTrack("menu");
 document.addEventListener("gesturestart", (e) => e.preventDefault());
-document.addEventListener("touchmove", (e) => { e.preventDefault(); }, { passive: false });
+document.addEventListener("touchmove", (e) => { if (e.target.closest?.(".hs-wrap")) return; e.preventDefault(); }, { passive: false });
 document.addEventListener("contextmenu", (e) => e.preventDefault());
 document.addEventListener("dblclick", (e) => e.preventDefault());
 // every button: pressed animation + click sound + haptic tick
@@ -238,34 +251,51 @@ function onLevelEnd(r) {
 }
 
 // ---------- arcade high scores: top 10, 5-letter name entry, saved in localStorage (jet-scores-v1) ----------
-function loadScores() { try { const v = JSON.parse(localStorage.getItem("jet-scores-v1")); if (v && Array.isArray(v.list)) return v; } catch { /* ignore */ } return { list: [], last: "ACE" }; }
+const SCORE_KEY = "jet-scores-v1";
+function loadScores() { try { const v = JSON.parse(localStorage.getItem(SCORE_KEY)); if (v && Array.isArray(v.list)) return v; } catch { /* ignore */ } return { list: [], last: "ACE" }; }
+// Build 15: endless leaderboard (every score kept). Entry is prefilled with the last name; CLEAR NAME wipes it; OK saves,
+// then the list scrolls to your rank and highlights it. TOP jumps to #1, HOME returns to the starting page.
 function showHighScores(score, done) {
-  const box = $("hs"), data = loadScores();
-  const qualifies = score > 0 && (data.list.length < 10 || score > data.list[data.list.length - 1].s);
-  if (!(score > 0)) { done(); return; }
+  const box = $("hs"), card = box.querySelector(".hs-card"), data = loadScores(), wrap = $("hs-wrap");
+  const entering = score > 0;
+  if (!entering && !data.list.length) { done(); return; }
   let mine = null;
-  const letters = (data.last || "ACE").padEnd(5, " ").slice(0, 5).split("");
   const CH = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .-";
-  let cur = 0;
-  const esc = (t) => String(t).replace(/[<>&]/g, "");
+  let letters = (data.last || "ACE").toUpperCase().padEnd(5, " ").slice(0, 5).split("");
+  let cur = 0, finished = false;
+  const esc = (t) => String(t).replace(/[<>&"]/g, "");
+  const fmt = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const dstr = (t) => { if (!t) return ""; const d = new Date(t); return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getFullYear()).slice(2)}`; };
   const renderList = () => {
-    $("hs-list").innerHTML = Array.from({ length: 10 }, (_, i) => { const e = data.list[i]; return `<li class="${e && e === mine ? "me" : ""}"><span>${i + 1}</span><em>${e ? esc(e.n.trim() || "-----") : "-----"}</em><b>${e ? e.s : "0"}</b></li>`; }).join("");
+    if (!data.list.length) { $("hs-list").innerHTML = `<li class="empty">NO RECORDS ON FILE</li>`; return; }
+    $("hs-list").innerHTML = data.list.map((e, i) => `<li class="${e === mine ? "me" : ""}${i < 3 ? " top" + (i + 1) : ""}"><span>${i + 1}</span><em>${esc(e.n.trim() || "-----")}</em><b>${fmt(e.s)}</b><u>${dstr(e.d)}</u></li>`).join("");
   };
-  const finish = () => { box.classList.add("hidden"); window.removeEventListener("keydown", keyH, true); done(); };
   const renderEntry = () => {
     $("hs-entry").innerHTML = letters.map((c, i) => `<div class="hs-slot${i === cur ? " on" : ""}" data-i="${i}"><button type="button" data-d="1" aria-label="up">&#9650;</button><b>${c === " " ? "&nbsp;" : c}</b><button type="button" data-d="-1" aria-label="down">&#9660;</button></div>`).join("");
   };
-  const commit = () => {
-    mine = { n: letters.join("").trim().toUpperCase() || "AAAAA", s: score, d: Date.now() };
-    data.list.push(mine); data.list.sort((a, b) => b.s - a.s); data.list = data.list.slice(0, 10); data.last = letters.join("").trim() || "ACE";
-    try { localStorage.setItem("jet-scores-v1", JSON.stringify(data)); } catch { /* ignore */ }
-    $("hs-new").classList.add("hidden"); renderList(); $("hs-btn").classList.remove("hidden");
+  const jumpTop = () => wrap.scrollTo({ top: 0, behavior: "smooth" });
+  const jumpMine = (smooth) => {
+    const el = $("hs-list").querySelector("li.me"); if (!el) return;
+    const top = el.offsetTop - (wrap.clientHeight - el.offsetHeight) / 2;
+    wrap.scrollTo({ top: Math.max(0, top), behavior: smooth ? "smooth" : "auto" });
   };
+  const toList = () => { card.classList.remove("entry"); $("hs-new").classList.add("hidden"); $("hs-btn").classList.remove("hidden"); renderList(); wrap.scrollTop = 0; setTimeout(() => jumpMine(true), 250); };
+  const commit = () => {
+    if (!entering || mine) return;
+    const name = letters.join("").trim().toUpperCase() || "-----";
+    mine = { n: name, s: score, d: Date.now() };
+    data.list.push(mine); data.list.sort((a, b) => b.s - a.s); if (data.list.length > 20000) data.list.length = 20000;
+    if (name !== "-----") data.last = name;
+    try { localStorage.setItem(SCORE_KEY, JSON.stringify(data)); } catch { /* storage full or blocked: keep playing */ }
+    toList();
+  };
+  const leave = () => { if (finished) return; finished = true; box.classList.add("hidden"); window.removeEventListener("keydown", keyH, true); };
+  const finish = () => { leave(); done(); };
   const keyH = (e) => {
     if (box.classList.contains("hidden")) return;
-    if ($("hs-new").classList.contains("hidden")) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); finish(); } return; }
+    if (!card.classList.contains("entry")) { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); finish(); } return; }
     const k = e.key;
-    if (k === "Enter") { commit(); }
+    if (k === "Enter") commit();
     else if (k === "Backspace") { letters[cur] = " "; cur = Math.max(0, cur - 1); renderEntry(); }
     else if (k === "ArrowLeft") { cur = Math.max(0, cur - 1); renderEntry(); }
     else if (k === "ArrowRight") { cur = Math.min(4, cur + 1); renderEntry(); }
@@ -274,17 +304,20 @@ function showHighScores(score, done) {
     else return;
     e.preventDefault(); e.stopPropagation();
   };
-  $("hs-score").textContent = score;
-  $("hs-new").classList.toggle("hidden", !qualifies);
-  $("hs-btn").classList.toggle("hidden", qualifies);
-  renderList(); if (qualifies) renderEntry();
+  $("hs-score").textContent = fmt(score);
+  card.classList.toggle("entry", entering);
+  $("hs-new").classList.toggle("hidden", !entering);
+  $("hs-btn").classList.toggle("hidden", entering);
+  if (entering) renderEntry(); else renderList();
   $("hs-entry").onclick = (e) => {
     const slot = e.target.closest(".hs-slot"); if (!slot) return;
     cur = +slot.dataset.i; const btn = e.target.closest("button");
     if (btn) { const i = CH.indexOf(letters[cur]); letters[cur] = CH[(i + +btn.dataset.d + CH.length) % CH.length]; }
     renderEntry();
   };
-  $("hs-ok").onclick = commit; $("hs-btn").onclick = finish;
+  $("hs-clear").onclick = () => { letters = [" ", " ", " ", " ", " "]; cur = 0; renderEntry(); };
+  $("hs-ok").onclick = commit; $("hs-btn").onclick = finish; $("hs-top").onclick = jumpTop;
+  $("hs-home").onclick = () => { leave(); location.href = location.pathname; };
   window.addEventListener("keydown", keyH, true);
   setTimeout(() => box.classList.remove("hidden"), 700);
 }
@@ -310,11 +343,12 @@ function showHighScores(score, done) {
 $("btn-view").addEventListener("pointerdown", (e) => { e.stopPropagation(); controls.requestView(); });
 
 // ---------- pause when the tab is hidden ----------
-function goBackground() { writeSave(); if (state === "playing") { state = "paused"; game.pause(); controls.setEnabled(false); $("resume").classList.remove("hidden"); } }
+function goBackground() { audio.hold(); writeSave(); if (state === "playing") { state = "paused"; game.pause(); controls.setEnabled(false); $("resume").classList.remove("hidden"); } }
 document.addEventListener("visibilitychange", () => { if (document.hidden) goBackground(); });
 window.addEventListener("pagehide", goBackground);
-$("rs-cont").addEventListener("click", () => { $("resume").classList.add("hidden"); state = "playing"; game.resume(); controls.setEnabled(true); controls.calibrate(); });
-$("rs-new").addEventListener("click", () => { $("resume").classList.add("hidden"); clearSave(); state = "title"; play(); });
+window.addEventListener("blur", goBackground);
+$("rs-cont").addEventListener("click", () => { audio.release(); audio.unlock(); audio.startEngine(); $("resume").classList.add("hidden"); state = "playing"; game.resume(); controls.setEnabled(true); controls.calibrate(); });
+$("rs-new").addEventListener("click", () => { audio.release(); audio.unlock(); $("resume").classList.add("hidden"); clearSave(); state = "title"; play(); });
 $("pause-btn").addEventListener("click", () => { $("pause").classList.add("hidden"); state = "playing"; game.resume(); controls.calibrate(); });
 
 // ---------- resize ----------
