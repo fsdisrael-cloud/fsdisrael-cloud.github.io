@@ -529,3 +529,8 @@ html, body { background: #8fb4dc; height: 100%; min-height: 100vh; min-height: -
 .ver-b { position: absolute; right: calc(env(safe-area-inset-right, 0px) + 14px); bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); pointer-events: none; user-select: none; z-index: 3;
   font: 400 clamp(8px, 1.7vmin, 11px)/1 "Stencil", "Fredoka", sans-serif; letter-spacing: .2em; color: #aeb6bf; opacity: .55;
   text-shadow: 0 1px 0 rgba(255,255,255,.22), 0 -1px 0 rgba(0,0,0,.85), 0 2px 4px rgba(0,0,0,.7); }
+
+/* build 22: landscape title - TESSIE credit moves to the bottom-left so the buttons never cover it */
+@media (orientation: landscape) and (max-height: 520px) {
+  .credit-b { left: calc(env(safe-area-inset-left, 0px) + 86px); right: auto; text-align: left; text-indent: 0; }
+}

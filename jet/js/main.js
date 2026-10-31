@@ -1,15 +1,15 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=21";
-import { createHud } from "./hud.js?v=21";
-import { createControls } from "./controls.js?v=21";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene } from "./variety.js?v=21";
-import { createAudio, trackFor } from "./audio.js?v=21";
-import { createHaptics } from "./haptics.js?v=21";
-import { createLoading } from "./loading.js?v=21";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=21";
-import { setSurreal, tickStyle } from "./surreal.js?v=21";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=21";
+import { createGame } from "./game.js?v=22";
+import { createHud } from "./hud.js?v=22";
+import { createControls } from "./controls.js?v=22";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene } from "./variety.js?v=22";
+import { createAudio, trackFor } from "./audio.js?v=22";
+import { createHaptics } from "./haptics.js?v=22";
+import { createLoading } from "./loading.js?v=22";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=22";
+import { setSurreal, tickStyle } from "./surreal.js?v=22";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=22";
 
 const $ = (id) => document.getElementById(id);
 
@@ -27,7 +27,7 @@ try {
   for (let i = 0; i < 500; i++) { w.fillStyle = `rgba(${rn() < 0.5 ? "255,255,255" : "0,0,0"},${0.03 + rn() * 0.08})`; w.fillRect(rn() * 256, rn() * 256, 1 + rn() * 2, 1 + rn() * 2); }
   document.documentElement.style.setProperty("--worn", `url(${wc.toDataURL("image/png")})`);
 } catch (e) { /* plain gradients if canvas is unavailable */ }
-const BUILD = 21;
+const BUILD = 22;
 { const t = $("build-tag"); if (t) t.textContent = "JET-X b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;

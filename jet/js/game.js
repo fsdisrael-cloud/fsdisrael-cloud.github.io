@@ -1,15 +1,15 @@
 // Ubu game world: flight model, camera, targets, AI, weapons, effects, objectives.
-import { createPost } from "./post.js?v=21";
+import { createPost } from "./post.js?v=22";
 import * as THREE from "three";
-import { buildTerrain } from "./terrain.js?v=21";
-import { createSky } from "./sky.js?v=21";
-import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createAlienWalker, createAlienTurret, createAlienSpire, createHive, createShip, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=21";
-import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=21";
-import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=21";
-import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=21";
-import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=21";
-import { setQuality, FX as FXQ } from "./tex.js?v=21";
-import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=21";
+import { buildTerrain } from "./terrain.js?v=22";
+import { createSky } from "./sky.js?v=22";
+import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createAlienWalker, createAlienTurret, createAlienSpire, createHive, createShip, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=22";
+import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=22";
+import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=22";
+import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=22";
+import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=22";
+import { setQuality, FX as FXQ } from "./tex.js?v=22";
+import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=22";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V(), tE = V();
@@ -929,7 +929,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   let cpP = 0, cpPV = 0, cpB = 0, cpBV = 0;
   // ---------- AUTO-FOLLOW (TRACK): with a locked target ahead and the stick near centre / pointing toward it, the copilot flies the jet
   // after the target and keeps it in the reticle. A firm push the other way, or a quick flick, breaks it instantly (never fights the player).
-  let trackOn = false, trackBlock = 0, prevRoll = 0, prevPitch = 0;
+  let centT = 0, trackOn = false, trackBlock = 0, prevRoll = 0, prevPitch = 0;
   const _trkSt = { pitch: 0, roll: 0, yaw: 0 };
   function trackStick(dt, st) {
     const raw = st, t = lockTarget;
@@ -944,11 +944,11 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (Math.abs(yawErr) > 1.25 || Math.abs(pitErr) > 0.9) { trackOn = false; return st; }
     // opposite deflection (stick pushed away from the target) beyond ~50 %, or a flick, hands control straight back
     const opp = (raw.roll * yawErr < 0 && Math.abs(raw.roll) > 0.5 && Math.abs(yawErr) > 0.04) || (raw.pitch * pitErr < 0 && Math.abs(raw.pitch) > 0.5 && Math.abs(pitErr) > 0.04);
-    if (opp || flick) { if (trackOn) trackBlock = 1.2; trackOn = false; }
+    const magR = Math.max(Math.abs(raw.roll), Math.abs(raw.pitch));
+    if (opp || flick || magR > 0.3) { if (trackOn) trackBlock = 0.8; trackOn = false; }   // b22: any real stick input = full manual authority
+    centT = magR < 0.12 ? centT + dt : 0;
     if (!trackOn) {
-      const centred = Math.abs(raw.roll) < 0.16 && Math.abs(raw.pitch) < 0.16;
-      const toward = (Math.abs(raw.roll) < 0.16 || raw.roll * yawErr > 0) && (Math.abs(raw.pitch) < 0.16 || raw.pitch * pitErr > 0) && Math.max(Math.abs(raw.roll), Math.abs(raw.pitch)) > 0.16;
-      if (trackBlock <= 0 && !opp && !flick && (centred || toward)) trackOn = true;
+      if (trackBlock <= 0 && !opp && !flick && centT > 1.5) trackOn = true;   // only after the stick has rested (and the nose has levelled) for 1.5 s
     }
     if (!trackOn) return st;
     // virtual stick: bank toward the target's heading, nose toward its elevation; blended with whatever the player adds in the same direction
@@ -958,8 +958,9 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     _trkSt.yaw = raw.yaw;
     return _trkSt;
   }
+  let relT = 0, loopT = 0;
   function assistFlight(dt, st) {
-    st = trackStick(dt, st);
+    const rawSt = st; st = trackStick(dt, st);
     const cv = (v) => { const a = Math.max(0, (Math.abs(v) - 0.06) / 0.94); return Math.sign(v) * Math.pow(a, 2.3); };   // dead-zone + strong expo: small stick = tiny, full stick = full   // strong expo: small stick = slow gentle moves, full stick = fast
     aP += (cv(st.pitch) - aP) * (1 - Math.exp(-dt * 10));
     aR += (cv(st.roll) - aR) * (1 - Math.exp(-dt * 10));
@@ -999,23 +1000,25 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     const PL = 0.95;
     if (Math.abs(st.pitch) < 0.3 && player.pitch * pIn > 0 && Math.abs(player.pitch) > PL - 0.3) pIn *= Math.max(0, 1 - (Math.abs(player.pitch) - (PL - 0.3)) / 0.3);
     const ez = ezv(); let pitchRate;
-    const loopPull = Math.abs(st.pitch) > 0.97 && recover < 0.05 && ez < 0.7;   // beginners can never loop by accident (the LOOP button still works)
+    loopT = Math.abs(st.pitch) > 0.97 ? loopT + dt : 0;
+    const loopPull = loopT > 1.2 && recover < 0.05 && ez < 0.7;   // b22: a loop needs a deliberate ~1.2 s full pull; a quick full push just dives / climbs to the +-55 deg limit   // beginners can never loop by accident (the LOOP button still works)
     if (loopPull) { pitchRate = pIn * 1.25; cpP = player.pitch; cpPV = 0; }
     else {
       // pitch: stick Y = capped nose RATE with an instant onset (stick smoothing is ~30 ms); soft attitude limits make a stall / flip impossible
-      const u = Math.max(0, Math.abs(st.pitch) - 0.06) / 0.94, maxPR = 1.1 - 0.28 * ez;
-      let pr = Math.sign(st.pitch) * Math.pow(u, 1.4) * maxPR * (1 - recover);
+      const u = Math.max(0, Math.abs(st.pitch) - 0.06) / 0.94, maxPR = 1.5 - 0.35 * ez;
+      let pr = Math.sign(st.pitch) * Math.pow(u, 1.2) * maxPR * (1 - recover);
       if (pr < 0) pr *= Math.max(0, 1 - assistDanger * 1.6);
-      const upL = 0.7 + 0.25 * (1 - ez), dnL = -(0.4 + 0.2 * (1 - ez));
-      if (pr > 0 && player.pitch > upL - 0.25) pr *= Math.max(0, 1 - (player.pitch - (upL - 0.25)) / 0.25);
+      const upL = 0.95 + 0.1 * (1 - ez), dnL = -(0.9 + 0.05 * (1 - ez));   // b22: about +-52..57 degrees of real authority
+      if (pr > 0 && player.pitch > upL - 0.2) pr *= Math.max(0, 1 - (player.pitch - (upL - 0.2)) / 0.2);
       if (pr < 0 && player.pitch < dnL + 0.2) pr *= Math.max(0, 1 - ((dnL + 0.2) - player.pitch) / 0.2);
-      if (u < 0.3) pr += (0.08 * Math.min(1, Math.abs(Math.sin(player.bank))) - player.pitch) * 3.0 * (1 - u / 0.3);   // sits level, tucks a touch in a banked turn
       pitchRate = pr; cpP = player.pitch; cpPV = 0;
     }
     if (assistDanger > 0.02 && player.pitch < 0.7) pitchRate = Math.max(pitchRate, assistDanger * 1.5);
     // hands off: the nose drifts back toward the horizon
     if (recover > 0.05 && player.pitch < 0.7) pitchRate = Math.max(pitchRate, recover * 1.7);
-    if (!held && !player.inverted && assistDanger < 0.05) pitchRate -= THREE.MathUtils.clamp(player.pitch, -1, 1) * 1.8;
+    // b22 release: keep the heading, ease the nose back to level over ~1-1.5 s (no snap); nothing levels while the stick is held
+    relT = Math.abs(st.pitch) < 0.08 ? relT + dt : 0;
+    if (!player.inverted && !(player.pitch > 0 && assistDanger > 0.05) && !loopPull) pitchRate -= THREE.MathUtils.clamp(player.pitch * 2.3, -0.85, 0.85) * THREE.MathUtils.clamp((relT - 0.12) / 0.35, 0, 1);
     // roll: capped bank, strong wing-leveller when the stick is released (also rights an inverted jet)
     let rr = aR * 1.8;
     // ARCADE TURNS: sideways stick = a smooth banked turn (stick sets the bank angle, up to ~55 deg; the jet pulls itself through the turn).
@@ -1025,13 +1028,13 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (wB > 0) {
       // ATTITUDE COMMAND: stick X = target bank angle (kids ~60 deg, adults ~52). The jet rolls there fast (rate cap ~200 deg/s, ~60 rad/s^2 onset),
       // a reversal uses the full rate straight away (no carried-over momentum), and the turn rate is a pure function of the bank (coordinated turn).
-      const u = Math.max(0, Math.abs(st.roll) - 0.06) / 0.94, maxB = 0.9 + 0.15 * ez, tb = Math.sign(st.roll) * Math.pow(u, 1.2) * maxB;
-      const rmax = u < 0.02 ? 2.2 : 3.5;
-      const want = THREE.MathUtils.clamp((tb - player.bank) * 9, -rmax, rmax);
+      const u = Math.max(0, Math.abs(st.roll) - 0.06) / 0.94, maxB = 1.35 - 0.15 * ez, tb = Math.sign(st.roll) * Math.min(1, u * 1.1) * maxB;
+      const rmax = u < 0.02 ? 1.7 : 3.8;
+      const want = THREE.MathUtils.clamp((tb - player.bank) * (u < 0.02 ? 4.2 : 10), -rmax, rmax);   // b22: crisp while held, smooth wings-level on release
       cpBV += THREE.MathUtils.clamp(want - cpBV, -60 * dt, 60 * dt);
       rr = rr * (1 - wB) + cpBV * wB;
     } else cpBV = 0;
-    const BL = 1.3;
+    const BL = 1.5;
     if (Math.abs(st.roll) < 0.55 && !player.inverted && player.bank * rr > 0 && Math.abs(player.bank) > BL - 0.2) rr *= Math.max(0, 1 - (Math.abs(player.bank) - (BL - 0.2)) / 0.2);
     const hands = 1 - Math.min(1, Math.abs(aR) * 3);
     if ((!held || Math.abs(st.roll) < 0.12 && Math.abs(st.pitch) < 0.12) && (wB < 0.5 || recover > 0.05 || player.inverted)) rr -= player.bank * ((0.9 + 3.0 * hands) * (0.7 + 0.5 * ak) + recover * 2.4);
@@ -1049,15 +1052,16 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     }
     if (tapT > 0 && tapTarget && tapTarget.alive && !nearPad) { _qI.copy(player.q).invert(); _vA.subVectors(tapTarget.pos, player.pos).applyQuaternion(_qI); best = tapTarget; bl.copy(_vA); tapMode = true; }
     if (best && !trackOn) {
-      const w = (tapMode ? 1.15 : 0.5 + 0.55 * ak) * (tapMode ? 0.5 + 0.5 * (1 - Math.min(1, 1.2 * Math.max(Math.abs(aP), Math.abs(aR)))) : 1) * Math.max(0.4 * ez, 1 - Math.min(1, 1.4 * Math.max(Math.abs(aP), Math.abs(aR)))) * (1 + 0.8 * ez) * (assistDanger > 0.1 ? 0 : 1);
+      const nearC = THREE.MathUtils.clamp(1 - (Math.max(Math.abs(rawSt.pitch), Math.abs(rawSt.roll)) - 0.1) / 0.2, 0, 1);
+      const w = (tapMode ? 1.15 : 0.5 + 0.55 * ak) * (tapMode ? 0.5 + 0.5 * nearC : 1) * nearC * (1 + 0.8 * ez) * (assistDanger > 0.1 ? 0 : 1);
       const ey = tapMode ? Math.atan2(bl.y, Math.hypot(bl.x, bl.z)) : Math.atan2(bl.y, -bl.z), ex = Math.atan2(bl.x, -bl.z);
-      if (!(ey < 0 && player.pitch < -0.45)) pitchRate += THREE.MathUtils.clamp(ey * 1.5, -0.5, 0.5) * w;
+      if (!(ey < 0 && player.pitch < -0.45)) pitchRate += THREE.MathUtils.clamp(ey * 1.5, -0.4, 0.4) * w * 0.3 * Math.max(0, 1 - Math.abs(player.pitch) * 1.5);
       rotBody(AY, -THREE.MathUtils.clamp(ex * 1.2, -0.4 - 0.2 * ez, 0.4 + 0.2 * ez) * w * dt);
     }
     rotBody(AX, pitchRate * dt);
     player.q.multiply(_qa.setFromAxisAngle(tD.set(0, 0, -1), rr * dt));
     rotBody(AY, st.yaw * 0.6 * dt);
-    rotWorld(AY, -Math.sin(player.bank) * (0.67 + 0.5 * (1 - ez)) * Math.max(0, Math.cos(player.pitch)) * dt);
+    rotWorld(AY, -Math.sin(player.bank) * (0.8 + 0.45 * (1 - ez)) * Math.max(0, Math.cos(player.pitch)) * dt);
   }
 
   function flight(dt) {
@@ -1942,7 +1946,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
         const dd = Math.max(25, WC.tgt.pos.distanceTo(WC.camP));
         fov = THREE.MathUtils.clamp(2 * Math.atan((Math.max(7, WC.tgt.radius) * 1.9) / dd) * 57.3, 4, 38);   // narrow: target fills the view and zooms in as it closes
       } else cam.lookAt(tA.copy(WC.lastP).addScaledVector(tB.copy(WC.lastV).normalize(), 40));
-    } else cam.lookAt(WC.lastP);
+    } else { cam.lookAt(WC.lastP); if (WC.state === "boom") fov = 72; }   // b22: wide view on impact so the fireball does not wash out the frame
     if (Math.abs(cam.fov - fov) > 0.05) { cam.fov += (fov - cam.fov) * 0.6; cam.updateProjectionMatrix(); }
     const rtPrev = renderer.getRenderTarget(), pr = outlineUniforms.uRes.value.clone();
     outlineUniforms.uRes.value.set(WCS * 2.2, WCS * 2.2);
@@ -1959,7 +1963,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
         if (tC.z < 1 && tC.z > -1) { fx = (tC.x * 0.5 + 0.5) * n; fy = (0.5 - tC.y * 0.5) * n; const dd = Math.max(5, WC.tgt.pos.distanceTo(WC.camP)); fr = Math.max(n * 0.1, (Math.max(5, WC.tgt.radius) * 1.15 / dd) * (n / 2) / Math.tan(cam.fov * Math.PI / 360)); fr = Math.min(fr, n * 0.46); }
       }
       WC.fx = fx; WC.fy = fy; WC.fr = fr;
-      const night = L && L.time === "night" ? 1.5 : 1;
+      const night = (L && L.time === "night" ? 1.5 : 1) * (WC.state === "boom" ? 0.55 : 1);
       for (let y = 0; y < n; y++) {
         const sy = n - 1 - y;
         for (let x = 0; x < n; x++) {
