@@ -5,7 +5,7 @@
   --mint: #4dffa6; --sun: #ffd23f; --red: #ff4d4d; --ink: #0b0a1f;
   /* adjustable layout */
   --radar: clamp(96px, 24vmin, 160px);
-  --stick: clamp(176px, min(50vw, 44vh), 290px);
+  --stick: clamp(118px, min(30vw, 36vh), 168px);
   --wb: 64px;
   --gap: 12px;
 }
@@ -96,9 +96,9 @@ body.on-title .hud { display: none; }
 .crash { position: absolute; top: 40%; left: 50%; transform: translateX(-50%); text-align: center; font: 700 clamp(40px, 12vmin, 80px) "Fredoka"; color: #ffd23f; text-shadow: 0 4px 0 #b3200f, 0 0 20px #ff6a1a; } .crash small { display: block; font: 500 16px "Fredoka"; color: #fff; text-shadow: 0 2px 0 #000; }
 
 /* ---------- HOTAS joystick (bottom right) ---------- */
-.stick { position: absolute; right: calc(var(--safe-r) + 6px); bottom: calc(var(--safe-b) + 4px); width: var(--stick); aspect-ratio: 260 / 270; pointer-events: auto; touch-action: none; }
+.stick { position: absolute; right: calc(var(--safe-r) + 6px); bottom: calc(var(--safe-b) + 4px); width: var(--stick); aspect-ratio: 1; pointer-events: auto; touch-action: none; }
 .stick-persp { position: absolute; inset: 0; perspective: 520px; perspective-origin: 50% 20%; }
-.stick-3d { position: absolute; inset: 0; transform-origin: 50% 84%; transition: none; will-change: transform; }
+.stick-3d { position: absolute; inset: 0; transform-origin: 50% 50%; transition: none; will-change: transform; }
 .stick-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 8px 10px rgba(0,0,0,.55)); }
 
 /* ---------- results / pause ---------- */
@@ -392,3 +392,8 @@ body.on-title .weapons .thr { display: none; }
   .weapons .wbtn { margin-bottom: 10px; }
   .thr-info b { font-size: 13px; }
 }
+
+/* v13: compact top-down stick, bottom-right corner; the invisible hit zone is larger than the art */
+.stick { right: calc(var(--safe-r) + 8px); bottom: calc(var(--safe-b) + 8px); }
+.stick::before { content: ""; position: absolute; left: -22%; right: -8px; top: -40%; bottom: -8px; }
+@media (orientation: portrait) { :root { --wb: 52px; --stick: clamp(118px, 31vw, 150px); } .weapons { gap: 8px; } }

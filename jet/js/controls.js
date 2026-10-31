@@ -88,48 +88,43 @@ export function createControls() {
 
   // ---------- on-screen HOTAS stick ----------
   const SVG = `
-<svg class="stick-svg" viewBox="0 0 260 270" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+<svg class="stick-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <defs>
-    <linearGradient id="sg-metal" x1="0" x2="1"><stop offset="0" stop-color="#2a3038"/><stop offset=".35" stop-color="#8d98a6"/><stop offset=".55" stop-color="#d7dee6"/><stop offset=".8" stop-color="#5c6672"/><stop offset="1" stop-color="#20252c"/></linearGradient>
-    <linearGradient id="sg-grip" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#0d1015"/><stop offset=".3" stop-color="#2b323c"/><stop offset=".5" stop-color="#4a5564"/><stop offset=".75" stop-color="#252b33"/><stop offset="1" stop-color="#0b0d11"/></linearGradient>
-    <linearGradient id="sg-boot" x1="0" x2="1"><stop offset="0" stop-color="#0c0e12"/><stop offset=".4" stop-color="#2a2f37"/><stop offset=".6" stop-color="#3a414c"/><stop offset="1" stop-color="#0a0b0e"/></linearGradient>
-    <radialGradient id="sg-ring" cx=".5" cy=".4" r=".7"><stop offset="0" stop-color="#cfd7e0"/><stop offset=".6" stop-color="#6b7684"/><stop offset="1" stop-color="#242a31"/></radialGradient>
-    <radialGradient id="sg-plate" cx=".5" cy=".5" r=".6"><stop offset="0" stop-color="#1d2229" stop-opacity=".9"/><stop offset="1" stop-color="#0a0c10" stop-opacity=".85"/></radialGradient>
+    <radialGradient id="tb-base" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#4a525e"/><stop offset=".7" stop-color="#1c2128"/><stop offset="1" stop-color="#0b0d11"/></radialGradient>
+    <radialGradient id="tb-boot" cx=".42" cy=".38" r=".75"><stop offset="0" stop-color="#3a414b"/><stop offset=".65" stop-color="#171b21"/><stop offset="1" stop-color="#0a0c0f"/></radialGradient>
+    <radialGradient id="tb-grip" cx=".38" cy=".3" r=".9"><stop offset="0" stop-color="#75808f"/><stop offset=".55" stop-color="#363e48"/><stop offset="1" stop-color="#0d0f13"/></radialGradient>
+    <radialGradient id="tb-hat" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#7d8896"/><stop offset="1" stop-color="#232a32"/></radialGradient>
   </defs>
-  <g transform="translate(30 0)">
-  <ellipse class="sg-base-plate" cx="100" cy="226" rx="92" ry="28" fill="url(#sg-plate)" stroke="#6b7684" stroke-width="2"/>
-  <ellipse cx="100" cy="226" rx="80" ry="22" fill="none" stroke="#2f3640" stroke-width="2"/>
-  <ellipse cx="100" cy="222" rx="46" ry="13" fill="url(#sg-ring)" stroke="#11151a" stroke-width="2"/>
-  <g class="stick-arm">
-    <path d="M62 222 Q64 188 84 168 L116 168 Q136 188 138 222 Q100 236 62 222Z" fill="url(#sg-boot)" stroke="#07080a" stroke-width="2"/>
-    <path d="M68 212 Q100 224 132 212 M71 200 Q100 211 129 200 M76 188 Q100 197 124 188" stroke="#4b5360" stroke-width="2" fill="none" opacity=".8"/>
-    <rect x="90" y="120" width="20" height="56" rx="6" fill="url(#sg-metal)" stroke="#0a0c0f" stroke-width="2"/>
-    <g class="stick-grip" transform="rotate(7 100 142)">
-      <path d="M86 146 L82 104 Q70 78 66 50 Q63 22 84 14 Q106 7 128 16 Q144 26 141 50 Q139 74 126 104 L118 146Z" fill="url(#sg-grip)" stroke="#040507" stroke-width="2.5"/>
-      <path d="M72 50 Q70 26 86 20" stroke="#8d99a8" stroke-width="2.5" fill="none" opacity=".45" stroke-linecap="round"/>
-      <path d="M84 100 Q96 108 84 118 M84 122 Q96 130 84 140" stroke="#06070a" stroke-width="2.2" fill="none" opacity=".8"/>
-      <path d="M121 84 q9 7 0 14 M121 102 q9 7 0 14 M120 120 q8 7 0 13" stroke="#05060a" stroke-width="2.4" fill="none" opacity=".85"/>
-      <path d="M121 88 q6 4 0 9 M121 106 q6 4 0 9" stroke="#6d7886" stroke-width="1" fill="none" opacity=".35"/>
-      <path d="M124 48 Q150 52 146 78 Q144 88 132 84 Q134 70 123 64Z" fill="#14181e" stroke="#030405" stroke-width="2"/>
-      <path d="M128 52 Q142 56 140 70" stroke="#7d8896" stroke-width="1.4" fill="none" opacity=".5"/>
-      <rect x="82" y="62" width="30" height="9" rx="4" fill="#0d1014" stroke="#030405" stroke-width="1.5"/><rect x="86" y="64" width="9" height="5" rx="2" fill="#39414c"/>
-      <circle cx="98" cy="36" r="15" fill="#0c0f13" stroke="#030405" stroke-width="2"/>
-      <circle cx="98" cy="36" r="10.5" fill="#1d2229" stroke="#4a5360" stroke-width="1"/>
-      <path d="M98 27 v18 M89 36 h18" stroke="#080a0d" stroke-width="3.2"/>
-      <circle cx="98" cy="36" r="4.2" fill="#3b4450" stroke="#06070a" stroke-width="1"/>
-      <path d="M98 24.5 l2.5 3 h-5Z M98 47.5 l2.5 -3 h-5Z M86.5 36 l3 -2.5 v5Z M109.5 36 l-3 -2.5 v5Z" fill="#8d99a8" opacity=".6"/>
-      <circle cx="120" cy="42" r="6.5" fill="#0c0f13" stroke="#030405" stroke-width="1.6"/><circle cx="120" cy="42" r="3.6" fill="#2d343d"/>
-      <circle cx="76" cy="46" r="7.5" fill="#16100f" stroke="#030405" stroke-width="1.6"/><circle cx="76" cy="46" r="4.8" fill="#c8322a" stroke="#4a0f0b" stroke-width="1"/><circle cx="74.5" cy="44.5" r="1.4" fill="#ff9a8f" opacity=".7"/>
-      <path d="M76 80 Q98 88 122 80" stroke="#d63b2f" stroke-width="2.5" fill="none" opacity=".85" stroke-linecap="round"/>
-    </g>
-  </g>
+  <circle cx="100" cy="100" r="97" fill="url(#tb-base)" stroke="#05070a" stroke-width="3"/>
+  <circle cx="100" cy="100" r="92" fill="none" stroke="#6b7684" stroke-width="1.5" opacity=".7"/>
+  <circle cx="188.0" cy="100.0" r="2.6" fill="#9aa5b3" stroke="#0a0c10" stroke-width=".8"/><circle cx="176.2" cy="144.0" r="2.6" fill="#9aa5b3" stroke="#0a0c10" stroke-width=".8"/><circle cx="144.0" cy="176.2" r="2.6" fill="#9aa5b3" stroke="#0a0c10" stroke-width=".8"/><circle cx="100.0" cy="188.0" r="2.6" fill="#9aa5b3" stroke="#0a0c10" stroke-width=".8"/><circle cx="56.0" cy="176.2" r="2.6" fill="#9aa5b3" stroke="#0a0c10" stroke-width=".8"/><circle cx="23.8" cy="144.0" r="2.6" fill="#9aa5b3" stroke="#0a0c10" stroke-width=".8"/><circle cx="12.0" cy="100.0" r="2.6" fill="#9aa5b3" stroke="#0a0c10" stroke-width=".8"/><circle cx="23.8" cy="56.0" r="2.6" fill="#9aa5b3" stroke="#0a0c10" stroke-width=".8"/><circle cx="56.0" cy="23.8" r="2.6" fill="#9aa5b3" stroke="#0a0c10" stroke-width=".8"/><circle cx="100.0" cy="12.0" r="2.6" fill="#9aa5b3" stroke="#0a0c10" stroke-width=".8"/><circle cx="144.0" cy="23.8" r="2.6" fill="#9aa5b3" stroke="#0a0c10" stroke-width=".8"/><circle cx="176.2" cy="56.0" r="2.6" fill="#9aa5b3" stroke="#0a0c10" stroke-width=".8"/>
+  <path d="M100 4 l7 12 h-14Z" fill="#e8892a" stroke="#05070a" stroke-width="1"/>
+  <circle cx="100" cy="100" r="74" fill="none" stroke="#2c333c" stroke-width="3"/>
+  <circle cx="100" cy="100" r="66" fill="url(#tb-boot)" stroke="#05070a" stroke-width="2.5"/>
+  <circle cx="100" cy="100" r="57" fill="none" stroke="#3d4551" stroke-width="2" opacity=".8"/>
+  <circle cx="100" cy="100" r="49" fill="none" stroke="#3d4551" stroke-width="2" opacity=".6"/>
+  <g class="stick-grip" transform="rotate(-8 100 100)">
+    <ellipse cx="104" cy="108" rx="35" ry="47" fill="#000" opacity=".4"/>
+    <path d="M100 52 Q132 52 135 90 Q137 124 124 142 Q112 152 98 152 Q82 150 74 132 Q64 104 70 80 Q76 52 100 52Z" fill="url(#tb-grip)" stroke="#040507" stroke-width="2.5"/>
+    <path d="M78 76 Q82 58 100 57" stroke="#aab6c4" stroke-width="2.2" fill="none" opacity=".45" stroke-linecap="round"/>
+    <path d="M131 96 q9 8 0 16 M130 118 q9 8 -1 15" stroke="#05060a" stroke-width="2.4" fill="none" opacity=".85"/>
+    <path d="M73 112 q-7 8 0 17" stroke="#05060a" stroke-width="2.2" fill="none" opacity=".7"/>
+    <circle cx="98" cy="82" r="17" fill="#0b0e12" stroke="#030405" stroke-width="2"/>
+    <circle cx="98" cy="82" r="12.5" fill="url(#tb-hat)" stroke="#59636f" stroke-width="1"/>
+    <path d="M98 71 v22 M87 82 h22" stroke="#07090c" stroke-width="3.6"/>
+    <circle cx="98" cy="82" r="4.6" fill="#3b4450" stroke="#06070a" stroke-width="1"/>
+    <path d="M98 69 l3 3.5 h-6Z M98 95 l3 -3.5 h-6Z M85 82 l3.5 -3 v6Z M111 82 l-3.5 -3 v6Z" fill="#9aa6b4" opacity=".65"/>
+    <circle cx="121" cy="104" r="7.5" fill="#0b0e12" stroke="#030405" stroke-width="1.6"/><circle cx="121" cy="104" r="4.4" fill="#2d343d"/>
+    <circle cx="79" cy="98" r="9" fill="#14100f" stroke="#030405" stroke-width="1.8"/><circle cx="79" cy="98" r="5.8" fill="#c8322a" stroke="#4a0f0b" stroke-width="1"/><circle cx="77" cy="96" r="1.6" fill="#ff9a8f" opacity=".75"/>
+    <rect x="86" y="120" width="30" height="10" rx="4" fill="#0d1014" stroke="#030405" stroke-width="1.5"/><rect x="90" y="122.5" width="10" height="5" rx="2" fill="#4a5360"/>
+    <path d="M82 60 Q100 54 120 60" stroke="#d63b2f" stroke-width="3" fill="none" stroke-linecap="round" opacity=".9"/>
   </g>
 </svg>`;
 
   /** Builds the joystick UI inside `root` (the stick only: no weapon buttons on it). */
   function mountStick(root) {
     root.innerHTML = `<div class="stick-persp"><div class="stick-3d">${SVG}</div></div>`;
-    joyEl = root; gripEl = root.querySelector(".stick-3d");
+    joyEl = root; gripEl = root.querySelector(".stick-grip"); gripEl.style.transformOrigin = "100px 100px";
 
     root.addEventListener("pointerdown", (e) => {
       if (!enabled || joy.active) return;
@@ -189,7 +184,7 @@ export function createControls() {
   function paintStick() {
     if (!gripEl) return;
     const pv = stick.pitch, rl = stick.roll;
-    gripEl.style.transform = `rotateX(${(-pv * 22).toFixed(1)}deg) rotateZ(${(rl * 20).toFixed(1)}deg) translateY(${(-pv * 3).toFixed(1)}px)`;
+    gripEl.style.transform = `translate(${(rl * 15).toFixed(1)}px, ${(-pv * 15).toFixed(1)}px) rotate(${(-8 + rl * 6).toFixed(1)}deg)`;
   }
 
   function update(dt) {
