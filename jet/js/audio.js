@@ -484,7 +484,7 @@ export function createAudio() {
       if (!ctx || !sfxOn || ctx.state !== "running") return; const now = ctx.currentTime; gunT = now;
       if (!gunV) {
         gunV = play("gun", { gain: 0.0001, loop: true, prio: 2, lp: 7000 });
-        if (gunV) { gunV.g.gain.setValueAtTime(0.0001, now); gunV.g.gain.linearRampToValueAtTime(0.62, now + 0.012); }
+        if (gunV) { gunV.g.gain.setValueAtTime(0.0001, now); gunV.g.gain.linearRampToValueAtTime(0.46, now + 0.012); }
       }
       if (!gunTimer) { const chk = () => { if (!ctx || ctx.currentTime - gunT > 0.14) gunStop(); else gunTimer = setTimeout(chk, 50); }; gunTimer = setTimeout(chk, 90); }
     },
@@ -501,6 +501,8 @@ export function createAudio() {
       play(Math.random() < 0.5 ? "boomA" : "boomB", { gain: Math.min(1.0, (0.3 + 0.45 * Math.min(2, big)) * v * 1.4), rate: rate * (0.94 + Math.random() * 0.12), lp: lpf, lp2: lpf * 0.4, delay: Math.min(1.4, d / 2600), prio: 2 });
       if (big >= 1.2 && d < 2500) play(Math.random() < 0.5 ? "boomB" : "boomA", { gain: 0.5 * v, rate: rate * 0.7, lp: lpf * 0.6, delay: 0.05 + Math.min(1.4, d / 2600), prio: 2 });
     },
+    /** enemy rounds striking you: quieter, more distant, rate-limited */
+    hitFar() { if (!gate("hitfar", 380)) return; play("hit", { gain: 0.1, rate: 0.7 + Math.random() * 0.2, lp: 2200, prio: 0 }); },
     hit() { if (!gate("hit", 140)) return; play("hit", { gain: 0.3, rate: 0.85 + Math.random() * 0.4, prio: 0 }); },
     hurt() { if (!gate("hurt", 450)) return; noise({ dur: 0.28, peak: 0.28, type: "lowpass", f0: 600, f1: 250, a: 0.012 }); tone({ f0: 120, f1: 70, dur: 0.22, peak: 0.12, a: 0.015 }); },
     lock() { if (!gate("lock", 900)) return; tone({ f0: 880, dur: 0.2, peak: 0.045, a: 0.03 }); },
@@ -514,7 +516,7 @@ export function createAudio() {
       play("boomA", { gain: 0.8, rate: 0.75, delay: 0.45, lp: 5000, prio: 2 }); play("boomB", { gain: 0.6, rate: 0.7, delay: 0.9, lp: 3000, prio: 2 });
       tone({ f0: 70, f1: 24, dur: 2.2, peak: 0.5, type: "sine", a: 0.01 });
     },
-    flare() { noise({ dur: 0.1, peak: 0.16, type: "lowpass", f0: 700, f1: 220, a: 0.002 }); noise({ dur: 0.7, peak: 0.1, type: "bandpass", f0: 3000, f1: 1300, q: 0.8, a: 0.05 }); },
+    flare() { tone({ f0: 110, f1: 48, dur: 0.2, peak: 0.34, a: 0.003 }); noise({ dur: 0.14, peak: 0.26, type: "lowpass", f0: 900, f1: 220, a: 0.002 }); noise({ dur: 1.0, peak: 0.16, type: "bandpass", f0: 3400, f1: 1200, q: 0.8, a: 0.06 }); },
     hiss() { noise({ dur: 0.9, peak: 0.2, type: "highpass", f0: 4500, f1: 2200, a: 0.03 }); },
     /** subtle rack-reload tick (missile / bomb back in the rack) and empty-rack click; both respect the Effects toggle */
     reload(kind = "missile") { if (!gate("rl", 600)) return; tone({ f0: kind === "bomb" ? 330 : 560, dur: 0.1, peak: 0.03, a: 0.02, prio: 0 }); },

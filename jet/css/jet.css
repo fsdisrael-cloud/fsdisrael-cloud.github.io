@@ -222,9 +222,9 @@ body.in-game .build-tag { display: none; }
 .view-btn[data-view="chase"] .vseg[data-v="chase"], .view-btn[data-view="cockpit"] .vseg[data-v="cockpit"] { color: #1b1002; background: linear-gradient(180deg, #ffc25a, #e8800f); text-shadow: 0 1px 0 rgba(255,255,255,.4); }
 
 /* weapon camera: the 2nd circle under the radar */
-.wcam { position: relative; width: calc(var(--radar) * 0.78); aspect-ratio: 1; border-radius: 50%; margin-left: calc(var(--radar) * 0.11); }
+.wcam { position: relative; width: calc(var(--radar) * 1.1); aspect-ratio: 1; border-radius: 50%; margin-left: calc(var(--radar) * 0.11); }
 .wcam::before { display: none; }
-.wcam canvas { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; background: #031006; transition: opacity .12s; }
+.wcam canvas { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; background: #031006; transition: opacity .12s; image-rendering: auto; }
 .wcam-ring { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; box-shadow: 0 0 0 3px var(--gm-mid), 0 0 0 4.5px #04060a, 0 0 0 5.5px rgba(77,255,132,.55), inset 0 0 14px rgba(0,0,0,.8), 0 6px 12px rgba(0,0,0,.6); }
 
 .settings .tgl, .settings .gear { border-radius: 4px; border: 1px solid #04060a; color: #aeb7c2; background: linear-gradient(180deg, var(--gm-hi), var(--gm-lo)); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 3px 8px rgba(0,0,0,.6); width: 44px; height: 44px; }
@@ -381,7 +381,7 @@ body.on-title .weapons .thr { display: none; }
   .radar-wrap { display: grid; width: auto; grid-template-columns: var(--radar) auto; grid-template-rows: auto auto; column-gap: 8px; row-gap: 6px; align-items: start; justify-items: start; }
   #radar { grid-row: 1 / 3; grid-column: 1; }
   #btn-view { grid-column: 2; grid-row: 1; }
-  .wcam { grid-column: 2; grid-row: 2; width: calc(var(--radar) * 0.56); margin-left: 0; }
+  .wcam { grid-column: 2; grid-row: 2; width: calc(var(--radar) * 1.25); margin-left: 0; }
 }
 /* portrait: throttle bottom-left, weapon buttons in a row between the throttle and the stick */
 @media (orientation: portrait) {
@@ -524,3 +524,8 @@ html, body { background: #8fb4dc; height: 100%; min-height: 100vh; min-height: -
 .hud-track { position: absolute; left: 57%; top: 34%; font: 700 clamp(10px, 2.2vmin, 12px) "Black Ops One", "Fredoka", sans-serif; letter-spacing: .28em; color: #ffd35a; text-shadow: 0 0 8px rgba(255,170,40,.7); opacity: 0; transition: opacity .15s; pointer-events: none; z-index: 5; padding: 2px 8px; border: 1px solid rgba(255,200,80,.55); border-radius: 4px; background: rgba(20,14,0,.28); }
 .hud-track.on { opacity: .9; }
 .nums .fl-c b { color: #ffcf66; }
+
+/* build 21: small engraved version label, bottom-right of title / loading screens (text comes from version.json) */
+.ver-b { position: absolute; right: calc(env(safe-area-inset-right, 0px) + 14px); bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); pointer-events: none; user-select: none; z-index: 3;
+  font: 400 clamp(8px, 1.7vmin, 11px)/1 "Stencil", "Fredoka", sans-serif; letter-spacing: .2em; color: #aeb6bf; opacity: .55;
+  text-shadow: 0 1px 0 rgba(255,255,255,.22), 0 -1px 0 rgba(0,0,0,.85), 0 2px 4px rgba(0,0,0,.7); }

@@ -1,8 +1,8 @@
 // Time of day + weather: sky dome, sun/moon, stars, lights, fog, toon clouds, rain/snow, lightning.
-import { FX } from "./tex.js?v=20";
+import { FX } from "./tex.js?v=21";
 import * as THREE from "three";
-import { PartBuilder, G, getGradientMap, outlineMaterial } from "./toon.js?v=20";
-import { style, skyHueChunk } from "./surreal.js?v=20";
+import { PartBuilder, G, getGradientMap, outlineMaterial } from "./toon.js?v=21";
+import { style, skyHueChunk } from "./surreal.js?v=21";
 
 export const TIMES = ["dawn", "day", "dusk", "night"];
 export const WEATHERS = ["clear", "cloudy", "rain", "fog", "snow", "storm"];
@@ -340,7 +340,7 @@ export function createSky(scene, renderer) {
     if (pl) ct.setHex(pl.cloud).multiplyScalar(nK);
     cloudMat.color.copy(ct); cloudReal.uniforms.uCol.value.copy(ct); cloudReal.uniforms.uDark.value = over > 0.5 ? 1 : 0; cloudReal.uniforms.uAmb.value.copy(hemiSkyColor(T, nK));
     cloudMat.emissive.copy(ct).multiplyScalar(time === "night" ? 0.12 : 0.28);
-    buildClouds(W.clouds, center, half, over > 0.5, seed, time === "night" ? 2 : W.near < 500 ? 9 : over > 0.4 ? 5 : 3);
+    buildClouds(W.clouds, center, half, over > 0.5, seed, W.near < 500 ? 9 : 0);   // b21: flat stratus banks seen edge-on read as thin bright streaks across the sky -> only in fog/rain/snow
     rain.visible = W.rain > 0;
     rainMat.uniforms.uOp.value = 0.32 + 0.18 * Math.min(1, W.rain - 0.5);
     rainMat.uniforms.uCol.value.setHex(time === "night" ? 0x8aa0d0 : 0xd8e4ff);

@@ -1,15 +1,15 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=20";
-import { createHud } from "./hud.js?v=20";
-import { createControls } from "./controls.js?v=20";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene } from "./variety.js?v=20";
-import { createAudio, trackFor } from "./audio.js?v=20";
-import { createHaptics } from "./haptics.js?v=20";
-import { createLoading } from "./loading.js?v=20";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=20";
-import { setSurreal, tickStyle } from "./surreal.js?v=20";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=20";
+import { createGame } from "./game.js?v=21";
+import { createHud } from "./hud.js?v=21";
+import { createControls } from "./controls.js?v=21";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene } from "./variety.js?v=21";
+import { createAudio, trackFor } from "./audio.js?v=21";
+import { createHaptics } from "./haptics.js?v=21";
+import { createLoading } from "./loading.js?v=21";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=21";
+import { setSurreal, tickStyle } from "./surreal.js?v=21";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=21";
 
 const $ = (id) => document.getElementById(id);
 
@@ -27,13 +27,16 @@ try {
   for (let i = 0; i < 500; i++) { w.fillStyle = `rgba(${rn() < 0.5 ? "255,255,255" : "0,0,0"},${0.03 + rn() * 0.08})`; w.fillRect(rn() * 256, rn() * 256, 1 + rn() * 2, 1 + rn() * 2); }
   document.documentElement.style.setProperty("--worn", `url(${wc.toDataURL("image/png")})`);
 } catch (e) { /* plain gradients if canvas is unavailable */ }
-const BUILD = 20;
+const BUILD = 21;
 { const t = $("build-tag"); if (t) t.textContent = "JET-X b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;
   try { if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, "1"); } catch { /* ignore */ }
   location.replace(location.pathname + "?b=" + b + "&t=" + Date.now());
 }
+function setVer(n) { if (!n) return; window.__ver = n; document.querySelectorAll("[data-ver]").forEach((e) => { e.textContent = "v" + n; }); }
+setVer(BUILD);
+fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then((r) => r.json()).then((v) => setVer(v.build)).catch(() => {});
 async function checkVersion() {
   try {
     const r = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
@@ -153,7 +156,7 @@ const timeSec = 300; // Build 17: the round is always 5:00 (no picker)
 // ---------- opening screen: 3 buttons ----------
 // EASY TO RELABEL / REWIRE: each entry is { label, sub (optional small text), primary, run }.
 // Button 1 is PLAY. Buttons 2 and 3 are PLACEHOLDERS (final function pending): change label/run here.
-const HOW_HTML = `<p><b>Tilt</b> your phone like a wheel: top edge up = nose up, top edge down = nose down. Tilt sideways to bank and turn.</p><p>Or drag the <b>stick</b> (bottom right): push it up to climb, down to dive. Prefer the other way? Use the INVERT toggle in settings. Both work at once.</p><p><b>Weapons</b> are bottom left: hold GUN, tap MISSILE or BOMB. Racks of 10 reload over time; the gun cools down after it overheats.</p><p><b>Swipe</b> anywhere else to look around. It only turns your view, never the plane. Green forces are your friends.</p>`;
+const HOW_HTML = `<p><b>Tilt</b> your phone like a wheel: top edge toward you = nose up, top edge away = nose down. Tilt sideways to bank and turn.</p><p>Or drag the <b>stick</b> (bottom right): pull it down (toward you) to climb, push it up to dive, like a real jet. Prefer the other way? Use the INVERT toggle in settings. Both work at once.</p><p><b>Weapons</b> are bottom left: hold GUN, tap MISSILE or BOMB. Racks of 10 reload over time; the gun cools down after it overheats.</p><p><b>Swipe</b> anywhere else to look around. It only turns your view, never the plane. Green forces are your friends.</p>`;
 // Opening flow: logo + live scene while terrain loads -> HUD powers on -> tap anywhere -> CONT / NEW plates.
 // CONT resumes the autosave (jet-save-v1); it is disabled when there is no save. LEVELS / HOW TO FLY are small placeholder links.
 const SAVE_KEY = "jet-save-v1";

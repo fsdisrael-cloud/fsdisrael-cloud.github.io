@@ -2,8 +2,8 @@
 // Player + enemy jets: PBR-lit (metal, glossy canopy, environment reflections) with a thin illustrated outline.
 // Ground units: toon + outline. Illustrated look, readable colours.
 import * as THREE from "three";
-import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=20";
-import { patchDetail, missileTex } from "./tex.js?v=20";
+import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=21";
+import { patchDetail, missileTex } from "./tex.js?v=21";
 
 const PI = Math.PI;
 
@@ -307,6 +307,11 @@ function buildJet(kind, vk = "", variant = null) {
   root.add(flame, core);
   const glow = glowSprite(bc[0], 7, 0.9); glow.position.set(0, 0, 7.4); root.add(glow);
   const navL = new THREE.Object3D(), navR = new THREE.Object3D();
+  // b21: wingtip anchors = the real outer tip of the wing mesh (same offset/mirroring as the wing meshes), used by the vapour trails
+  { const pa = g.wing.attributes.position; let mx = 0; for (let i = 0; i < pa.count; i++) mx = Math.max(mx, Math.abs(pa.getX(i)));
+    let n = 0, sy = 0, sz = 0, sx = 0; for (let i = 0; i < pa.count; i++) if (Math.abs(pa.getX(i)) > mx - 0.08) { n++; sx += Math.abs(pa.getX(i)); sy += pa.getY(i); sz += pa.getZ(i); }
+    const tx = n ? sx / n : 5, ty = n ? sy / n : 0, tz = n ? sz / n : 1;
+    navL.position.set(-tx, ty - 0.2, tz); navR.position.set(tx, ty - 0.2, tz); }
   root.add(navL, navR);
   // cockpit (first-person) extras
   const cockpit = new THREE.Group();

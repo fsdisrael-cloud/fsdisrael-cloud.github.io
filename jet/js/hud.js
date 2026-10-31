@@ -1,6 +1,6 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=20";
+import { LABEL } from "./missions.js?v=21";
 
 const ALLY = "#3dff8b";
 const COL = { jet: "#ff3b3b", tank: "#ff5a48", flak: "#ff4636", sam: "#ff3a2a", base: "#ff6a58", ship: "#ff5a48", pad: "#3dff8b", ring: "#ffe14d" };
@@ -99,11 +99,21 @@ export function createHud() {
     }
     arrows.sort((a, b) => a.d - b.d);
     for (const a of arrows.slice(0, 3)) edgeArrow(a.t.pos, cam, a.t.kind === "jet" ? "#ff2a2a" : (COL[a.t.kind] || "#fff"), false, null, 1);
-    horizon(s, cam);
+    /* b21: horizon cue line removed (read as stray streaks across the sky) */
     // incoming missiles
     for (const m of s.missiles) if (m.active) { const pr = project(m.p, cam); if (pr.on) { circle(pr.x, pr.y, 10, "#ff2222", 3); label(pr.x, pr.y - 18, "MISSILE", "#ff4444", 11); } else edgeArrow(m.p, cam, "#ff2222", true); }
     // CCIP marker
     if (s.ccip) { const pr = project(s.ccip, cam); if (pr.on) { circle(pr.x, pr.y, 9, "#ff8a2a", 3); ctx.fillStyle = "#ff8a2a"; ctx.beginPath(); ctx.arc(pr.x, pr.y, 3, 0, 7); ctx.fill(); } }
+    // b21: bomb aim: line from the impact point to the snapped ground target + a bright cross on the target
+    if (s.bombAim) {
+      const pa = project(s.bombAim, cam), pc = s.ccip ? project(s.ccip, cam) : null;
+      if (pa.on) {
+        ctx.save(); ctx.strokeStyle = "#ffa040"; ctx.fillStyle = "#ffa040"; ctx.shadowColor = "rgba(0,0,0,.8)"; ctx.shadowBlur = 3;
+        if (pc && pc.on && s.bombLocked) { ctx.lineWidth = 2; ctx.setLineDash([7, 6]); ctx.beginPath(); ctx.moveTo(pc.x, pc.y); ctx.lineTo(pa.x, pa.y); ctx.stroke(); ctx.setLineDash([]); }
+        const r = s.bombLocked ? 15 : 10; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(pa.x - r, pa.y - r); ctx.lineTo(pa.x + r, pa.y + r); ctx.moveTo(pa.x + r, pa.y - r); ctx.lineTo(pa.x - r, pa.y + r); ctx.stroke();
+        ctx.beginPath(); ctx.arc(pa.x, pa.y, r + 5, 0, 7); ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
+      }
+    }
 
     domT -= dt;
     if (domT <= 0) { domT = 0.12; updateDom(s); }
@@ -270,7 +280,7 @@ export function createHud() {
       rctx.beginPath(); rctx.rect(q.x - z, q.y - z, z * 2, z * 2);
       rctx.fillStyle = t.kind === "sam" || t.kind === "flak" ? "#ff3a2a" : "#ff5a48"; rctx.fill(); outline(1.2);
     }
-    for (const m of s.missiles) if (m.active) { const q = toScope(m.p); rctx.beginPath(); rctx.arc(q.x, q.y, 2.4 * u, 0, 7); rctx.fillStyle = "#ffffff"; rctx.fill(); outline(1); }
+    for (const m of s.missiles) if (m.active) { const q = toScope(m.p); rctx.beginPath(); rctx.arc(q.x, q.y, (3.2 + 1.2 * Math.sin(sweep * 4)) * u, 0, 7); rctx.fillStyle = "#ff2a2a"; rctx.fill(); outline(1); rctx.strokeStyle = "rgba(255,60,60,.7)"; rctx.lineWidth = 1.2 * u; rctx.beginPath(); rctx.arc(q.x, q.y, (6 + 2 * Math.sin(sweep * 4)) * u, 0, 7); rctx.stroke(); }
     // enemy planes: red triangles pointing along their heading
     for (const t of s.targets) {
       if (!t.alive || t.kind !== "jet") continue;

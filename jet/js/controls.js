@@ -30,7 +30,7 @@ export function createControls() {
   const look = { yaw: 0, pitch: 0 };
   const keys = new Set();
   let gyroOn = false, gotGyroEvent = false, tiltPref = false, permOk = false; try { tiltPref = localStorage.getItem("jet-tilt-v2") === "1"; } catch { /* ignore */ }
-  let invertPitch = false; try { invertPitch = localStorage.getItem("jet-invert-v2") === "1"; } catch { /* ignore */ }
+  let invertPitch = false; try { invertPitch = localStorage.getItem("jet-invert-v3") === "1"; } catch { /* ignore */ }
   let rawPitch = 0, rawRoll = 0, smPitch = 0, smRoll = 0;
   let zeroPitch = 35, zeroRoll = 0, wantCal = true, calAt = 0;
   let mslHeld = false, bombHeld = false, gunHeld = false, rocketEdge = false, bombEdge = false, viewEdge = false, boostKey = false;
@@ -187,7 +187,7 @@ export function createControls() {
     const pv = stick.pitch, rl = stick.roll;
     // pulled back (pitch > 0, nose up) = grip moves DOWN toward the pilot; right roll = grip moves right and leans right.
     // Driven by the final combined input (thumb + tilt + keys) every frame. SVG attribute transforms work on every browser (iOS included).
-    const pd = invertPitch ? 1 : -1;   // grip moves exactly like the thumb: default push up = nose up = grip up
+    const pd = invertPitch ? -1 : 1;   // real-jet style: default pull toward the pilot (grip DOWN) = nose up
     const gx = rl * 26, gy = pv * 26 * pd, lean = -8 + rl * 16 + pv * 3;
     gripEl.setAttribute("transform", `translate(${gx.toFixed(1)} ${gy.toFixed(1)}) rotate(${lean.toFixed(1)} 100 100) scale(${(1 + Math.abs(pv) * 0.05 + Math.abs(rl) * 0.03).toFixed(3)})`);
     // the shadow lags the grip and slides away from it (grip rises toward the viewer when deflected)
@@ -204,14 +204,14 @@ export function createControls() {
       const dz = C.tiltDeadZoneDeg;
       dp = Math.abs(dp) < dz ? 0 : dp - Math.sign(dp) * dz;
       dr = Math.abs(dr) < dz ? 0 : dr - Math.sign(dr) * dz;
-      tp = (-dp / C.tiltRangePitchDeg) * (invertPitch ? -1 : 1);   // top of phone up (pitch angle falls) = nose up (flipped by INVERT)
+      tp = (dp / C.tiltRangePitchDeg) * (invertPitch ? -1 : 1);   // top of phone up (pitch angle falls) = nose up (flipped by INVERT)
       tr = dr / C.tiltRangeRollDeg;
     }
     // joystick (spring back when released)
     if (!joy.active) { const k = Math.exp(-dt * C.stickReturn); joy.x *= k; joy.y *= k; }
-    const jp = (invertPitch ? joy.y : -joy.y), jr = joy.x;
+    const jp = (invertPitch ? -joy.y : joy.y), jr = joy.x;
     let kp = 0, kr = 0;
-    const kd = invertPitch ? -1 : 1;
+    const kd = invertPitch ? 1 : -1;
     if (keys.has("w") || keys.has("arrowup")) kp += kd;
     if (keys.has("s") || keys.has("arrowdown")) kp -= kd;
     if (keys.has("a") || keys.has("arrowleft")) kr -= 1;
@@ -257,7 +257,7 @@ export function createControls() {
     },
     calibrate() { wantCal = true; },
     invertOn: () => invertPitch,
-    setInvert(v) { invertPitch = !!v; try { localStorage.setItem("jet-invert-v2", invertPitch ? "1" : "0"); } catch { /* ignore */ } },
+    setInvert(v) { invertPitch = !!v; try { localStorage.setItem("jet-invert-v3", invertPitch ? "1" : "0"); } catch { /* ignore */ } },
     _joy(x, y) { if (x == null) { joy.active = false; return; } joy.active = true; joy.x = x; joy.y = y; },
     // test hooks
     _setTilt(p, r) { gyroOn = true; gotGyroEvent = true; rawPitch = smPitch = zeroPitch + p; rawRoll = smRoll = zeroRoll + r; },

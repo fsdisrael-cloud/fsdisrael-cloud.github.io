@@ -1,15 +1,15 @@
 // Ubu game world: flight model, camera, targets, AI, weapons, effects, objectives.
-import { createPost } from "./post.js?v=20";
+import { createPost } from "./post.js?v=21";
 import * as THREE from "three";
-import { buildTerrain } from "./terrain.js?v=20";
-import { createSky } from "./sky.js?v=20";
-import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createAlienWalker, createAlienTurret, createAlienSpire, createHive, createShip, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=20";
-import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=20";
-import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=20";
-import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=20";
-import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=20";
-import { setQuality, FX as FXQ } from "./tex.js?v=20";
-import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=20";
+import { buildTerrain } from "./terrain.js?v=21";
+import { createSky } from "./sky.js?v=21";
+import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createAlienWalker, createAlienTurret, createAlienSpire, createHive, createShip, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=21";
+import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=21";
+import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=21";
+import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=21";
+import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=21";
+import { setQuality, FX as FXQ } from "./tex.js?v=21";
+import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=21";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V(), tE = V();
@@ -185,7 +185,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   // CCIP ground ring
   const ccipRing = new THREE.Mesh(new THREE.RingGeometry(14, 20, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff8a2a, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide }));
   ccipRing.visible = false; scene.add(ccipRing);
-  const ccipLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -1)]), new THREE.LineBasicMaterial({ color: 0xff9a40, transparent: true, opacity: 0.4, depthWrite: false }));
+  const ccipLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -1)]), new THREE.LineBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.9, depthWrite: false, depthTest: false, fog: false }));
   ccipLine.frustumCulled = false; ccipLine.visible = false; scene.add(ccipLine);
 
   // ---------- effects ----------
@@ -342,6 +342,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     return null;
   }
   // silhouette glow: back-face shell expanded in SCREEN space (constant pixel width whatever the model scale); faint close up, strong far away
+  let aimPos = null;   // where the bomb aim marker sits (snapped target or raw impact point)
   let bombLock = null;   // ground target the bomb aim marker is snapped to
   const GLOW_KINDS = new Set(["jet", "tank", "sam", "ship", "drone", "flak"]);
   const glowVp = { value: new THREE.Vector2(innerWidth, innerHeight) };
@@ -1301,6 +1302,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   function damagePlayer(n, msg) {
     if (ended || crashing || elapsed < invulnUntil) return;
     if (assist) n *= 0.45 * (1 - 0.45 * ezv());
+    if (n < 0.6) { player.hp -= n; stats.damage += n; return; }   // scratch damage: no hurt sound / flinch
     player.hp -= n; stats.damage += n; lastDamage = elapsed; bumpSkill(-0.004 * n); invulnUntil = Math.max(invulnUntil, elapsed + 0.35);
     shake = Math.max(shake, 0.5);
     audio.hurt(); haptics.pulse(); events.onHurt?.();
@@ -1484,10 +1486,10 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   function launchSam(site, from) {
     const m = missiles.find((x) => !x.active);
     if (!m) return;
-    m.active = true; m.life = 9; m.decoy = null;
+    m.active = true; m.life = ezv() >= 0.6 ? 16 : 9; m.decoy = null;
     m.p.copy(site.pos).add(tA.set(0, from === "jet" ? -1 : 7, 0));
-    if (from === "jet") m.v.copy(site.vel).setLength(Math.max(260, site.speed + 90));
-    else m.v.set(0, 140, 0);
+    if (from === "jet") m.v.copy(site.vel).setLength(ezv() >= 0.6 ? 150 : Math.max(260, site.speed + 90));
+    else m.v.set(0, ezv() >= 0.6 ? 90 : 140, 0);
     m.o.visible = true;
     audio.warn();
     setAlert("Missile! Turn hard!", 1.5);
@@ -1538,10 +1540,11 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   function rwrUpdate(dt) {
     let dm = 1e9;
     for (const m of missiles) if (m.active && !m.decoy) dm = Math.min(dm, m.p.distanceTo(player.pos));
-    if (dm > 2600 || crashing) { rwrT = 0; return; }
+    if (dm > 1100 || crashing) { rwrT = 0; return; }   // b21: silent unless a missile is actually close; beeps speed up and rise as it nears
     rwrT -= dt;
-    if (rwrT <= 0) { const k = THREE.MathUtils.clamp(dm / 2600, 0, 1); rwrT = 0.22 + k * 0.9; audio.rwr?.(0.04 + (1 - k) * 0.1, 820 + (1 - k) * 380); }
+    if (rwrT <= 0) { const k = THREE.MathUtils.clamp(dm / 1100, 0, 1); rwrT = 0.1 + k * 0.7; audio.rwr?.(0.03 + (1 - k) * 0.09, 700 + (1 - k) * 700); }
   }
+  const maxMsl = () => (ezv() >= 0.6 ? 1 : 3);   // early levels: at most one enemy missile in flight
   const airMissiles = () => missiles.reduce((n, m) => n + (m.active ? 1 : 0), 0);
   // flak: shells that burst near the player (fuse set from range)
   function flakShot(origin, spread, burstsAt) {
@@ -1558,13 +1561,14 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     for (let i = 0; i < 3; i++) puff(p, tA.set((Math.random() - 0.5) * 14, (Math.random() - 0.5) * 14, (Math.random() - 0.5) * 14), 4, 16, 1.8, 0x25252b);
     const d = p.distanceTo(player.pos);
     audio.explosion(0.3, d);
-    if (d < 55 && !crashing && elapsed > invulnUntil) { damagePlayer(Math.round(7 * Math.max(0.5, L.hostile) * (1 - d / 80)) + 2, "Flak!"); shake = Math.max(shake, 0.8); }
+    if (d < 55 && !crashing && elapsed > invulnUntil) { damagePlayer((Math.round(7 * Math.max(0.5, L.hostile) * (1 - d / 80)) + 2) * gunDmgK(), ezv() >= 0.6 ? null : "Flak!"); shake = Math.max(shake, 0.8); }
   }
 
   // ---------- per-frame update ----------
   function update(dt) {
     if (!running) return;
     if (slowT > 0) { slowT -= dt; dt *= 0.3; }
+    dt *= wcSlow;
     elapsed += dt;
     if (L.baseHostile === undefined) L.baseHostile = L.hostile;
     L.hostile = L.baseHostile * Math.min(1, 0.2 + elapsed / 150 + L.difficulty * 0.55) * (1 - 0.75 * ezv());
@@ -1654,7 +1658,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     }
     // bomb auto-lock: the ground target closest to the impact point (or to the nose) gets the aim marker; bombs are guided onto it
     bombLock = (allowed.includes("bomb") && player.bombs > 0 && !crashing && !nearPad) ? pickBombLock(ccip) : null;
-    const aimP = bombLock ? bombLock.pos : ccip;
+    const aimP = bombLock ? bombLock.pos : ccip; aimPos = aimP ? aimP.clone() : null;
     ccipRing.visible = !!aimP && aimP.distanceTo(player.pos) < 4500;
     if (ccipRing.visible) { ccipRing.position.copy(aimP).add(tA.set(0, bombLock ? bombLock.radius * 0.4 + 2 : 2, 0)).add(tA.set(0, 2, 0)); ccipRing.scale.setScalar(1 + 0.15 * Math.sin(elapsed * 6)); }
     ccipLine.visible = ccipRing.visible;
@@ -1755,7 +1759,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
           if (rng() < dt * 0.3) puff(tA.copy(t.pos).add(tB.set(0, 2, 0)), tC.set(0, 4, 0), 2, 6, 1.4, 0xb9a986);
           if (hostile > 0 && t.pos.distanceTo(player.pos) < 2300) {
             t.cool -= dt * hostile;
-            if (t.cool <= 0) { t.cool = 3.4; flakShot(tA.copy(t.pos).add(tB.set(0, 4, 0)), 0.05); }
+            if (t.cool <= 0) { t.cool = 3.4 * fireK(); flakShot(tA.copy(t.pos).add(tB.set(0, 4, 0)), 0.05); }
           }
           break;
         }
@@ -1769,7 +1773,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
           if (rng() < dt * 2) puff(tA.copy(t.pos).add(tB.set(-Math.sin(t.heading) * 20, 1, -Math.cos(t.heading) * 20)), null, 3, 9, 1.8, 0xffffff);
           // anti-air tracers
           const d = t.pos.distanceTo(player.pos);
-          if (hostile > 0 && d < 1500) { t.cool -= dt; if (t.cool <= 0) { t.cool = 0.12; if (Math.sin(t.t * 2) > 0.2) enemyShot(tA.copy(t.pos).add(tB.set(0, 10, 0)), 0.09 * (1.6 - hostile)); } }
+          if (hostile > 0 && d < 1500) { t.cool -= dt; if (t.cool <= 0) { t.cool = 0.12 * fireK() * 1.4; if (Math.sin(t.t * 2) > 0.2) enemyShot(tA.copy(t.pos).add(tB.set(0, 10, 0)), 0.09 * (1.6 - hostile)); } }
           break;
         }
         case "sam": {
@@ -1779,7 +1783,8 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
           const d = tA.length();
           if (hostile > 0 && d < 4200) {
             t.cool -= dt * hostile;
-            if (t.cool <= 0 && airMissiles() < 3) { t.cool = (7 - L.difficulty * 3) * (1 + 1.6 * ezv()); launchSam(t); }
+            const lk = lockRamp(t, dt, Math.abs(player.bank) < 0.45);   // b21: SAM needs a slow lock, any hard turn breaks it
+            if (t.cool <= 0 && lk && airMissiles() < maxMsl()) { t.cool = (7 - L.difficulty * 3) * (1 + 1.6 * ezv()) * (ezv() >= 0.6 ? 2 : 1); launchSam(t); }
           }
           break;
         }
@@ -1792,7 +1797,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
             t.cool -= dt * hostile;
             if (t.cool <= 0) {
               if (!t.burst) t.burst = 4;
-              t.burst--; t.cool = t.burst > 0 ? 0.22 : 2.4;
+              t.burst--; t.cool = (t.burst > 0 ? 0.22 : 2.4) * fireK();
               flakShot(tA.copy(t.pos).add(tB.set(0, 5, 0)), 0.035 * (1.7 - hostile));
             }
           }
@@ -1856,15 +1861,23 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (!t.flyby && hostile > 0 && dist < 1100) {
       const ang = tC.angleTo(tA.normalize());
       t.cool -= dt;
-      if (ang < 0.16 && t.cool <= 0) { t.burst = assist ? 4 : 6; t.cool = (2.2 - hostile) * (assist ? 1.6 : 1); }
-      if (hostile > 0.55 && dist > 700 && dist < 2600 && ang < 0.5 && (t.mcool -= dt) <= 0 && airMissiles() < 3) { t.mcool = 11 - hostile * 4 + Math.random() * 4; launchSam({ pos: t.pos, vel: t.vel, speed: t.speed }, "jet"); }
+      if (ang < 0.16 && t.cool <= 0) { t.burst = assist ? 2 : 4; t.cool = (2.2 - hostile) * (assist ? 1.6 : 1) * fireK(); }
+      const lkJ = lockRamp(t, dt, hostile > 0.55 && dist > 700 && dist < 2600 && ang < 0.4 && Math.abs(player.bank) < 0.45);
+      if (lkJ && (t.mcool -= dt) <= 0 && airMissiles() < maxMsl()) { t.mcool = (11 - hostile * 4 + Math.random() * 4) * (ezv() >= 0.6 ? 2 : 1); launchSam({ pos: t.pos, vel: t.vel, speed: t.speed }, "jet"); }
       if (t.burst > 0 && (t.bc = (t.bc || 0) - dt) <= 0) { t.burst--; t.bc = 0.09; enemyShot(tD.copy(t.pos).addScaledVector(tC, 6), 0.05 * (1.7 - hostile) * (assist ? 1.6 : 1)); }
     }
   }
+  // b21: enemies fire far less: slower rates (x3 on levels 1-3, x2.4 at level 10, easing back to x1.3), fewer live shots at once
+  // beginner levels: enemy guns / flak are basically harmless; missiles are the only real threat
+  function gunDmgK() { return ezv() >= 0.6 ? 0.03 : 0.5; }
+  // enemy missile lock: builds slowly while the player flies straight and level at them, decays 3x faster when he turns
+  function lockRamp(t, dt, cond) { t.elk = cond ? (t.elk || 0) + dt : Math.max(0, (t.elk || 0) - dt * 3); return t.elk >= (ezv() >= 0.6 ? 5 : 2.5); }
+  function fireK() { return 1.3 + 1.7 * ezv(); }
   function enemyShot(origin, spread) {
+    { let live = 0; for (const b of bullets) if (b.enemy && !b.atAlly) live++; if (live >= (ezv() > 0.5 ? 5 : 9)) return; }
     const lead = origin.distanceTo(player.pos) / 800;
     tA.copy(player.pos).addScaledVector(player.vel, lead * 0.8).sub(origin).normalize();
-    spread *= 1 + 2.5 * ezv();
+    spread *= 1 + 6 * ezv();   // beginner levels: tracers fly mostly wide of the jet
     tA.x += (Math.random() - 0.5) * spread * 2; tA.y += (Math.random() - 0.5) * spread * 2; tA.z += (Math.random() - 0.5) * spread * 2;
     bullets.push({ p: origin.clone(), v: tA.normalize().multiplyScalar(800), life: 1.8, enemy: true });
   }
@@ -1872,14 +1885,22 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   // ---------- weapon camera (green circle under the radar) ----------
   // A small off-screen render of the latest missile / bomb, chasing it until it hits (explosion hold) or misses (fade out).
   const WC = { state: "idle", obj: null, label: "", t: 0, canvas: null, ctx: null, rt: null, buf: null, img: null, lastDraw: 0, lastP: V(), lastV: V(), camP: V(), cam: null, lut: null, dist: 0, flash: 0 };
-  const WCS = 160;
+  let WCS = 160;   // b21: resized to the on-screen size x device pixel ratio (sharp, no low-res render target)
+  let wcSlow = 1;   // slow-mo factor for the last moments before a weapon hits
   function attachWeaponCam(canvas) {
     WC.canvas = canvas; canvas.width = canvas.height = WCS; WC.ctx = canvas.getContext("2d");
     WC.cam = new THREE.PerspectiveCamera(62, 1, 0.5, 20000);
-    WC.rt = new THREE.WebGLRenderTarget(WCS, WCS, { depthBuffer: true });
-    WC.buf = new Uint8Array(WCS * WCS * 4); WC.img = WC.ctx.createImageData(WCS, WCS);
+    wcResize(true);
     WC.lut = new Uint8Array(256); for (let i = 0; i < 256; i++) WC.lut[i] = Math.min(255, Math.round(255 * Math.pow(Math.min(1, (i / 255) * 1.5), 0.45)));
     wcStandby();
+  }
+  function wcResize(force) {
+    const css = WC.canvas.clientWidth || 120, want = Math.max(220, Math.min(440, Math.round(css * Math.min(3, window.devicePixelRatio || 1))));
+    if (!force && want === WCS) return;
+    WCS = want; WC.canvas.width = WC.canvas.height = WCS;
+    if (WC.rt) WC.rt.dispose();
+    WC.rt = new THREE.WebGLRenderTarget(WCS, WCS, { depthBuffer: true, samples: 4 });
+    WC.buf = new Uint8Array(WCS * WCS * 4); WC.img = WC.ctx.createImageData(WCS, WCS); WC.b32 = new Uint32Array(WC.buf.buffer); WC.d32 = new Uint32Array(WC.img.data.buffer);
   }
   function wcStandby() {
     const c = WC.ctx; if (!c) return;
@@ -1892,13 +1913,16 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   const wcQ = [];
   function wcNext() { while (wcQ.length) { const q = wcQ.shift(); if (q.obj.active || q.obj.result == null) { wcStart(q.obj, q.label); return true; } } return false; }
   function watchWeapon(obj, label) { if (WC.state === "follow" || WC.state === "boom") wcQ.push({ obj, label }); else wcStart(obj, label); }
-  function wcStart(obj, label) { WC.obj = obj; WC.label = label; WC.state = "follow"; WC.t = 0; WC.lastP.copy(obj.p); WC.lastV.copy(obj.v); WC.camP.copy(obj.p); }
+  function wcStart(obj, label) { wcResize(false); WC.obj = obj; WC.label = label; WC.state = "follow"; WC.t = 0; WC.lastP.copy(obj.p); WC.lastV.copy(obj.v); WC.camP.copy(obj.p); }
   function updateWeaponCam(dt) {
+    // slow-mo for the last ~0.45 s (game time) before impact, and briefly into the explosion
+    { let want = 1; if (WC.state === "follow" && WC.obj && WC.obj.active && WC.tgt && WC.tgt.alive) { const sp = Math.max(60, WC.obj.v.length()); if (WC.dist / sp < 0.45) want = 0.38; } else if (WC.state === "boom" && WC.t < 0.5) want = 0.45;
+      wcSlow += (want - wcSlow) * Math.min(1, 6 * dt / Math.max(0.05, wcSlow)); }
     if (WC.state === "idle" || !WC.canvas) return;
     WC.t += dt;
     if (WC.state === "follow") {
       const o = WC.obj;
-      if (o.active) { WC.lastP.copy(o.p); WC.lastV.copy(o.v); tA.copy(o.v).normalize(); WC.camP.copy(o.p).addScaledVector(tA, -15).add(tB.set(0, 3.2, 0)); WC.dist = o.target && o.target.alive ? o.target.pos.distanceTo(o.p) : 0; WC.tgt = o.target && o.target.alive ? o.target : null; }
+      if (o.active) { WC.lastP.copy(o.p); WC.lastV.copy(o.v); tA.copy(o.v).normalize(); tC.crossVectors(tA, tB.set(0, 1, 0)).normalize(); WC.camP.copy(o.p).addScaledVector(tA, -16).addScaledVector(tC, 3.4).add(tB.set(0, 2.4, 0)); WC.dist = o.target && o.target.alive ? o.target.pos.distanceTo(o.p) : 0; WC.tgt = o.target && o.target.alive ? o.target : null; }
       else { WC.state = o.result === "hit" ? "boom" : "fade"; WC.t = 0; if (WC.state === "fade" && wcNext()) return; }
     } else if (WC.state === "boom") { if (WC.t > (wcQ.length ? 0.9 : 1.6)) { if (!wcNext()) { WC.state = "fade"; WC.t = 0; } } }
     else if (WC.state === "fade") { if (WC.t > 0.9) { if (!wcNext()) { WC.state = "idle"; wcStandby(); } } }
@@ -1906,7 +1930,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   function renderWeaponCam() {
     if (WC.state === "idle" || !WC.canvas) return;
     const now = performance.now();
-    if (now - WC.lastDraw < 66) return;
+    if (now - WC.lastDraw < 33) return;
     WC.lastDraw = now;
     const cam = WC.cam;
     cam.position.copy(WC.camP);
@@ -1916,33 +1940,57 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
         // look at the target and zoom so the tank / ship / jet stays recognisable as the weapon closes in
         cam.lookAt(WC.tgt.pos);
         const dd = Math.max(25, WC.tgt.pos.distanceTo(WC.camP));
-        fov = THREE.MathUtils.clamp(2 * Math.atan((Math.max(6, WC.tgt.radius) * 3.4) / dd) * 57.3, 7, 50);
+        fov = THREE.MathUtils.clamp(2 * Math.atan((Math.max(7, WC.tgt.radius) * 1.9) / dd) * 57.3, 4, 38);   // narrow: target fills the view and zooms in as it closes
       } else cam.lookAt(tA.copy(WC.lastP).addScaledVector(tB.copy(WC.lastV).normalize(), 40));
     } else cam.lookAt(WC.lastP);
-    if (Math.abs(cam.fov - fov) > 0.2) { cam.fov += (fov - cam.fov) * 0.5; cam.updateProjectionMatrix(); }
+    if (Math.abs(cam.fov - fov) > 0.05) { cam.fov += (fov - cam.fov) * 0.6; cam.updateProjectionMatrix(); }
     const rtPrev = renderer.getRenderTarget(), pr = outlineUniforms.uRes.value.clone();
     outlineUniforms.uRes.value.set(WCS * 2.2, WCS * 2.2);
     const wasMuz = muzzle.visible; muzzle.visible = false;
+    const hid = []; for (const rb of rbLive) if (rb.add && rb.mesh.visible) { rb.mesh.visible = false; hid.push(rb); }   // the weapon's own additive flame must not white-out its camera
     renderer.setRenderTarget(WC.rt); renderer.render(scene, cam); renderer.readRenderTargetPixels(WC.rt, 0, 0, WCS, WCS, WC.buf);
     renderer.setRenderTarget(rtPrev); outlineUniforms.uRes.value.copy(pr); muzzle.visible = wasMuz;
-    const b = WC.buf, d = WC.img.data, lut = WC.lut, night = L && L.time === "night" ? 1.6 : 1;
-    for (let y = 0; y < WCS; y++) {
-      const sy = WCS - 1 - y, sl = (y & 1) ? 0.82 : 1;
-      for (let x = 0; x < WCS; x++) {
-        const i = (sy * WCS + x) * 4, o = (y * WCS + x) * 4;
-        const l = Math.min(255, (b[i] * 0.3 + b[i + 1] * 0.59 + b[i + 2] * 0.11) * night);
-        const g = lut[l | 0] * sl, n = (Math.random() - 0.5) * 14;
-        d[o] = g * 0.16 + n * 0.2; d[o + 1] = Math.min(255, g * 1.05 + n); d[o + 2] = g * 0.32 + n * 0.3; d[o + 3] = 255;
+    for (const rb of hid) rb.mesh.visible = true;
+    {
+      // green-tinted scene; the target itself stays full colour, brighter and high-contrast inside a focus circle (plus brackets drawn below)
+      const bf = WC.buf, dt8 = WC.img.data, n = WCS; let fx = -1, fy = -1, fr = 0;
+      if (WC.state === "follow" && WC.tgt && WC.tgt.alive) {
+        tC.copy(WC.tgt.pos).project(cam);
+        if (tC.z < 1 && tC.z > -1) { fx = (tC.x * 0.5 + 0.5) * n; fy = (0.5 - tC.y * 0.5) * n; const dd = Math.max(5, WC.tgt.pos.distanceTo(WC.camP)); fr = Math.max(n * 0.1, (Math.max(5, WC.tgt.radius) * 1.15 / dd) * (n / 2) / Math.tan(cam.fov * Math.PI / 360)); fr = Math.min(fr, n * 0.46); }
+      }
+      WC.fx = fx; WC.fy = fy; WC.fr = fr;
+      const night = L && L.time === "night" ? 1.5 : 1;
+      for (let y = 0; y < n; y++) {
+        const sy = n - 1 - y;
+        for (let x = 0; x < n; x++) {
+          const i4 = (sy * n + x) * 4, o4 = (y * n + x) * 4;
+          const r = bf[i4], g = bf[i4 + 1], bl = bf[i4 + 2], l = Math.min(255, (r * 0.3 + g * 0.59 + bl * 0.11) * night);
+          let m = 0;
+          if (fr > 0) { const dx = x - fx, dy = y - fy, dr = Math.sqrt(dx * dx + dy * dy); m = dr < fr ? 1 : dr < fr * 1.35 ? 1 - (dr - fr) / (fr * 0.35) : 0; }
+          const tr = l * 0.2, tg = Math.min(255, l * 0.95 + 14), tb = l * 0.3;   // phosphor green
+          const k = 1.18, cr = Math.min(255, (r * night - 110) * k + 120), cg = Math.min(255, (g * night - 110) * k + 120), cb = Math.min(255, (bl * night - 110) * k + 120);   // contrast boost on the target
+          dt8[o4] = tr + (cr - tr) * m; dt8[o4 + 1] = tg + (cg - tg) * m; dt8[o4 + 2] = tb + (cb - tb) * m; dt8[o4 + 3] = 255;
+        }
       }
     }
     const c = WC.ctx; c.putImageData(WC.img, 0, 0);
-    c.strokeStyle = "rgba(150,255,170,0.85)"; c.lineWidth = 1.2; c.beginPath();
-    for (const [x0, y0, x1, y1] of [[-24, 0, -10, 0], [10, 0, 24, 0], [0, -24, 0, -10], [0, 10, 0, 24]]) { c.moveTo(WCS / 2 + x0, WCS / 2 + y0); c.lineTo(WCS / 2 + x1, WCS / 2 + y1); }
+    const K = WCS / 160;
+    if (WC.fr > 0) {   // target brackets
+      const x0 = WC.fx - WC.fr * 1.1, x1 = WC.fx + WC.fr * 1.1, y0 = WC.fy - WC.fr * 1.1, y1 = WC.fy + WC.fr * 1.1, q = WC.fr * 0.35;
+      c.strokeStyle = "rgba(255,230,120,0.95)"; c.lineWidth = 2 * K; c.beginPath();
+      for (const [px, py, sx, sy] of [[x0, y0, 1, 1], [x1, y0, -1, 1], [x0, y1, 1, -1], [x1, y1, -1, -1]]) { c.moveTo(px + sx * q, py); c.lineTo(px, py); c.lineTo(px, py + sy * q); }
+      c.stroke();
+    }
+    c.strokeStyle = "rgba(150,255,170,0.8)"; c.lineWidth = 1.2 * K; c.beginPath();
+    for (const [x0, y0, x1, y1] of [[-30, 0, -20, 0], [20, 0, 30, 0], [0, -30, 0, -20], [0, 20, 0, 30]]) { c.moveTo(WCS / 2 + x0 * K, WCS / 2 + y0 * K); c.lineTo(WCS / 2 + x1 * K, WCS / 2 + y1 * K); }
     c.stroke();
-    c.fillStyle = "rgba(160,255,180,0.95)"; c.font = "bold 11px monospace"; c.textAlign = "center";
-    c.fillText(WC.label, WCS / 2, 20);
+    c.shadowColor = "rgba(0,0,0,.9)"; c.shadowBlur = 3 * K;
+    c.fillStyle = "rgba(160,255,180,0.95)"; c.font = "bold " + Math.round(11 * K) + "px monospace"; c.textAlign = "center";
+    c.fillText(WC.label, WCS / 2, 20 * K);
+    if (WC.state === "follow" && WC.tgt && WC.tgt.alive) { const nm = { tank: "TANK", jeep: "JEEP", flak: "FLAK", sam: "SAM", base: "BASE", jet: "JET", ship: "SHIP", drone: "DRONE", ally: "ALLY" }[WC.tgt.kind] || String(WC.tgt.kind || "").toUpperCase(); c.fillStyle = "rgba(255,230,120,1)"; c.fillText(nm, WCS / 2, 33 * K); }
     c.fillStyle = WC.state === "boom" ? "rgba(255,200,120,1)" : "rgba(160,255,180,0.95)";
-    c.fillText(WC.state === "follow" ? (WC.dist > 0 ? Math.round(WC.dist) + " M" : "TRACKING") : WC.state === "boom" ? "IMPACT" : "LOST", WCS / 2, WCS - 14);
+    c.fillText(WC.state === "follow" ? (WC.dist > 0 ? Math.round(WC.dist) + " M" : "TRACKING") : WC.state === "boom" ? "IMPACT" : "LOST", WCS / 2, WCS - 14 * K);
+    c.shadowBlur = 0;
     WC.canvas.dataset.live = "1";
     WC.canvas.style.opacity = WC.state === "fade" ? Math.max(0, 1 - WC.t / 0.9).toFixed(2) : 1;
   }
@@ -1966,7 +2014,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
           for (const t of targets) if (t.alive && segSphere(p0, b.p, t.pos, t.radius * 1.3 + 2)) { damageTarget(t, b.dmg || 0.8, "ally"); dead = true; break; }
           if (!dead && b.p.y < groundAt(b.p.x, b.p.z)) dead = true;
         } else if (b.enemy) {
-          if (segSphere(p0, b.p, player.pos, assist ? 5.5 : 8)) { dead = true; damagePlayer(1.6 * Math.max(0.4, L.hostile)); audio.hit(); }
+          if (segSphere(p0, b.p, player.pos, assist ? 5.5 : 8)) { dead = true; damagePlayer(1.6 * Math.max(0.4, L.hostile) * gunDmgK()); audio.hitFar?.(); }
         } else {
           for (const t of targets) {
             if (t.alive && segSphere(p0, b.p, t.pos, t.radius * 1.3 + 2)) { damageTarget(t, 1, "gun"); audio.hit(); dead = true; break; }
@@ -2041,8 +2089,9 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       tA.copy(m.decoy ? m.decoy.p : player.pos).sub(m.p);
       const d = tA.length();
       tA.normalize();
-      const sp = Math.min(270, m.v.length() + dt * 90);
-      tB.copy(m.v).normalize().lerp(tA, Math.min(1, dt * (m.decoy ? 3.4 : 0.95))).normalize();
+      const kidM = ezv() >= 0.6, sp = Math.min(kidM ? 165 : 270, m.v.length() + dt * (kidM ? 40 : 90));
+      tB.copy(m.v).normalize().lerp(tA, Math.min(1, dt * (m.decoy ? 3.4 : kidM ? 0.38 : 0.95))).normalize();   // beginner: slow missile, wide turns
+
       m.v.copy(tB).multiplyScalar(sp);
       m.p.addScaledVector(m.v, dt);
       m.o.position.copy(m.p);
@@ -2053,7 +2102,6 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       if (d < 30 && m.decoy) { m.active = false; m.o.visible = false; explode(m.p.clone(), 8, 0.5); }
       else if (d < 16) { m.active = false; m.o.visible = false; explode(m.p.clone(), 10, 0.8); damagePlayer((14 + 10 * L.hostile) * (assist ? 0.55 : 1), "Ouch! Missile hit"); }
       else if (m.life <= 0 || m.p.y < groundAt(m.p.x, m.p.z)) { m.active = false; m.o.visible = false; puff(m.p, null, 4, 14, 1.5, 0x888888); }
-      else if ((m.beep = (m.beep || 0) - dt) <= 0) { m.beep = d < 1200 ? 0.35 : 0.8; audio.warn(); }
     }
     for (const b of bombs) {
       if (!b.active) { if (b.rb) { rbStop(b.rb); b.rb = null; } continue; }
@@ -2213,7 +2261,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   function hudState() {
     return {
       throttle, combo, recover, gload, tier: tierOf(), player, targets, rings, progress, objectives: L?.objectives || [], timeLeft, score, viewMode,
-      lockTarget, lockCand, lockTime, track: trackOn, ccip, alert: alertMsg, camera, missiles, half, center, elapsed,
+      lockTarget, lockCand, lockTime, track: trackOn, ccip, bombAim: aimPos, bombLocked: !!bombLock, alert: alertMsg, camera, missiles, half, center, elapsed,
       fwd: player ? fwdFrom(player.yaw, player.pitch, V()) : null,
       heat, overheated, crashing: !!crashing, pad, baseCenters, landingOpen, landing: !!landing, autoGun, rack: RACK, rockets: player ? player.rockets : 0, bombs: player ? player.bombs : 0,
       rocketRefill: player && player.rockets < RACK ? rocketRegen / ROCKET_REGEN : 0, bombRefill: player && player.bombs < RACK ? bombRegen / BOMB_REGEN : 0, rocketCd: Math.max(0, rocketCd), bombCd: Math.max(0, bombCd), endless, allies, lowAlt, maneuver: maneuver ? maneuver.dir : 0,
