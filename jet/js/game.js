@@ -1,15 +1,15 @@
 // Ubu game world: flight model, camera, targets, AI, weapons, effects, objectives.
-import { createPost } from "./post.js?v=18";
+import { createPost } from "./post.js?v=19";
 import * as THREE from "three";
-import { buildTerrain } from "./terrain.js?v=18";
-import { createSky } from "./sky.js?v=18";
-import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createAlienWalker, createAlienTurret, createAlienSpire, createHive, createShip, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=18";
-import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=18";
-import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=18";
-import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=18";
-import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=18";
-import { setQuality, FX as FXQ } from "./tex.js?v=18";
-import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=18";
+import { buildTerrain } from "./terrain.js?v=19";
+import { createSky } from "./sky.js?v=19";
+import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createAlienWalker, createAlienTurret, createAlienSpire, createHive, createShip, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=19";
+import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=19";
+import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=19";
+import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=19";
+import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=19";
+import { setQuality, FX as FXQ } from "./tex.js?v=19";
+import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=19";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V(), tE = V();
@@ -278,11 +278,36 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     }
     return null;
   }
+  // silhouette glow: back-face shell expanded in SCREEN space (constant pixel width whatever the model scale); faint close up, strong far away
+  const GLOW_KINDS = new Set(["jet", "tank", "sam", "ship", "drone", "flak"]);
+  const glowVp = { value: new THREE.Vector2(innerWidth, innerHeight) };
+  function addGlow(t) {
+    if (!GLOW_KINDS.has(t.kind)) return;
+    const mat = new THREE.MeshBasicMaterial({ color: t.kind === "jet" || t.kind === "drone" ? 0xff3a2a : 0xff9a30, side: THREE.BackSide, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+    const u = { value: 1 }; mat.userData.px = u;
+    mat.onBeforeCompile = (sh) => {
+      sh.uniforms.uPx = u; sh.uniforms.uVp = glowVp;
+      sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nuniform float uPx; uniform vec2 uVp;").replace("#include <project_vertex>", "#include <project_vertex>\n{ vec3 gn = normalize(normalMatrix * normal); vec2 go = (projectionMatrix * vec4(gn, 0.0)).xy; if (length(go) > 1e-4) gl_Position.xy += normalize(go) * uPx * 2.0 / uVp * gl_Position.w; }");
+    };
+    const ms = [];
+    t.obj.traverse((m) => { if (m.isMesh && m.geometry && m.geometry.attributes.normal && !m.material.transparent) { if (!m.geometry.boundingSphere) m.geometry.computeBoundingSphere(); ms.push([m.geometry.boundingSphere.radius * Math.max(m.scale.x, m.scale.y, m.scale.z), m]); } });
+    ms.sort((a, b) => b[0] - a[0]);
+    for (const [, m] of ms.slice(0, 10)) { const c = new THREE.Mesh(m.geometry, mat); c.renderOrder = 2; c.frustumCulled = false; m.add(c); }
+    t.glow = mat;
+  }
+  function updateGlows() {
+    glowVp.value.set(innerWidth, innerHeight);
+    for (const t of targets) {
+      if (!t.glow) continue;
+      const d = camera.position.distanceTo(t.pos), k = THREE.MathUtils.clamp((d - 250) / 2600, 0, 1);
+      t.glow.opacity = 0.08 + 0.7 * k; t.glow.userData.px.value = 0.7 + 3.8 * k;
+    }
+  }
   function addTarget(kind, obj, pos, extra = {}) {
     obj.position.copy(pos);
     scene.add(obj);
     const t = { kind, obj, pos: obj.position, vel: V(), hp: HP[kind] || 5, alive: true, radius: obj.userData.radius || 10, objective: progress[kind] != null, heading: rng() * Math.PI * 2, cool: 2 + rng() * 4, t: rng() * 10, ...extra };
-    targets.push(t);
+    targets.push(t); addGlow(t);
     return t;
   }
 
@@ -795,9 +820,9 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   // ---------- FLIGHT ASSIST (default on): damped curved input, soft pitch/bank limits, auto-level, terrain avoidance, gentle aim ----------
   const _qI = new THREE.Quaternion(), _vB = new THREE.Vector3(), _vA = new THREE.Vector3();
   function assistFlight(dt, st) {
-    const cv = (v) => { const a = Math.abs(v); return Math.sign(v) * (0.72 * a * a * a + 0.28 * a * a); };   // strong expo: small stick = slow gentle moves, full stick = fast
-    aP += (cv(st.pitch) - aP) * (1 - Math.exp(-dt * 4.2));
-    aR += (cv(st.roll) - aR) * (1 - Math.exp(-dt * 3.6));
+    const cv = (v) => { const a = Math.max(0, (Math.abs(v) - 0.06) / 0.94); return Math.sign(v) * Math.pow(a, 2.3); };   // dead-zone + strong expo: small stick = tiny, full stick = full   // strong expo: small stick = slow gentle moves, full stick = fast
+    aP += (cv(st.pitch) - aP) * (1 - Math.exp(-dt * 3.2));
+    aR += (cv(st.roll) - aR) * (1 - Math.exp(-dt * 2.8));
     const ak = akv();
     // horizon recovery: upside down or nose-down too long -> the jet levels itself, whatever the stick says
     // deliberate maneuvers (loops, rolls, barrel rolls, inverted flight) are never fought: recovery only when the stick is released
@@ -833,17 +858,17 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     // soft pitch limit (about 55 degrees) so the nose never flips over
     const PL = 0.95;
     if (Math.abs(st.pitch) < 0.3 && player.pitch * pIn > 0 && Math.abs(player.pitch) > PL - 0.3) pIn *= Math.max(0, 1 - (Math.abs(player.pitch) - (PL - 0.3)) / 0.3);
-    let pitchRate = pIn * 1.45;
+    let pitchRate = pIn * 1.25;
     if (assistDanger > 0.02 && player.pitch < 0.7) pitchRate = Math.max(pitchRate, assistDanger * 2.1);
     // hands off: the nose drifts back toward the horizon
     if (recover > 0.05 && player.pitch < 0.7) pitchRate = Math.max(pitchRate, recover * 1.7);
-    if (!held && !player.inverted && assistDanger < 0.05) pitchRate -= THREE.MathUtils.clamp(player.pitch, -1, 1) * 0.85;
+    if (!held && !player.inverted && assistDanger < 0.05) pitchRate -= THREE.MathUtils.clamp(player.pitch, -1, 1) * 1.3;
     // roll: capped bank, strong wing-leveller when the stick is released (also rights an inverted jet)
-    let rr = aR * 2.1;
+    let rr = aR * 1.8;
     const BL = 0.95;
     if (Math.abs(st.roll) < 0.55 && !player.inverted && player.bank * rr > 0 && Math.abs(player.bank) > BL - 0.2) rr *= Math.max(0, 1 - (Math.abs(player.bank) - (BL - 0.2)) / 0.2);
     const hands = 1 - Math.min(1, Math.abs(aR) * 3);
-    if (!held || Math.abs(st.roll) < 0.12 && Math.abs(st.pitch) < 0.12) rr -= player.bank * ((0.55 + 1.6 * hands) * (0.7 + 0.5 * ak) + recover * 2.4);
+    if (!held || Math.abs(st.roll) < 0.12 && Math.abs(st.pitch) < 0.12) rr -= player.bank * ((0.75 + 2.2 * hands) * (0.7 + 0.5 * ak) + recover * 2.4);
     // gentle aim assist: ease the nose toward the nearest enemy in a wide cone, never fighting a firm stick
     let best = null, bs = 0.36 + 0.3 * ak, bl = _vB, tapMode = false;
     if (!nearPad) {
@@ -1259,7 +1284,9 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     b.target = bt;
     b.o.visible = true;
     watchWeapon(b, "BOMB");
-    audio.bomb();
+    audio.bombRelease(); events.toast?.("BOMB AWAY"); b.o.scale.setScalar(1.35);
+    for (let i = 0; i < 5; i++) puff(b.p, tB.set((Math.random() - 0.5) * 6, 2 + Math.random() * 3, (Math.random() - 0.5) * 6), 1, 5, 1.2, 0xdadde2);
+    fx(b.p, null, 6, 1, 0.18, 0xffe0a0, 0, 0);
   }
   function blast(p, radius, dmg) {
     for (const a of allies) {
@@ -1326,7 +1353,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     elapsed += dt;
     if (L.baseHostile === undefined) L.baseHostile = L.hostile;
     L.hostile = L.baseHostile * Math.min(1, 0.2 + elapsed / 150 + L.difficulty * 0.55);
-    rwrUpdate(dt);
+    rwrUpdate(dt); updateGlows();
     controls.update(dt);
     if (crashing) {
       // timer paused while the crash plays; level progress is kept
@@ -1812,7 +1839,9 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       if (b.p.y <= gh + 1 || near) {
         b.active = false; b.o.visible = false; b.result = "hit";
         b.p.y = Math.max(b.p.y, gh + 1);
-        explode(b.p.clone(), 20, 1.6);
+        explode(b.p.clone(), 28, 1.8); shock(b.p.clone(), 120);
+        { const dpl = b.p.distanceTo(player.pos); shake = Math.max(shake, 1.6 * THREE.MathUtils.clamp(1 - dpl / 1800, 0, 1)); }
+        for (let i = 0; i < 10; i++) puff(b.p, tA.set((Math.random() - 0.5) * 60, 8 + Math.random() * 25, (Math.random() - 0.5) * 60), 6, 22, 2.2, 0x6a6258);
         const water = terrain.isWater(b.p.x, b.p.z);
         for (let i = 0; i < 6; i++) puff(b.p, tA.set((Math.random() - 0.5) * 20, 30 + Math.random() * 30, (Math.random() - 0.5) * 20), 4, 12, 1.4, water ? 0xffffff : 0x9a8a6a);
         const before = stats.kills ? Object.values(stats.kills).reduce((a, c) => a + c, 0) : 0;
@@ -2005,6 +2034,6 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     loop: (d) => startLoop(d),
     roll: (d) => startRoll(d),
     stats: () => stats,
-    dbg: { sky, inCloud: () => inCloud, agl: () => player.pos.y - groundAt(player.pos.x, player.pos.z), warpNear: (kinds) => { const c = targets.filter((t) => t.alive && kinds.includes(t.kind)).sort((a, b) => a.pos.distanceTo(player.pos) - b.pos.distanceTo(player.pos))[0]; if (!c) return false; player.pos.set(c.pos.x, c.pos.y + 340, c.pos.z + 700); player.q.setFromEuler(new THREE.Euler(-0.3, 0, 0, "YXZ")); return true; }, hurtAlly: () => { const a = allies.find((x) => x.alive); if (a) friendlyHit(a, 1, 250); return !!a; }, killNear: (n) => targets.filter((t) => t.alive).sort((a, b) => a.pos.distanceTo(player.pos) - b.pos.distanceTo(player.pos)).slice(0, n).forEach((t) => kill(t)), hardState: () => ({ idx: hardIdx, rockets: player.rockets, live: rockets.filter((r) => r.active).map((r) => r.hp), wc: WC.state, world: L.run ? runLabel(L.run) : "" }), finish: (r) => finish(r), targets, allies, bullets, damageAlly: (a, n) => damageAlly(a, n), get player() { return player; }, get pad() { return pad; }, fxCount: () => fxs.length, openLanding() { landingOpen = true; }, explodeAt: (p, s, b) => explode(p, s, b), get landing() { return !!landing; }, get progress() { return progress; } },
+    dbg: { sky, warpAt: (t, d) => { player.pos.set(t.pos.x, t.pos.y + d * 0.12 + 20, t.pos.z + d); player.q.setFromEuler(new THREE.Euler(-0.1, 0, 0, "YXZ")); return true; }, inCloud: () => inCloud, agl: () => player.pos.y - groundAt(player.pos.x, player.pos.z), warpNear: (kinds) => { const c = targets.filter((t) => t.alive && kinds.includes(t.kind)).sort((a, b) => a.pos.distanceTo(player.pos) - b.pos.distanceTo(player.pos))[0]; if (!c) return false; player.pos.set(c.pos.x, c.pos.y + 340, c.pos.z + 700); player.q.setFromEuler(new THREE.Euler(-0.3, 0, 0, "YXZ")); return true; }, hurtAlly: () => { const a = allies.find((x) => x.alive); if (a) friendlyHit(a, 1, 250); return !!a; }, killNear: (n) => targets.filter((t) => t.alive).sort((a, b) => a.pos.distanceTo(player.pos) - b.pos.distanceTo(player.pos)).slice(0, n).forEach((t) => kill(t)), hardState: () => ({ idx: hardIdx, rockets: player.rockets, live: rockets.filter((r) => r.active).map((r) => r.hp), wc: WC.state, world: L.run ? runLabel(L.run) : "" }), finish: (r) => finish(r), targets, allies, bullets, damageAlly: (a, n) => damageAlly(a, n), get player() { return player; }, get pad() { return pad; }, fxCount: () => fxs.length, openLanding() { landingOpen = true; }, explodeAt: (p, s, b) => explode(p, s, b), get landing() { return !!landing; }, get progress() { return progress; } },
   };
 }

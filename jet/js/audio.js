@@ -309,32 +309,61 @@ export function createAudio() {
     };
     SFX = {
       boomA: boom(3.8, 0), boomB: boom(3.4, 1),
-      gun: mk(0.5, (d) => {
-        const per = Math.floor(sr / 50); let bed = 0;
-        for (let p = 0; p * per < d.length; p++) shot(d, p * per, 0.8 + rnd() * 0.3);
-        for (let i = 0; i < d.length; i++) { bed += 0.12 * ((rnd() * 2 - 1) - bed); d[i] += bed * 0.7; }
+      // build 19: layered, smoothed synthesis (low-end thump + body + short crack + soft metallic rattle; no raw high noise)
+      gun: mk(0.6, (d) => {
+        const per = Math.floor(sr / 66); let bed = 0, hp = 0;
+        const lp = (x, st, k) => st + k * (x - st);
+        for (let p = 0; p * per < d.length; p++) {
+          const at = p * per, amp = 0.85 + rnd() * 0.3, L = Math.floor(sr * 0.028); let b1 = 0, b2 = 0, c1 = 0;
+          for (let j = 0; j < L; j++) {
+            const t = j / sr, n = rnd() * 2 - 1;
+            b1 = lp(n, b1, 0.22); b2 = lp(n, b2, 0.05); c1 = lp(n, c1, 0.5);
+            const thump = Math.sin(TAU * (48 + 70 * Math.exp(-t / 0.007)) * t) * Math.exp(-t / 0.011) * 0.8;
+            const body = (b1 - b2) * 3.2 * Math.exp(-t / 0.0045);
+            const crack = (n - c1) * 0.55 * Math.exp(-t / 0.0012);
+            const rattle = (Math.sin(TAU * 2350 * t) * 0.5 + Math.sin(TAU * 3480 * t) * 0.3) * Math.exp(-t / 0.0016) * (0.1 + 0.08 * rnd());
+            d[(at + j) % d.length] += (thump + body + crack + rattle) * amp;
+          }
+        }
+        for (let i = 0; i < d.length; i++) { bed = lp(rnd() * 2 - 1, bed, 0.02); d[i] += bed * 2.5; }
+        let y = 0; for (let i = 0; i < d.length; i++) { y = lp(d[i], y, 0.62); d[i] = y; }   // tame the top end
       }),
-      rocket: mk(2.6, (d) => {
-        let a = 0, b = 0, c = 0, m = 0;
+      rocket: mk(3.0, (d) => {
+        const lp = (x, st, k) => st + k * (x - st);
+        let a = 0, b = 0, c = 0, m = 0, r = 0, ph = 0, y = 0, y2 = 0;
         for (let i = 0; i < d.length; i++) {
           const t = i / sr, n = rnd() * 2 - 1;
-          a += 0.09 * (n - a); b += 0.012 * (n - b); c += 0.5 * (n - c); m += 0.002 * (n - m);
-          const env = (1 - Math.exp(-t / 0.05)) * Math.exp(-Math.max(0, t - 0.5) / 1.5);
-          const crk = 0.75 + 0.5 * Math.abs(m) * 90;
-          const roar = (a - b) * 3.6 * crk + b * 4.0;
-          const hiss = (n - c) * 0.35;
-          const ign = (t < 0.12 ? (n * 0.7 + Math.sin(TAU * 150 * t) * 1.0) * Math.exp(-t / 0.035) : 0);
-          d[i] = roar * env + hiss * env * 0.8 + ign * 1.2;
+          // ignition thud + rail clank
+          const ign = Math.sin(TAU * (62 + 90 * Math.exp(-t / 0.05)) * t) * Math.exp(-t / 0.09) * (1 - Math.exp(-t / 0.003)) * 1.3;
+          // whoosh: band that opens up as the motor spools
+          const kk = 0.015 + 0.2 * (1 - Math.exp(-t / 0.35)); a = lp(n, a, kk); b = lp(n, b, 0.01);
+          const whoosh = (a - b) * 4.2 * (1 - Math.exp(-t / 0.08)) * Math.exp(-Math.max(0, t - 0.35) / 0.9);
+          // roar: low rumbling burn, crackle-modulated, long trailing tail
+          c = lp(n, c, 0.05); m = lp(n, m, 0.002);
+          const env = (1 - Math.exp(-t / 0.12)) * Math.exp(-Math.max(0, t - 0.45) / 1.25);
+          const roar = (c * 3.4 + b * 5.0) * (0.75 + 0.5 * Math.abs(m) * 70) * env;
+          ph += TAU * (58 + 10 * Math.sin(t * 9)) / sr; const sub = Math.sin(ph) * 0.5 * env;
+          const v = ign + whoosh + roar + sub;
+          y = lp(v, y, 0.5); y2 = lp(y, y2, 0.6); d[i] = y2;
         }
       }),
-      bomb: mk(1.9, (d) => {
-        let ph = 0;
+      clunk: mk(0.45, (d) => {
+        let y = 0;
         for (let i = 0; i < d.length; i++) {
           const t = i / sr, n = rnd() * 2 - 1;
-          const f = 2100 * Math.exp(-t / 1.1) + 520 + 30 * Math.sin(t * 22); ph += TAU * f / sr;
-          const wh = Math.sin(ph) * Math.min(1, t * 6) * (0.6 + 0.4 * t / 1.9) * 0.55 + n * 0.05 * t;
-          const th = t < 0.2 ? (Math.sin(TAU * 85 * t) + n * 0.4) * Math.exp(-t / 0.05) * 1.2 : 0;
-          d[i] = wh + th;
+          const v = Math.sin(TAU * 74 * t) * Math.exp(-t / 0.05) * 1.1 + (Math.sin(TAU * 255 * t) * 0.55 + Math.sin(TAU * 418 * t) * 0.35 + Math.sin(TAU * 931 * t) * 0.12) * Math.exp(-t / 0.035) + n * Math.exp(-t / 0.004) * 0.5;
+          y += 0.5 * (v - y); d[i] = y;
+        }
+      }),
+      bomb: mk(2.6, (d) => {
+        // falling whistle: smooth tone + airy noise, rising loudness as it nears the ground (pitch glides down)
+        let ph = 0, ph2 = 0, a = 0, y = 0;
+        for (let i = 0; i < d.length; i++) {
+          const t = i / sr, n = rnd() * 2 - 1, g = Math.pow(Math.min(1, t / 2.2), 1.6) * 0.8 + 0.2 * Math.min(1, t * 4);
+          const f = 1500 * Math.exp(-t / 1.4) + 520 + 14 * Math.sin(t * 17); ph += TAU * f / sr; ph2 += TAU * f * 1.51 / sr;
+          a += 0.12 * (n - a);
+          const v = (Math.sin(ph) * 0.45 + Math.sin(ph2) * 0.12 + a * 0.5) * g * Math.min(1, t * 8);
+          y += 0.6 * (v - y); d[i] = y;
         }
       }),
       pass: mk(3.0, (d) => {
@@ -454,15 +483,17 @@ export function createAudio() {
     gun() {
       if (!ctx || !sfxOn || ctx.state !== "running") return; const now = ctx.currentTime; gunT = now;
       if (!gunV) {
-        gunV = play("gun", { gain: 0.0001, loop: true, prio: 2, lp: 9000 });
+        gunV = play("gun", { gain: 0.0001, loop: true, prio: 2, lp: 7000 });
         if (gunV) { gunV.g.gain.setValueAtTime(0.0001, now); gunV.g.gain.linearRampToValueAtTime(0.62, now + 0.012); }
       }
       if (!gunTimer) { const chk = () => { if (!ctx || ctx.currentTime - gunT > 0.14) gunStop(); else gunTimer = setTimeout(chk, 50); }; gunTimer = setTimeout(chk, 90); }
     },
-    rocket() { play("rocket", { gain: 0.75, rate: 1.08, rate2: 0.8, lp: 9000, lp2: 1800, dur: 2.6, prio: 2 }); tone({ f0: 90, f1: 55, dur: 0.35, peak: 0.3, type: "sine", a: 0.004 }); },
+    rocket() { play("rocket", { gain: 0.8, rate: 1.0, rate2: 0.9, lp: 7000, lp2: 2500, prio: 2 }); },
     /** enemy jet streaking past: doppler roar (pitch falls as it passes); gain by closeness */
     flyby(gain = 0.7) { play("pass", { gain, rate: 1.28, rate2: 0.72, lp: 14000, lp2: 3000, prio: 2 }); },
-    bomb() { play("bomb", { gain: 0.6, rate: 1.0, rate2: 0.9, lp: 12000, lp2: 2500, prio: 2 }); },
+    bomb() { play("bomb", { gain: 0.5, rate: 1.0, rate2: 0.85, lp: 6000, lp2: 2200, prio: 2 }); },
+    /** release: heavy clunk of the rack, then the falling whistle */
+    bombRelease() { play("clunk", { gain: 0.95, prio: 2, lp: 5000 }); play("bomb", { gain: 0.5, rate: 1.0, rate2: 0.85, lp: 6000, lp2: 2200, delay: 0.3, prio: 2 }); },
     explosion(big = 1, dist = 0) {
       if (dist < 1800 && big >= 0.9) duck(big >= 1.5 ? 0.3 : 0.55, big >= 1.5 ? 1.2 : 0.7);
       const d = Math.max(0, dist), v = Math.max(0.12, 1 - d / 3500), lpf = Math.max(900, 17000 * Math.exp(-d / 1100));

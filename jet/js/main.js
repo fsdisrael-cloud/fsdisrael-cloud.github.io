@@ -1,14 +1,15 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=18";
-import { createHud } from "./hud.js?v=18";
-import { createControls } from "./controls.js?v=18";
-import { runLabel, PLANETS, JET_TYPES } from "./variety.js?v=18";
-import { createAudio, trackFor } from "./audio.js?v=18";
-import { createHaptics } from "./haptics.js?v=18";
-import { createLoading } from "./loading.js?v=18";
-import { setSurreal, tickStyle } from "./surreal.js?v=18";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=18";
+import { createGame } from "./game.js?v=19";
+import { createHud } from "./hud.js?v=19";
+import { createControls } from "./controls.js?v=19";
+import { runLabel, PLANETS, JET_TYPES } from "./variety.js?v=19";
+import { createAudio, trackFor } from "./audio.js?v=19";
+import { createHaptics } from "./haptics.js?v=19";
+import { createLoading } from "./loading.js?v=19";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=19";
+import { setSurreal, tickStyle } from "./surreal.js?v=19";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=19";
 
 const $ = (id) => document.getElementById(id);
 
@@ -26,7 +27,7 @@ try {
   for (let i = 0; i < 500; i++) { w.fillStyle = `rgba(${rn() < 0.5 ? "255,255,255" : "0,0,0"},${0.03 + rn() * 0.08})`; w.fillRect(rn() * 256, rn() * 256, 1 + rn() * 2, 1 + rn() * 2); }
   document.documentElement.style.setProperty("--worn", `url(${wc.toDataURL("image/png")})`);
 } catch (e) { /* plain gradients if canvas is unavailable */ }
-const BUILD = 18;
+const BUILD = 19;
 { const t = $("build-tag"); if (t) t.textContent = "JET-X b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;
@@ -60,6 +61,8 @@ controls.bindWeapons($("weapons"));
 controls.bindLookSurface(canvas); // head-look: swipe the bare screen = turn the view only
 const haptics = createHaptics();
 const hud = createHud();
+document.querySelectorAll("[data-logo3d]").forEach((el) => { el.outerHTML = logo3dHTML(el.dataset.logo3d); });
+initLogo3d();
 const loading = createLoading($("loading"));
 let lastProg = 0, lastText = "";
 const flashEl = (id) => { const f = $(id); f.style.transition = "none"; f.style.opacity = "1"; void f.offsetWidth; f.style.transition = "opacity .45s ease-out"; f.style.opacity = "0"; };

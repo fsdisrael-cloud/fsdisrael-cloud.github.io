@@ -15,5 +15,5 @@
 .ld-tip { margin-top: 14px; font: 500 clamp(12px, 2.3vmin, 14px)/1.35 "Fredoka", system-ui; opacity: .8; min-height: 38px; text-shadow: 0 2px 0 rgba(0,0,0,.8); }
 @media (orientation: landscape) { .ld-top { top: calc(env(safe-area-inset-top, 0px) + 3vh); } .ld-title { font-size: clamp(44px, 12vmin, 90px); } .ld-bottom { bottom: calc(env(safe-area-inset-bottom, 0px) + 6vh); } .ld-tip { margin-top: 8px; min-height: 0; } }
 
-.ld-title { width: clamp(200px, 52vmin, 420px); height: auto; font-size: 0; filter: drop-shadow(0 6px 14px rgba(0,0,0,.75)); user-select: none; pointer-events: none; }
-@media (orientation: landscape) { .ld-title { width: clamp(180px, 36vmin, 330px); } }
+.ld-title { display: block; margin: 0 auto; width: clamp(200px, 56vmin, 440px); height: auto; font-size: 0; filter: drop-shadow(0 6px 14px rgba(0,0,0,.75)); user-select: none; pointer-events: none; }
+@media (orientation: landscape) { .ld-title { width: clamp(170px, 42vmin, 330px); } }
