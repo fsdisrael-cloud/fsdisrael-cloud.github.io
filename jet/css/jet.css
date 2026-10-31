@@ -267,8 +267,8 @@ body.nv-on.in-game canvas#game-canvas { filter: grayscale(1) brightness(2.3) con
 @keyframes nvflick { 50% { opacity: .55; } }
 
 /* ---- v2 art: dark military opening screen ---- */
-.title { background: linear-gradient(180deg, rgba(4,6,10,.55) 0%, rgba(4,6,10,.15) 38%, rgba(4,6,10,.7) 100%), url("../img/art/v2_portrait.jpg") center/cover no-repeat, #05070b; }
-@media (orientation: landscape) { .title { background: linear-gradient(90deg, rgba(4,6,10,.2), rgba(4,6,10,.7)), url("../img/art/v2_landscape.jpg") center/cover no-repeat, #05070b; } }
+.title { background: linear-gradient(180deg, rgba(4,6,10,.55) 0%, rgba(4,6,10,.15) 38%, rgba(4,6,10,.7) 100%), linear-gradient(180deg, #4f8fd8 0%, #8dbdf0 38%, #cfe3f2 62%, #8fa57a 63%, #4f6d3e 100%), #7fb0e6; }
+@media (orientation: landscape) { .title { background: linear-gradient(90deg, rgba(4,6,10,.2), rgba(4,6,10,.7)), linear-gradient(180deg, #4f8fd8 0%, #8dbdf0 38%, #cfe3f2 62%, #8fa57a 63%, #4f6d3e 100%), #7fb0e6; } }
 .hero-jet { display: none !important; }
 .title-hint { color: #aeb6c2; }
 @media (orientation: portrait) { .objectives { top: calc(var(--safe-t) + 88px); } }
@@ -335,8 +335,8 @@ body.tp-c .time-pick { animation: pwr .8s .35s both; } body.tp-c .sec-links { an
 
 /* v10b: live scene preview behind the logo + NEW SCENE button */
 body.preview .screen.title { background: linear-gradient(180deg, rgba(3,5,8,.55) 0%, rgba(3,5,8,.05) 30%, rgba(3,5,8,.05) 65%, rgba(3,5,8,.6) 100%) !important; }
-body.preview.rolling .screen.title { background: linear-gradient(180deg, rgba(4,6,10,.55) 0%, rgba(4,6,10,.15) 38%, rgba(4,6,10,.7) 100%), url("../img/art/v2_portrait.jpg") center/cover no-repeat, #05070b !important; }
-@media (orientation: landscape) { body.preview.rolling .screen.title { background: linear-gradient(90deg, rgba(4,6,10,.2), rgba(4,6,10,.7)), url("../img/art/v2_landscape.jpg") center/cover no-repeat, #05070b !important; } }
+body.preview.rolling .screen.title { background: linear-gradient(180deg, rgba(4,6,10,.55) 0%, rgba(4,6,10,.15) 38%, rgba(4,6,10,.7) 100%), linear-gradient(180deg, #4f8fd8 0%, #8dbdf0 38%, #cfe3f2 62%, #8fa57a 63%, #4f6d3e 100%), #7fb0e6 !important; }
+@media (orientation: landscape) { body.preview.rolling .screen.title { background: linear-gradient(90deg, rgba(4,6,10,.2), rgba(4,6,10,.7)), linear-gradient(180deg, #4f8fd8 0%, #8dbdf0 38%, #cfe3f2 62%, #8fa57a 63%, #4f6d3e 100%), #7fb0e6 !important; } }
 body.rolling .plates, body.rolling .time-pick, body.rolling .sec-links, body.rolling .tap-prompt, body.rolling .scene-label { visibility: hidden; }
 .scene-label { font: 400 clamp(9px, 2.1vmin, 12px)/1.2 "Stencil", var(--mil), sans-serif; letter-spacing: .2em; color: #e9edf2; text-align: center; padding: 4px 10px; background: rgba(6,8,12,.62); border-left: 3px solid var(--amber); text-shadow: 0 1px 2px #000; max-width: 92vw; }
 body.tp-a .scene-label { visibility: hidden; }
@@ -513,3 +513,14 @@ body.on-title .weapons .thr { display: none; }
 @keyframes l3In { 0% { opacity: 0; transform: scale(.9) translateY(10px); } 100% { opacity: 1; transform: none; } }
 @keyframes l3Glow { 0%, 100% { filter: drop-shadow(0 8px 14px rgba(0,0,0,.7)) drop-shadow(0 0 14px rgba(255,150,40,.2)); } 50% { filter: drop-shadow(0 8px 14px rgba(0,0,0,.7)) drop-shadow(0 0 26px rgba(255,160,50,.5)); } }
 @media (prefers-reduced-motion: reduce) { .l3-embers { display: none; } }
+
+/* build 19: daylight placeholder instead of the dark stormy art; full-bleed backgrounds; TESSIE credit */
+html, body { background: #8fb4dc; height: 100%; min-height: 100vh; min-height: -webkit-fill-available; }
+.credit-b { position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); text-align: center; pointer-events: none; user-select: none; z-index: 3;
+  font: 400 clamp(9px, 2vmin, 12px)/1 "Stencil", "Fredoka", sans-serif; letter-spacing: .42em; text-indent: .42em; text-transform: uppercase; color: #aeb6bf; opacity: .7;
+  text-shadow: 0 1px 0 rgba(255,255,255,.25), 0 -1px 0 rgba(0,0,0,.85), 0 0 8px rgba(255,150,40,.28), 0 2px 5px rgba(0,0,0,.75); }
+
+/* build 20: TRACK indicator + flare counter */
+.hud-track { position: absolute; left: 57%; top: 34%; font: 700 clamp(10px, 2.2vmin, 12px) "Black Ops One", "Fredoka", sans-serif; letter-spacing: .28em; color: #ffd35a; text-shadow: 0 0 8px rgba(255,170,40,.7); opacity: 0; transition: opacity .15s; pointer-events: none; z-index: 5; padding: 2px 8px; border: 1px solid rgba(255,200,80,.55); border-radius: 4px; background: rgba(20,14,0,.28); }
+.hud-track.on { opacity: .9; }
+.nums .fl-c b { color: #ffcf66; }

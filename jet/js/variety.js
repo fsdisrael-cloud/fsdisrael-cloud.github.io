@@ -73,12 +73,15 @@ function wpick(table, r) {
 
 /** Roll one run. `rng` defaults to Math.random (a new world every restart). */
 export function rollRun(rng = Math.random) {
-  const planetKey = rng() < 0.75 ? "earth" : pick(["mars", "ice", "toxic", "violet", "lava"], rng);
+  // scene mix: ~70% Earth daylight, ~15% Earth dusk / night / bad weather, ~15% alien worlds
+  const rs = rng(), kind = rs < 0.15 ? "alien" : rs < 0.30 ? "variant" : "day";
+  const planetKey = kind === "alien" ? pick(["mars", "ice", "toxic", "violet", "lava"], rng) : "earth";
   const planet = PLANETS[planetKey];
   const place = pick(EARTH_PLACES, rng);
-  const time = wpick([["day", 34], ["dawn", 14], ["dusk", 20], ["night", 32]], rng);
+  const vTime = rng();
+  const time = kind === "variant" ? (vTime < 0.2 ? "day" : wpick([["dawn", 20], ["dusk", 40], ["night", 40]], rng)) : "day";
   const season = pick(Object.keys(SEASONS), rng);
-  let weather = wpick([["clear", 52], ["cloudy", 20], ["fog", 8], ["rain", 8], ["snow", 4], ["storm", 8]], rng);
+  let weather = kind === "day" ? wpick([["clear", 74], ["cloudy", 26]], rng) : wpick([["clear", 30], ["cloudy", 14], ["fog", 14], ["rain", 16], ["snow", 8], ["storm", 18]], rng);
   if (planetKey !== "earth") weather = wpick([["clear", 60], ["cloudy", 24], ["fog", 16]], rng);
   else if (weather === "snow" && !SEASONS[season].snowOk && place.biome !== "snow") weather = "cloudy";
   else if (season === "winter" && weather === "clear" && rng() < 0.4) weather = "snow";
@@ -103,4 +106,17 @@ export function runLabel(run) {
   const t = { day: "Day", dawn: "Dawn", dusk: "Dusk", night: "Night" }[run.time];
   const w = run.planetKey === "earth" ? run.place.name + " - " + run.season[0].toUpperCase() + run.season.slice(1) : run.planet.name.split(" (")[0];
   return `${w} - ${t}`;
+}
+
+/** Scene persistence (last chosen scene is remembered between launches). */
+const SCENE_KEY = "jet-scene-v1";
+export function saveScene(run) {
+  try { localStorage.setItem(SCENE_KEY, JSON.stringify({ planetKey: run.planetKey, place: run.place?.name, time: run.time, season: run.season, weather: run.weather, jet: run.jet, foe: run.foe, tgt: run.tgt, mix: run.mix, seed: run.seed })); } catch { /* ignore */ }
+}
+export function loadScene() {
+  try {
+    const o = JSON.parse(localStorage.getItem(SCENE_KEY)); if (!o || !PLANETS[o.planetKey]) return null;
+    const place = EARTH_PLACES.find((p) => p.name === o.place) || EARTH_PLACES[0];
+    return { planetKey: o.planetKey, planet: PLANETS[o.planetKey], place, time: o.time, season: o.season, weather: o.weather, jet: o.jet, foe: o.foe, tgt: o.tgt, mix: o.mix, seed: o.seed };
+  } catch { return null; }
 }

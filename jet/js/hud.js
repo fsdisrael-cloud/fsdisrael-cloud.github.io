@@ -1,6 +1,6 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=19";
+import { LABEL } from "./missions.js?v=20";
 
 const ALLY = "#3dff8b";
 const COL = { jet: "#ff3b3b", tank: "#ff5a48", flak: "#ff4636", sam: "#ff3a2a", base: "#ff6a58", ship: "#ff5a48", pad: "#3dff8b", ring: "#ffe14d" };
@@ -12,7 +12,7 @@ export function createHud() {
   const radar = document.getElementById("radar");
   const rctx = radar.getContext("2d");
   const el = (id) => document.getElementById(id);
-  const dom = { timer: el("hud-timer"), score: el("hud-score"), obj: el("hud-obj"), hp: el("hud-hp"), spd: el("hud-spd"), thr: el("thr-spd"), alt: el("hud-alt"), alert: el("alert"), toasts: el("toasts"), flash: el("hit-flash"), low: el("low-alt"), edge: el("low-edge"),
+  const dom = { timer: el("hud-timer"), score: el("hud-score"), obj: el("hud-obj"), hp: el("hud-hp"), spd: el("hud-spd"), thr: el("thr-spd"), alt: el("hud-alt"), fl: el("hud-fl"), trk: el("hud-track"), alert: el("alert"), toasts: el("toasts"), flash: el("hit-flash"), low: el("low-alt"), edge: el("low-edge"),
     tlabel: el("hud-time-label"), heat: el("hud-heat"), heatRow: document.querySelector(".statrow.heat"),
     bGun: document.querySelector(".w-gun"), bMsl: document.querySelector(".w-msl"), bBomb: document.querySelector(".w-bomb") };
   let dpr = 1, W = 0, H = 0, domT = 0, radarT = 0, sweep = 0;
@@ -335,7 +335,7 @@ export function createHud() {
     dom.hp.style.width = hp + "%";
     dom.hp.style.background = hp > 60 ? "var(--mint)" : hp > 30 ? "var(--sun)" : "var(--red)";
     dom.spd.textContent = Math.round(s.player.speed * 3.6); if (dom.thr) dom.thr.textContent = dom.spd.textContent;
-    dom.alt.textContent = Math.round(s.player.pos.y);
+    dom.alt.textContent = Math.round(s.player.pos.y); if (dom.fl) dom.fl.textContent = s.player.flares ?? 0; if (dom.trk) dom.trk.classList.toggle("on", !!s.track);
     // weapons: the same ring (arc = how much is ready) on all three buttons
     const rack = s.rack || 10;
     const ringSet = (b, p, cls, cnt) => {

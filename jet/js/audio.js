@@ -514,6 +514,7 @@ export function createAudio() {
       play("boomA", { gain: 0.8, rate: 0.75, delay: 0.45, lp: 5000, prio: 2 }); play("boomB", { gain: 0.6, rate: 0.7, delay: 0.9, lp: 3000, prio: 2 });
       tone({ f0: 70, f1: 24, dur: 2.2, peak: 0.5, type: "sine", a: 0.01 });
     },
+    flare() { noise({ dur: 0.1, peak: 0.16, type: "lowpass", f0: 700, f1: 220, a: 0.002 }); noise({ dur: 0.7, peak: 0.1, type: "bandpass", f0: 3000, f1: 1300, q: 0.8, a: 0.05 }); },
     hiss() { noise({ dur: 0.9, peak: 0.2, type: "highpass", f0: 4500, f1: 2200, a: 0.03 }); },
     /** subtle rack-reload tick (missile / bomb back in the rack) and empty-rack click; both respect the Effects toggle */
     reload(kind = "missile") { if (!gate("rl", 600)) return; tone({ f0: kind === "bomb" ? 330 : 560, dur: 0.1, peak: 0.03, a: 0.02, prio: 0 }); },

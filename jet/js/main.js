@@ -1,15 +1,15 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=19";
-import { createHud } from "./hud.js?v=19";
-import { createControls } from "./controls.js?v=19";
-import { runLabel, PLANETS, JET_TYPES } from "./variety.js?v=19";
-import { createAudio, trackFor } from "./audio.js?v=19";
-import { createHaptics } from "./haptics.js?v=19";
-import { createLoading } from "./loading.js?v=19";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=19";
-import { setSurreal, tickStyle } from "./surreal.js?v=19";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=19";
+import { createGame } from "./game.js?v=20";
+import { createHud } from "./hud.js?v=20";
+import { createControls } from "./controls.js?v=20";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene } from "./variety.js?v=20";
+import { createAudio, trackFor } from "./audio.js?v=20";
+import { createHaptics } from "./haptics.js?v=20";
+import { createLoading } from "./loading.js?v=20";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=20";
+import { setSurreal, tickStyle } from "./surreal.js?v=20";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=20";
 
 const $ = (id) => document.getElementById(id);
 
@@ -27,7 +27,7 @@ try {
   for (let i = 0; i < 500; i++) { w.fillStyle = `rgba(${rn() < 0.5 ? "255,255,255" : "0,0,0"},${0.03 + rn() * 0.08})`; w.fillRect(rn() * 256, rn() * 256, 1 + rn() * 2, 1 + rn() * 2); }
   document.documentElement.style.setProperty("--worn", `url(${wc.toDataURL("image/png")})`);
 } catch (e) { /* plain gradients if canvas is unavailable */ }
-const BUILD = 19;
+const BUILD = 20;
 { const t = $("build-tag"); if (t) t.textContent = "JET-X b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;
@@ -88,6 +88,7 @@ const game = createGame({
   },
 });
 
+let preloadReady = false;
 let state = "title"; // title | loading | playing | paused | results
 let levelNo = loadLevelNo();
 let preload = null; // { n, promise }
@@ -127,14 +128,22 @@ function syncAssist() { $("btn-assist").classList.toggle("off", !game.assistOn()
 $("btn-assist").addEventListener("click", () => { game.setAssist(!game.assistOn()); syncAssist(); });
 syncAssist();
 function syncTilt() { $("btn-tilt").classList.toggle("off", !controls.tiltOn()); }
-$("btn-tilt").addEventListener("click", () => { controls.setTilt(!controls.tiltOn()); syncTilt(); });
+$("btn-tilt").addEventListener("click", async () => {
+  if (controls.tiltOn()) { controls.setTilt(false); syncTilt(); return; }
+  // turning TILT on is the only place the iOS motion-permission prompt may appear (it is a direct tap, so iOS allows it)
+  const ok = await controls.requestGyro();
+  controls.setTilt(ok); controls.calibrate(); syncTilt();
+});
 syncTilt();
+function syncInvert() { $("btn-invert").classList.toggle("off", !controls.invertOn()); }
+$("btn-invert").addEventListener("click", () => { controls.setInvert(!controls.invertOn()); syncInvert(); });
+syncInvert();
 // settings gear (top right): open on the opening screen, collapsed in play, tap the gear to open / close
 {
   const st = $("settings"); let tm = 0;
   const setOpen = (v) => { st.classList.toggle("open", v); clearTimeout(tm); if (v && document.body.classList.contains("in-game")) tm = setTimeout(() => st.classList.remove("open"), 6000); };
   $("btn-settings").addEventListener("click", () => setOpen(!st.classList.contains("open")));
-  for (const id of ["btn-music", "btn-sfx", "btn-tilt", "btn-assist"]) $(id).addEventListener("click", () => setOpen(true));
+  for (const id of ["btn-music", "btn-sfx", "btn-tilt", "btn-invert", "btn-assist"]) $(id).addEventListener("click", () => setOpen(true));
   window.__settingsOpen = setOpen;
 }
 
@@ -144,7 +153,7 @@ const timeSec = 300; // Build 17: the round is always 5:00 (no picker)
 // ---------- opening screen: 3 buttons ----------
 // EASY TO RELABEL / REWIRE: each entry is { label, sub (optional small text), primary, run }.
 // Button 1 is PLAY. Buttons 2 and 3 are PLACEHOLDERS (final function pending): change label/run here.
-const HOW_HTML = `<p><b>Tilt</b> your phone like a wheel: top edge up = nose up, top edge down = nose down. Tilt sideways to bank and turn.</p><p>Or drag the <b>stick</b> (bottom right). Both work at once.</p><p><b>Weapons</b> are bottom left: hold GUN, tap MISSILE or BOMB. Racks of 10 reload over time; the gun cools down after it overheats.</p><p><b>Swipe</b> anywhere else to look around. It only turns your view, never the plane. Green forces are your friends.</p>`;
+const HOW_HTML = `<p><b>Tilt</b> your phone like a wheel: top edge up = nose up, top edge down = nose down. Tilt sideways to bank and turn.</p><p>Or drag the <b>stick</b> (bottom right): push it up to climb, down to dive. Prefer the other way? Use the INVERT toggle in settings. Both work at once.</p><p><b>Weapons</b> are bottom left: hold GUN, tap MISSILE or BOMB. Racks of 10 reload over time; the gun cools down after it overheats.</p><p><b>Swipe</b> anywhere else to look around. It only turns your view, never the plane. Green forces are your friends.</p>`;
 // Opening flow: logo + live scene while terrain loads -> HUD powers on -> tap anywhere -> CONT / NEW plates.
 // CONT resumes the autosave (jet-save-v1); it is disabled when there is no save. LEVELS / HOW TO FLY are small placeholder links.
 const SAVE_KEY = "jet-save-v1";
@@ -197,9 +206,12 @@ async function launch(n, fromTap, sv) {
   levelNo = n; saveLevelNo(n);
   document.body.classList.remove("tp-a", "tp-b", "tp-c", "preview", "rolling"); previewOn = false;
   $("results").classList.add("hidden"); $("pause").classList.add("hidden"); $("resume").classList.add("hidden"); $("crash").classList.add("hidden");
+  liveLoad = !!(!sv && preload && preload.n === n && preloadReady);
   let p = !sv && preload && preload.n === n ? preload : null;
   if (!p) { game.quit(); p = startPreload(n, sv ? { ...sv.run, planet: PLANETS[sv.run.planetKey] } : undefined); } // every launch rolls a new random world
   loading.show(`Level ${n} - ${runLabel(p.level.run)}`);
+  $("loading").classList.toggle("live", liveLoad);
+  if (!sv) saveScene(p.level.run);
   loading.set(lastProg, lastText);
   const ok = await p.promise;
   preload = null;
@@ -221,12 +233,13 @@ async function launch(n, fromTap, sv) {
   window.__settingsOpen?.(false);
   game.start();
   state = "playing";
+  liveLoad = false; $("loading").classList.remove("live");
   loading.hide();
 }
 function play(sv) {
   // single first tap: unlock audio, ask for motion permission (iOS), calibrate neutral, start.
   audio.unlock();
-  controls.requestGyro().then(() => controls.calibrate());
+  controls.startTiltIfAllowed();   // never asks for motion permission here: only the TILT toggle does
   haptics.pulse();
   launch(sv ? sv.n : levelNo, true, sv);
 }
@@ -361,12 +374,14 @@ window.addEventListener("resize", onResize);
 window.addEventListener("orientationchange", () => setTimeout(onResize, 250));
 
 // ---------- loop (adaptive resolution) ----------
-let previewOn = false, saveT = 0, last = performance.now(), fpsAcc = 0, fpsN = 0, slowT = 0;
+let liveLoad = false, previewOn = false, saveT = 0, last = performance.now(), fpsAcc = 0, fpsN = 0, slowT = 0;
+const hudCv = document.getElementById("hud-canvas");
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   tickStyle(now / 1000);
+  { const hv = (state === "playing" || state === "paused" || state === "results") ? "" : "hidden"; if (hudCv.style.visibility !== hv) { hudCv.style.visibility = hv; if (hv) hud.clear?.(); } }   // no gameplay markers on the menu / loading screens
   if (state === "playing") {
     game.update(dt);
     game.render();
@@ -381,6 +396,8 @@ function frame(now) {
     }
   } else if (state === "title" && previewOn) {
     game.render();
+  } else if (state === "loading" && liveLoad) {
+    game.render();
   } else if (state === "paused" || state === "results") {
     game.render();
   }
@@ -391,26 +408,41 @@ requestAnimationFrame(frame);
 {
   const body = document.body;
   body.classList.add("tp-a");
-  const p0 = startPreload(levelNo);
+  let sceneHist = [], sceneIdx = -1;
+  const forced = /[?&](time|planet|place|weather|season)=/.test(location.search);
+  const p0 = startPreload(levelNo, forced ? undefined : (loadScene() || undefined));
+  p0.promise.then((ok) => { preloadReady = ok; });
   const t0 = performance.now();
   const setLabel = () => { const r = preload?.level?.run; $("scene-label").textContent = r ? `${runLabel(r)}  //  ${JET_TYPES[r.jet]?.name || ""}`.toUpperCase() : ""; };
-  async function reroll() {
+  // dir 0 / 1: a new random scene; -1: step back to the previous scene; swiping left/right on the menu calls this
+  async function reroll(dir = 0) {
     if (state !== "title" || body.classList.contains("rolling")) return;
-    body.classList.add("rolling"); previewOn = false;
-    game.quit(); const p = startPreload(levelNo);
-    await Promise.all([p.promise, new Promise((r) => setTimeout(r, 700))]);
+    let run0;
+    if (dir < 0) { if (sceneIdx <= 0) return; sceneIdx--; run0 = sceneHist[sceneIdx]; }
+    else if (sceneIdx < sceneHist.length - 1) { sceneIdx++; run0 = sceneHist[sceneIdx]; }
+    body.classList.add("rolling"); previewOn = false; preloadReady = false;
+    game.quit(); const p = startPreload(levelNo, run0);
+    const ok0 = await Promise.all([p.promise, new Promise((r) => setTimeout(r, 700))]);
     if (state !== "title") return;
+    preloadReady = !!ok0[0];
+    if (!run0) { sceneHist = sceneHist.slice(0, sceneIdx + 1); sceneHist.push(p.level.run); sceneIdx = sceneHist.length - 1; }
+    saveScene(p.level.run);
     setLabel(); body.classList.remove("rolling"); previewOn = true;
   }
   $("btn-reroll").addEventListener("pointerdown", (e) => e.stopPropagation());
-  $("btn-reroll").addEventListener("click", (e) => { e.stopPropagation(); reroll(); });
+  $("btn-reroll").addEventListener("click", (e) => { e.stopPropagation(); reroll(1); });
+  // swipe left = next scene, swipe right = previous scene (title menu only, never starting a swipe on a button)
+  { let sw = null; const T = $("screen-title");
+    T.addEventListener("pointerdown", (e) => { sw = body.classList.contains("tp-c") && !e.target.closest("button") ? { x: e.clientX, y: e.clientY, t: performance.now() } : null; });
+    T.addEventListener("pointerup", (e) => { if (!sw) return; const dx = e.clientX - sw.x, dy = e.clientY - sw.y; const ok = Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.5 && performance.now() - sw.t < 900; sw = null; if (ok) reroll(dx < 0 ? 1 : -1); }); }
   window.__ubuReroll = reroll;
   p0.promise.then(async (ok) => {
     const wait = Math.max(0, 1400 - (performance.now() - t0)); // let the logo breathe
     await new Promise((r) => setTimeout(r, wait));
     if (state !== "title") return;
-    try { $("hud-timer").textContent = timeSec ? `${Math.floor(timeSec / 60)}:00` : "0:00"; hud.draw(game.hudState(), 0); } catch { /* ignore */ }
+    try { $("hud-timer").textContent = timeSec ? `${Math.floor(timeSec / 60)}:00` : "0:00"; } catch { /* ignore */ }
     setLabel(); previewOn = ok; body.classList.toggle("preview", !!ok);
+    if (ok) { sceneHist = [preload.level.run]; sceneIdx = 0; saveScene(preload.level.run); }
     body.classList.remove("tp-a"); body.classList.add("tp-b");
   });
   $("screen-title").addEventListener("pointerdown", () => {

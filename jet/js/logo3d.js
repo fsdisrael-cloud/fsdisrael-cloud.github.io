@@ -1,7 +1,7 @@
 // Layered 3D logo: emblem plate (back), chrome letters + jet (middle, own specular sweep), embers (front).
 // Tilt the phone (DeviceOrientation) and the layers parallax + the whole plate rotates a few degrees, like a depth wallpaper.
 // Fallbacks: touch/mouse drag tilts it, and an idle float runs when nothing else moves it.
-const V = "?v=19";
+const V = "?v=20";
 export function logo3dHTML(cls = "") {
   let em = "";
   for (let i = 0; i < 16; i++) {
@@ -30,13 +30,7 @@ export function initLogo3d() {
     gx = clamp((x - base.x) / 22); gy = clamp((y - base.y) / 22);
     lastGyro = performance.now(); gyroLive = true;
   });
-  // iOS: needs permission from a user gesture. Reuses an already-granted permission (the call just resolves).
-  const Doe = window.DeviceOrientationEvent;
-  if (Doe && typeof Doe.requestPermission === "function") {
-    let asked = false;
-    const ask = () => { if (asked) return; asked = true; try { Doe.requestPermission().catch(() => { asked = false; }); } catch { asked = false; } };
-    for (const ev of ["touchend", "click"]) window.addEventListener(ev, ask, { once: false, passive: true });
-  }
+  // no permission prompt here: device orientation only drives the logo if it is already available (iOS: after TILT was switched on)
   // drag fallback
   let down = false, sx = 0, sy = 0;
   window.addEventListener("pointerdown", (e) => { down = true; sx = e.clientX; sy = e.clientY; }, { passive: true });

@@ -3,10 +3,10 @@
 //   - styling lives in css/loading.css,
 //   - the game only calls loading.show(), loading.set(progress 0..1, text) and loading.hide().
 // Galoo's final loading graphics can replace the template/CSS without touching the game.
-import { logo3dHTML } from "./logo3d.js?v=19";
+import { logo3dHTML } from "./logo3d.js?v=20";
 const TITLE = "JET-X"; // alt text; the visible wordmark is img/wordmark.png (swap that file to rebrand)
-const WORDMARK = "img/logo_v6.png?v=19";
-const ART = ["img/art/v2_portrait.jpg?v=19", "img/art/v2_landscape.jpg?v=19"]; // chosen by orientation in css/loading.css
+const WORDMARK = "img/logo_v6.png?v=20";
+const ART = []; // chosen by orientation in css/loading.css
 const TIPS = [
   "Tilt the top of your phone up to climb, down to dive.",
   "Your guns fire by themselves when an enemy is in front.",
@@ -21,6 +21,7 @@ export function createLoading(root) {
     <div class="ld-bg" aria-hidden="true"></div>
     <div class="ld-shade" aria-hidden="true"></div>
     <div class="ld-top">${logo3dHTML("ld-title")}<div class="built-by">Built by Grok</div><div class="ld-level" data-ld="level"></div></div>
+    <div class="credit-b">TESSIE</div>
     <div class="ld-bottom">
       <div class="ld-text" data-ld="text">Loading</div>
       <div class="ld-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i data-ld="fill"></i></div>

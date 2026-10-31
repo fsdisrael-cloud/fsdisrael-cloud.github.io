@@ -1,15 +1,15 @@
 // Ubu game world: flight model, camera, targets, AI, weapons, effects, objectives.
-import { createPost } from "./post.js?v=19";
+import { createPost } from "./post.js?v=20";
 import * as THREE from "three";
-import { buildTerrain } from "./terrain.js?v=19";
-import { createSky } from "./sky.js?v=19";
-import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createAlienWalker, createAlienTurret, createAlienSpire, createHive, createShip, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=19";
-import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=19";
-import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=19";
-import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=19";
-import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=19";
-import { setQuality, FX as FXQ } from "./tex.js?v=19";
-import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=19";
+import { buildTerrain } from "./terrain.js?v=20";
+import { createSky } from "./sky.js?v=20";
+import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createAlienWalker, createAlienTurret, createAlienSpire, createHive, createShip, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=20";
+import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=20";
+import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=20";
+import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=20";
+import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=20";
+import { setQuality, FX as FXQ } from "./tex.js?v=20";
+import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=20";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V(), tE = V();
@@ -193,6 +193,69 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (puffs.length >= PUFFS) puffs.shift();
     puffs.push({ p: p.clone(), v: v ? v.clone() : V(), s0, s1, life, t: 0, color, big });
   }
+  // ---------- ribbon trails: continuous soft tubes (camera-facing 3-vertex strips), never particles / beads ----------
+  const RB_N = 90, rbPool = [[], []], rbLive = [], _rbA = new THREE.Vector3(), _rbB = new THREE.Vector3(), _rbS = new THREE.Vector3();
+  function rbCreate(add) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(RB_N * 9), 3).setUsage(THREE.DynamicDrawUsage));
+    geo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(RB_N * 12), 4).setUsage(THREE.DynamicDrawUsage));
+    const idx = [];
+    for (let i = 0; i < RB_N - 1; i++) { const a = i * 3, b = a + 3; idx.push(a, a + 1, b + 1, a, b + 1, b, a + 1, a + 2, b + 2, a + 1, b + 2, b + 1); }
+    geo.setIndex(idx);
+    const mat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, fog: !add });
+    const mesh = new THREE.Mesh(geo, mat); mesh.frustumCulled = false; mesh.renderOrder = 3; scene.add(mesh);
+    return { mesh, geo, pts: [], add };
+  }
+  /** o: { life, w0, w1 (half width start/end, m), r,g,b, a (peak alpha), add, rise (smoke buoyancy), spread } */
+  function rbStart(o) {
+    const rb = rbPool[o.add ? 1 : 0].pop() || rbCreate(!!o.add);
+    rb.o = o; rb.pts.length = 0; rb.emit = true; rb.mesh.visible = true; rbLive.push(rb);
+    return rb;
+  }
+  function rbEmit(rb, p, k = 1) {
+    if (!rb || !rb.emit) return;
+    const last = rb.pts[0];
+    if (last && k > 0 && last.k > 0 && last.p.distanceToSquared(p) < 0.16) return;
+    const o = rb.o, sp = o.spread || 0;
+    rb.pts.unshift({ p: p.clone(), t: 0, k, vx: (Math.random() - 0.5) * sp, vy: (o.rise || 0) * (0.5 + Math.random() * 0.5), vz: (Math.random() - 0.5) * sp });
+    if (rb.pts.length > RB_N) rb.pts.length = RB_N;
+  }
+  function rbStop(rb) { if (rb) rb.emit = false; }
+  function rbClear() { for (const rb of rbLive) { rb.mesh.visible = false; rb.pts.length = 0; rbPool[rb.add ? 1 : 0].push(rb); } rbLive.length = 0; }
+  function rbUpdate(dt) {
+    for (let li = rbLive.length - 1; li >= 0; li--) {
+      const rb = rbLive[li], o = rb.o, pts = rb.pts;
+      for (let i = pts.length - 1; i >= 0; i--) { const q = pts[i]; q.t += dt; if (q.t >= o.life) pts.length = i; else { q.p.x += q.vx * dt; q.p.y += q.vy * dt; q.p.z += q.vz * dt; } }
+      if (!rb.emit && pts.length < 2) { rb.mesh.visible = false; rbLive.splice(li, 1); rbPool[rb.add ? 1 : 0].push(rb); continue; }
+      const n = pts.length; if (n < 2) { rb.geo.setDrawRange(0, 0); continue; }
+      const pos = rb.geo.attributes.position.array, col = rb.geo.attributes.color.array, cp = camera.position;
+      for (let i = 0; i < n; i++) {
+        const q = pts[i], a = pts[Math.max(0, i - 1)].p, b = pts[Math.min(n - 1, i + 1)].p;
+        _rbA.subVectors(a, b); _rbB.subVectors(cp, q.p);
+        _rbS.crossVectors(_rbA, _rbB);
+        if (_rbS.lengthSq() < 1e-6) { _rbS.set(0, 1, 0).cross(_rbA); if (_rbS.lengthSq() < 1e-8) _rbS.set(1, 0, 0); }
+        _rbS.normalize();
+        const k = q.t / o.life, w = (o.w0 + (o.w1 - o.w0) * Math.sqrt(k)) * (i === 0 ? 0.6 : 1);
+        const al = o.a * q.k * Math.pow(1 - k, o.fade || 1.4) * Math.min(1, q.t / 0.04 + (i === 0 ? 0 : 1) * 0.35);
+        const j = i * 9, c = i * 12;
+        pos[j] = q.p.x - _rbS.x * w; pos[j + 1] = q.p.y - _rbS.y * w; pos[j + 2] = q.p.z - _rbS.z * w;
+        pos[j + 3] = q.p.x; pos[j + 4] = q.p.y; pos[j + 5] = q.p.z;
+        pos[j + 6] = q.p.x + _rbS.x * w; pos[j + 7] = q.p.y + _rbS.y * w; pos[j + 8] = q.p.z + _rbS.z * w;
+        col[c] = o.r; col[c + 1] = o.g; col[c + 2] = o.b; col[c + 3] = 0;
+        col[c + 4] = o.r; col[c + 5] = o.g; col[c + 6] = o.b; col[c + 7] = al;
+        col[c + 8] = o.r; col[c + 9] = o.g; col[c + 10] = o.b; col[c + 11] = 0;
+      }
+      rb.geo.attributes.position.needsUpdate = true; rb.geo.attributes.color.needsUpdate = true;
+      rb.geo.setDrawRange(0, (n - 1) * 12);
+    }
+  }
+  const hexRGB = (h) => [((h >> 16) & 255) / 255, ((h >> 8) & 255) / 255, (h & 255) / 255];
+  const SMOKE_RB = { life: 2.8, w0: 0.35, w1: 3.0, r: 0.8, g: 0.81, b: 0.84, a: 0.75, rise: 0.9, spread: 0.7, fade: 1.3 };
+  const FLAME_RB = { life: 0.13, w0: 0.9, w1: 0.12, r: 1, g: 0.6, b: 0.2, a: 0.95, add: true, fade: 0.8 };
+  const EMISS_RB = { life: 3.4, w0: 0.5, w1: 4.2, r: 0.78, g: 0.8, b: 0.84, a: 0.7, rise: 1.2, spread: 1.0, fade: 1.2 };
+  const BOMB_RB = { life: 2.0, w0: 0.3, w1: 2.0, r: 0.85, g: 0.86, b: 0.88, a: 0.6, rise: 0.6, spread: 0.5, fade: 1.3 };
+  const TIP_RB = { life: 1.1, w0: 0.22, w1: 1.2, r: 0.88, g: 0.92, b: 0.98, a: 0.7, fade: 1.2 };
+  let wtRb = [null, null], wtOn = false, dbgG = 0, dbgCam = null;
   function spawnDebris(p, n, speed, inherit) {
     let k = 0;
     for (const d of debris) {
@@ -279,6 +342,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     return null;
   }
   // silhouette glow: back-face shell expanded in SCREEN space (constant pixel width whatever the model scale); faint close up, strong far away
+  let bombLock = null;   // ground target the bomb aim marker is snapped to
   const GLOW_KINDS = new Set(["jet", "tank", "sam", "ship", "drone", "flak"]);
   const glowVp = { value: new THREE.Vector2(innerWidth, innerHeight) };
   function addGlow(t) {
@@ -300,7 +364,8 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     for (const t of targets) {
       if (!t.glow) continue;
       const d = camera.position.distanceTo(t.pos), k = THREE.MathUtils.clamp((d - 250) / 2600, 0, 1);
-      t.glow.opacity = 0.08 + 0.7 * k; t.glow.userData.px.value = 0.7 + 3.8 * k;
+      const air = t.kind === "jet" || t.kind === "drone", gm = air ? 1.3 : 0.72;   // aircraft glow a bit more, ground units a bit less
+      t.glow.opacity = (0.08 + 0.7 * k) * gm; t.glow.userData.px.value = (0.7 + 3.8 * k) * (air ? 1.15 : 0.8);
     }
   }
   function addTarget(kind, obj, pos, extra = {}) {
@@ -357,7 +422,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
           p.y = groundAt(p.x, p.z);
           const jp = rng() < 0.4;
           const t = addTarget("tank", alienT ? createAlienWalker(jp) : jp ? createJeep() : createTank(), p, { heading: hd });
-          t.speed = jp ? 6 + rng() * 4 : 3 + rng() * 3; placed++;
+          t.speed = (jp ? 6 + rng() * 4 : 3 + rng() * 3) * (1 - 0.5 * ezv()); placed++;
         }
       }
       return placed;
@@ -383,7 +448,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       const p = new THREE.Vector3(x, h, z);
       if (kind === "tank") {
         const hd = rng() * Math.PI * 2;
-        for (let j = 0; j < 2; j++) { const q = p.clone().add(new THREE.Vector3(Math.sin(hd) * j * 40, 0, Math.cos(hd) * j * 40)); q.y = groundAt(q.x, q.z); const jp = rng() < 0.4; const t = addTarget("tank", alienT ? createAlienWalker(jp) : jp ? createJeep() : createTank(), q, { heading: hd }); t.speed = jp ? 6 + rng() * 4 : 3 + rng() * 3; }
+        for (let j = 0; j < 2; j++) { const q = p.clone().add(new THREE.Vector3(Math.sin(hd) * j * 40, 0, Math.cos(hd) * j * 40)); q.y = groundAt(q.x, q.z); const jp = rng() < 0.4; const t = addTarget("tank", alienT ? createAlienWalker(jp) : jp ? createJeep() : createTank(), q, { heading: hd }); t.speed = (jp ? 6 + rng() * 4 : 3 + rng() * 3) * (1 - 0.5 * ezv()); }
       } else addTarget(kind, alienT ? (kind === "flak" ? createAlienTurret() : createAlienSpire()) : kind === "flak" ? createFlakGun() : createSamSite(), p);
       return true;
     }
@@ -422,9 +487,48 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     p.x = THREE.MathUtils.clamp(p.x, center.x - half + 800, center.x + half - 800);
     p.z = THREE.MathUtils.clamp(p.z, center.z - half + 800, center.z + half - 800);
     p.y = Math.max(groundAt(p.x, p.z) + 400, near.y + (rng() - 0.5) * 200);
-    const t = addTarget("jet", createEnemyJet(L.run?.foe, FOE_TYPES[L.run?.foe]), p, { yaw: Math.atan2(-(near.x - p.x), -(near.z - p.z)), pitch: 0, bank: 0, speed: (112 + L.difficulty * 40) * (assist ? 0.84 + 0.16 * skill : 1), burst: 0, mcool: 6 + rng() * 5, flyby: rng() < 0.6, off: (rng() < 0.5 ? -1 : 1) * (55 + rng() * 90), fb: 0, ct: 0 });
+    // build 19: most jets appear AHEAD of the player, flying away a bit slower (an easy tail-chase); some cross in front; few come head-on
+    let mode = "chase", baseYaw = 0;
+    if (near === player.pos) {
+      const r0 = rng();
+      mode = (elapsed < 45 || r0 < 0.6) ? "flee" : r0 < 0.88 ? "cross" : "head";
+      const f = fwdFrom(player.yaw, 0, V()); f.y = 0; f.normalize(); const sd = V(-f.z, 0, f.x), sg = rng() < 0.5 ? -1 : 1;
+      if (mode === "flee") { p.copy(near).addScaledVector(f, 500 + rng() * 350 + 350 * (1 - ezv())).addScaledVector(sd, sg * (80 + rng() * 320)); baseYaw = player.yaw + (rng() - 0.5) * 0.4; }
+      else if (mode === "cross") { p.copy(near).addScaledVector(f, 1000 + rng() * 500).addScaledVector(sd, sg * 1500); baseYaw = Math.atan2(sg * sd.x, sg * sd.z); }
+      else { p.copy(near).addScaledVector(f, 2600); }
+      p.x = THREE.MathUtils.clamp(p.x, center.x - half + 600, center.x + half - 600); p.z = THREE.MathUtils.clamp(p.z, center.z - half + 600, center.z + half - 600);
+      p.y = Math.max(groundAt(p.x, p.z) + 380, near.y + (rng() - 0.5) * 120);
+    }
+    const t = addTarget("jet", createEnemyJet(L.run?.foe, FOE_TYPES[L.run?.foe]), p, { yaw: Math.atan2(-(near.x - p.x), -(near.z - p.z)), pitch: 0, bank: 0, speed: (112 + L.difficulty * 40) * (assist ? 0.84 + 0.16 * skill : 1) * (1 - 0.38 * ezv()), burst: 0, mcool: 6 + rng() * 5, flyby: rng() < 0.6, off: (rng() < 0.5 ? -1 : 1) * (55 + rng() * 90), fb: 0, ct: 0 });
     t.objective = progress.jet != null;
+    t.mode = mode;
+    if (mode === "flee" || mode === "cross") {
+      t.flyby = false; t.baseYaw = baseYaw; t.yaw = baseYaw; t.ph = rng() * 6.28; t.holdY = p.y; t.life = 0;
+      t.engageAt = mode === "cross" ? 10 : 30 + rng() * 15;
+      t.speed = mode === "cross" ? 135 * (1 - 0.4 * ezv()) : THREE.MathUtils.clamp(player.speed * (0.8 - 0.12 * ezv()), 40, 150);
+    }
     return t;
+  }
+  // evasive jet: weaves gently, never shoots, speed stays below the player's so it can be caught; later it turns to fight
+  function updateEvader(t, dt) {
+    t.life += dt;
+    if (t.mode === "flee") t.speed += (THREE.MathUtils.clamp(player.speed * (0.8 - 0.12 * ezv()), 40, 150) - t.speed) * Math.min(1, dt * 0.5);
+    const edge = half - 1100;
+    if (Math.abs(t.pos.x - center.x) > edge || Math.abs(t.pos.z - center.z) > edge) t.baseYaw = Math.atan2(-(center.x - t.pos.x), -(center.z - t.pos.z));
+    const wantYaw = t.baseYaw + (t.mode === "flee" ? Math.sin(t.t * 0.45 + t.ph) * 0.55 : Math.sin(t.t * 0.8 + t.ph) * 0.12);
+    const yr = THREE.MathUtils.clamp(wrapPi(wantYaw - t.yaw) * 1.2, -(0.6 - 0.3 * ezv()), 0.6 - 0.3 * ezv());
+    t.yaw += yr * dt;
+    t.bank += (THREE.MathUtils.clamp(-yr / 0.6, -1, 1) * 0.8 - t.bank) * dt * 2.5;
+    let wantPitch = THREE.MathUtils.clamp((t.holdY - t.pos.y) * 0.004 + Math.sin(t.t * 0.7 + t.ph) * 0.07, -0.3, 0.3);
+    if (t.pos.y - groundAt(t.pos.x, t.pos.z) < 220) wantPitch = 0.4;
+    t.pitch += (wantPitch - t.pitch) * dt * 1.2;
+    fwdFrom(t.yaw, t.pitch, t.vel).multiplyScalar(t.speed);
+    t.pos.addScaledVector(t.vel, dt);
+    t.obj.rotation.set(t.pitch, t.yaw, -t.bank, "YXZ");
+    t.obj.userData.beacon.visible = Math.sin(t.t * 7) > 0;
+    t.obj.userData.burn?.(1, 0.5);
+    if ((t.ct -= dt) <= 0 && tA.subVectors(player.pos, t.pos).length() < 5500) { t.ct = 0.08; tD.set(0, 0, 7.5).applyEuler(t.obj.rotation).add(t.pos); puff(tD, null, 2.4, 9, 1.5, 0xeef4ff); }
+    if (t.life > t.engageAt) t.mode = "chase";
   }
 
 
@@ -660,7 +764,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     let maxH = 0;
     for (let i = 0; i < 24; i++) { const a = (i / 24) * Math.PI * 2; for (const r of [0, 800, 1800]) maxH = Math.max(maxH, groundAt(sp.x + Math.cos(a) * r, sp.z + Math.sin(a) * r)); }
     sp.y = maxH + 420;
-    player = { pos: sp, vel: V(), q: new THREE.Quaternion(), yaw: 0, pitch: 0, bank: 0, inverted: false, speed: 125, hp: 100, rockets: RACK, bombs: RACK, boost: 0 };
+    player = { pos: sp, vel: V(), q: new THREE.Quaternion(), yaw: 0, pitch: 0, bank: 0, inverted: false, speed: 125, hp: 100, rockets: RACK, bombs: RACK, boost: 0, flares: 12 };
     rocketCd = bombCd = 0; rocketRegen = bombRegen = 0; maneuver = null; crashing = null; invulnUntil = 0; heat = 0; overheated = false; lowAlt = false; voiceT = 0;
     landing = null; landingOpen = false; pad = null; baseCenters.length = 0;
     plane.visible = true;
@@ -689,7 +793,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     {
       const need = progress.jet != null ? level.objectives.find((o) => o.kind === "jet").need : (level.jets || 2);
       const atOnce = Math.min(need + 2, 3 + Math.round(level.difficulty * 4));
-      jetSpawner = { remaining: 99999, atOnce: Math.min(atOnce + 2, 2 + Math.floor(level.difficulty * 3)) };
+      jetSpawner = { remaining: 99999, atOnce: Math.max(2, Math.round(Math.min(atOnce + 2, 2 + Math.floor(level.difficulty * 3)) * (1 - 0.35 * ezv()))) };
     }
     groundWave = { t: 32, n: 0 }; allDone = false; waveT = -14;
     spawnAllies(level.allies, sp);
@@ -716,7 +820,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (pad) { scene.remove(pad.obj); pad = null; }
     fxs.length = 0; for (const sh of shocks) { sh.active = false; sh.m.visible = false; }
     for (const k of Object.keys(progress)) delete progress[k];
-    bullets.length = 0; puffs.length = 0; WC.state = "idle"; WC.obj = null; wcStandby(); hardIdx = 0;
+    bullets.length = 0; puffs.length = 0; rbClear(); wtRb = [null, null]; wtOn = false; for (const f of flares) scene.remove(f.spr); flares.length = 0; WC.state = "idle"; WC.obj = null; wcStandby(); hardIdx = 0;
     for (const p of [...rockets, ...missiles, ...bombs]) { p.active = false; p.o.visible = false; }
     for (const e of explosions) { e.active = false; e.g.visible = false; }
     for (const d of debris) { d.active = false; d.g.visible = false; }
@@ -819,10 +923,45 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
 
   // ---------- FLIGHT ASSIST (default on): damped curved input, soft pitch/bank limits, auto-level, terrain avoidance, gentle aim ----------
   const _qI = new THREE.Quaternion(), _vB = new THREE.Vector3(), _vA = new THREE.Vector3();
+  // build 19: child-friendly factor. 1 = beginner (levels 1-3), eases gently to ~0.64 at level 10 and on toward 0 after that
+  const ezv = () => { const n = (L && L.n) || 1; return n <= 10 ? 1 - Math.max(0, n - 3) * 0.0514 : Math.max(0, 0.64 - (n - 10) * 0.08); };
+  let cpP = 0, cpPV = 0, cpB = 0, cpBV = 0;
+  // ---------- AUTO-FOLLOW (TRACK): with a locked target ahead and the stick near centre / pointing toward it, the copilot flies the jet
+  // after the target and keeps it in the reticle. A firm push the other way, or a quick flick, breaks it instantly (never fights the player).
+  let trackOn = false, trackBlock = 0, prevRoll = 0, prevPitch = 0;
+  const _trkSt = { pitch: 0, roll: 0, yaw: 0 };
+  function trackStick(dt, st) {
+    const raw = st, t = lockTarget;
+    const dr = Math.abs(raw.roll - prevRoll), dp = Math.abs(raw.pitch - prevPitch); prevRoll = raw.roll; prevPitch = raw.pitch;
+    const flick = Math.hypot(dr, dp) / Math.max(dt, 1e-3) > 7 && Math.max(Math.abs(raw.roll), Math.abs(raw.pitch)) > 0.5;
+    trackBlock = Math.max(0, trackBlock - dt);
+    if (!t || !t.alive || t.kind === "ally" || nearPad || landing || maneuver || crashing || assistDanger > 0.35) { trackOn = false; return st; }
+    _vA.subVectors(t.pos, player.pos); const dist = _vA.length();
+    if (dist < 90 || dist > 4200) { trackOn = false; return st; }
+    const yawErr = -wrapPi(Math.atan2(-_vA.x, -_vA.z) - player.yaw),   // > 0: target is to the RIGHT
+       pitErr = Math.atan2(_vA.y, Math.hypot(_vA.x, _vA.z)) - player.pitch;
+    if (Math.abs(yawErr) > 1.25 || Math.abs(pitErr) > 0.9) { trackOn = false; return st; }
+    // opposite deflection (stick pushed away from the target) beyond ~50 %, or a flick, hands control straight back
+    const opp = (raw.roll * yawErr < 0 && Math.abs(raw.roll) > 0.5 && Math.abs(yawErr) > 0.04) || (raw.pitch * pitErr < 0 && Math.abs(raw.pitch) > 0.5 && Math.abs(pitErr) > 0.04);
+    if (opp || flick) { if (trackOn) trackBlock = 1.2; trackOn = false; }
+    if (!trackOn) {
+      const centred = Math.abs(raw.roll) < 0.16 && Math.abs(raw.pitch) < 0.16;
+      const toward = (Math.abs(raw.roll) < 0.16 || raw.roll * yawErr > 0) && (Math.abs(raw.pitch) < 0.16 || raw.pitch * pitErr > 0) && Math.max(Math.abs(raw.roll), Math.abs(raw.pitch)) > 0.16;
+      if (trackBlock <= 0 && !opp && !flick && (centred || toward)) trackOn = true;
+    }
+    if (!trackOn) return st;
+    // virtual stick: bank toward the target's heading, nose toward its elevation; blended with whatever the player adds in the same direction
+    const k = Math.min(1, dist / 400);
+    _trkSt.roll = THREE.MathUtils.clamp(yawErr * 2.1 * k + (raw.roll * yawErr > 0 ? raw.roll * 0.5 : 0), -0.9, 0.9);
+    _trkSt.pitch = THREE.MathUtils.clamp(pitErr * 3.2, -0.7, 0.7);
+    _trkSt.yaw = raw.yaw;
+    return _trkSt;
+  }
   function assistFlight(dt, st) {
+    st = trackStick(dt, st);
     const cv = (v) => { const a = Math.max(0, (Math.abs(v) - 0.06) / 0.94); return Math.sign(v) * Math.pow(a, 2.3); };   // dead-zone + strong expo: small stick = tiny, full stick = full   // strong expo: small stick = slow gentle moves, full stick = fast
-    aP += (cv(st.pitch) - aP) * (1 - Math.exp(-dt * 3.2));
-    aR += (cv(st.roll) - aR) * (1 - Math.exp(-dt * 2.8));
+    aP += (cv(st.pitch) - aP) * (1 - Math.exp(-dt * 10));
+    aR += (cv(st.roll) - aR) * (1 - Math.exp(-dt * 10));
     const ak = akv();
     // horizon recovery: upside down or nose-down too long -> the jet levels itself, whatever the stick says
     // deliberate maneuvers (loops, rolls, barrel rolls, inverted flight) are never fought: recovery only when the stick is released
@@ -842,7 +981,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
         danger = Math.max(danger, THREE.MathUtils.clamp((200 - clear) / 200, 0, 1) * (1 - (k - 1) * 0.1));
       }
       const agl0 = player.pos.y - groundAt(player.pos.x, player.pos.z);
-      if (agl0 < 90) danger = Math.max(danger, 1);
+      if (agl0 < 120) danger = Math.max(danger, 1);
       // buildings, bases, vehicles, ships ahead: climb over them
       for (const t of targets) {
         if (!t.alive || !SOLID[t.kind] || t.kind === "jet") continue;
@@ -858,19 +997,45 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     // soft pitch limit (about 55 degrees) so the nose never flips over
     const PL = 0.95;
     if (Math.abs(st.pitch) < 0.3 && player.pitch * pIn > 0 && Math.abs(player.pitch) > PL - 0.3) pIn *= Math.max(0, 1 - (Math.abs(player.pitch) - (PL - 0.3)) / 0.3);
-    let pitchRate = pIn * 1.25;
-    if (assistDanger > 0.02 && player.pitch < 0.7) pitchRate = Math.max(pitchRate, assistDanger * 2.1);
+    const ez = ezv(); let pitchRate;
+    const loopPull = Math.abs(st.pitch) > 0.97 && recover < 0.05 && ez < 0.7;   // beginners can never loop by accident (the LOOP button still works)
+    if (loopPull) { pitchRate = pIn * 1.25; cpP = player.pitch; cpPV = 0; }
+    else {
+      // pitch: stick Y = capped nose RATE with an instant onset (stick smoothing is ~30 ms); soft attitude limits make a stall / flip impossible
+      const u = Math.max(0, Math.abs(st.pitch) - 0.06) / 0.94, maxPR = 1.1 - 0.28 * ez;
+      let pr = Math.sign(st.pitch) * Math.pow(u, 1.4) * maxPR * (1 - recover);
+      if (pr < 0) pr *= Math.max(0, 1 - assistDanger * 1.6);
+      const upL = 0.7 + 0.25 * (1 - ez), dnL = -(0.4 + 0.2 * (1 - ez));
+      if (pr > 0 && player.pitch > upL - 0.25) pr *= Math.max(0, 1 - (player.pitch - (upL - 0.25)) / 0.25);
+      if (pr < 0 && player.pitch < dnL + 0.2) pr *= Math.max(0, 1 - ((dnL + 0.2) - player.pitch) / 0.2);
+      if (u < 0.3) pr += (0.08 * Math.min(1, Math.abs(Math.sin(player.bank))) - player.pitch) * 3.0 * (1 - u / 0.3);   // sits level, tucks a touch in a banked turn
+      pitchRate = pr; cpP = player.pitch; cpPV = 0;
+    }
+    if (assistDanger > 0.02 && player.pitch < 0.7) pitchRate = Math.max(pitchRate, assistDanger * 1.5);
     // hands off: the nose drifts back toward the horizon
     if (recover > 0.05 && player.pitch < 0.7) pitchRate = Math.max(pitchRate, recover * 1.7);
-    if (!held && !player.inverted && assistDanger < 0.05) pitchRate -= THREE.MathUtils.clamp(player.pitch, -1, 1) * 1.3;
+    if (!held && !player.inverted && assistDanger < 0.05) pitchRate -= THREE.MathUtils.clamp(player.pitch, -1, 1) * 1.8;
     // roll: capped bank, strong wing-leveller when the stick is released (also rights an inverted jet)
     let rr = aR * 1.8;
-    const BL = 0.95;
+    // ARCADE TURNS: sideways stick = a smooth banked turn (stick sets the bank angle, up to ~55 deg; the jet pulls itself through the turn).
+    // Near full deflection the bank target is dropped, so rolls / loops stay possible.
+    // roll threshold 0.985 so only a full-edge deflection rolls; everything below banks smoothly (critically damped, max ~41 deg)
+    const wB = (!player.inverted && Math.abs(player.pitch) < 1.3 && recover < 0.05) ? (ez > 0.7 ? 1 : THREE.MathUtils.clamp((0.985 - Math.abs(st.roll)) / 0.03, 0, 1)) : 0;
+    if (wB > 0) {
+      // ATTITUDE COMMAND: stick X = target bank angle (kids ~60 deg, adults ~52). The jet rolls there fast (rate cap ~200 deg/s, ~60 rad/s^2 onset),
+      // a reversal uses the full rate straight away (no carried-over momentum), and the turn rate is a pure function of the bank (coordinated turn).
+      const u = Math.max(0, Math.abs(st.roll) - 0.06) / 0.94, maxB = 0.9 + 0.15 * ez, tb = Math.sign(st.roll) * Math.pow(u, 1.2) * maxB;
+      const rmax = u < 0.02 ? 2.2 : 3.5;
+      const want = THREE.MathUtils.clamp((tb - player.bank) * 9, -rmax, rmax);
+      cpBV += THREE.MathUtils.clamp(want - cpBV, -60 * dt, 60 * dt);
+      rr = rr * (1 - wB) + cpBV * wB;
+    } else cpBV = 0;
+    const BL = 1.3;
     if (Math.abs(st.roll) < 0.55 && !player.inverted && player.bank * rr > 0 && Math.abs(player.bank) > BL - 0.2) rr *= Math.max(0, 1 - (Math.abs(player.bank) - (BL - 0.2)) / 0.2);
     const hands = 1 - Math.min(1, Math.abs(aR) * 3);
-    if (!held || Math.abs(st.roll) < 0.12 && Math.abs(st.pitch) < 0.12) rr -= player.bank * ((0.75 + 2.2 * hands) * (0.7 + 0.5 * ak) + recover * 2.4);
+    if ((!held || Math.abs(st.roll) < 0.12 && Math.abs(st.pitch) < 0.12) && (wB < 0.5 || recover > 0.05 || player.inverted)) rr -= player.bank * ((0.9 + 3.0 * hands) * (0.7 + 0.5 * ak) + recover * 2.4);
     // gentle aim assist: ease the nose toward the nearest enemy in a wide cone, never fighting a firm stick
-    let best = null, bs = 0.36 + 0.3 * ak, bl = _vB, tapMode = false;
+    let best = null, bs = 0.36 + 0.3 * ak + 0.25 * ez, bl = _vB, tapMode = false;
     if (!nearPad) {
       _qI.copy(player.q).invert();
       for (const t of targets) {
@@ -882,16 +1047,16 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       }
     }
     if (tapT > 0 && tapTarget && tapTarget.alive && !nearPad) { _qI.copy(player.q).invert(); _vA.subVectors(tapTarget.pos, player.pos).applyQuaternion(_qI); best = tapTarget; bl.copy(_vA); tapMode = true; }
-    if (best) {
-      const w = (tapMode ? 1.15 : 0.5 + 0.55 * ak) * (tapMode ? 0.5 + 0.5 * (1 - Math.min(1, 1.2 * Math.max(Math.abs(aP), Math.abs(aR)))) : 1) * (1 - Math.min(1, 1.4 * Math.max(Math.abs(aP), Math.abs(aR)))) * (assistDanger > 0.1 ? 0 : 1);
+    if (best && !trackOn) {
+      const w = (tapMode ? 1.15 : 0.5 + 0.55 * ak) * (tapMode ? 0.5 + 0.5 * (1 - Math.min(1, 1.2 * Math.max(Math.abs(aP), Math.abs(aR)))) : 1) * Math.max(0.4 * ez, 1 - Math.min(1, 1.4 * Math.max(Math.abs(aP), Math.abs(aR)))) * (1 + 0.8 * ez) * (assistDanger > 0.1 ? 0 : 1);
       const ey = tapMode ? Math.atan2(bl.y, Math.hypot(bl.x, bl.z)) : Math.atan2(bl.y, -bl.z), ex = Math.atan2(bl.x, -bl.z);
       if (!(ey < 0 && player.pitch < -0.45)) pitchRate += THREE.MathUtils.clamp(ey * 1.5, -0.5, 0.5) * w;
-      rotBody(AY, -THREE.MathUtils.clamp(ex * 1.5, -0.6, 0.6) * w * dt);
+      rotBody(AY, -THREE.MathUtils.clamp(ex * 1.2, -0.4 - 0.2 * ez, 0.4 + 0.2 * ez) * w * dt);
     }
     rotBody(AX, pitchRate * dt);
     player.q.multiply(_qa.setFromAxisAngle(tD.set(0, 0, -1), rr * dt));
     rotBody(AY, st.yaw * 0.6 * dt);
-    rotWorld(AY, -Math.sin(player.bank) * 1.35 * Math.max(0, Math.cos(player.pitch)) * dt);
+    rotWorld(AY, -Math.sin(player.bank) * (0.67 + 0.5 * (1 - ez)) * Math.max(0, Math.cos(player.pitch)) * dt);
   }
 
   function flight(dt) {
@@ -932,11 +1097,11 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     syncAngles();
     // speed
     const boost = controls.boost() ? 1 : 0;
-    let target = 68 + throttle * 110 + boost * 40 - Math.sin(player.pitch) * 40;   // throttle lever: 120 (slow) .. 320 (fast)
+    let target = (64 + throttle * 96) * (assist ? 1 - 0.3 * ezv() : 1) + boost * 40 - Math.sin(player.pitch) * 40;   // throttle lever: 120 (slow) .. 320 (fast)
     if (maneuver && maneuver.kind === "loop") target = Math.max(target, 140);
     if (nearPad) target = Math.min(target, 100);
     player.speed += (target - player.speed) * dt * 1.4;
-    player.speed = Math.max(62, player.speed);
+    player.speed = Math.max(assist ? 46 : 62, player.speed);
     { const dq = Math.min(1, Math.abs(player.q.dot(prevQ))); const om = dt > 0 ? 2 * Math.acos(dq) / dt : 0; prevQ.copy(player.q); gload += (THREE.MathUtils.clamp(om / 1.25, 0, 1) - gload) * (1 - Math.exp(-dt * 6)); }
     player.vel.set(0, 0, -1).applyQuaternion(player.q).multiplyScalar(player.speed);
     player.pos.addScaledVector(player.vel, dt);
@@ -1101,7 +1266,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       camera.fov = (portrait ? 80 : 58) + Math.max(0, player.speed - 140) * 0.1;
       const dist = portrait ? 38 : 27;
       // chase camera lives in the jet's own (smoothed) frame -> follows loops, rolls and inverted flight
-      camQ.slerp(player.q, snap ? 1 : 1 - Math.exp(-dt * 4.5));
+      camQ.slerp(player.q, snap ? 1 : 1 - Math.exp(-dt * (assist ? 3.6 : 4.5)));
       const el = 0.17 - look.pitch, az = look.yaw, ce = Math.cos(el); // look: +yaw = view turns left, +pitch = view tilts up
       tA.set(Math.sin(az) * ce, Math.sin(el), Math.cos(az) * ce).multiplyScalar(dist).applyQuaternion(camQ);
       camera.position.copy(player.pos).add(tA);
@@ -1118,6 +1283,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       camera.position.y += (Math.random() - 0.5) * shake * 1.5;
       shake = Math.max(0, shake - dt * 1.8);
     }
+    if (dbgCam) dbgCam(camera);
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
   }
@@ -1134,11 +1300,12 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   // ---------- damage / kills ----------
   function damagePlayer(n, msg) {
     if (ended || crashing || elapsed < invulnUntil) return;
-    if (assist) n *= 0.6;
+    if (assist) n *= 0.45 * (1 - 0.45 * ezv());
     player.hp -= n; stats.damage += n; lastDamage = elapsed; bumpSkill(-0.004 * n); invulnUntil = Math.max(invulnUntil, elapsed + 0.35);
     shake = Math.max(shake, 0.5);
     audio.hurt(); haptics.pulse(); events.onHurt?.();
     if (msg) events.toast?.(msg);
+    if (player.hp <= 0 && ezv() > 0.8) player.hp = 10;   // beginner levels: you cannot be shot down
     if (player.hp <= 0) { player.hp = 0; finish("down"); }
   }
   function damageTarget(t, n, by) {
@@ -1211,7 +1378,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     const origin = tA.set(0, -0.28, -8.1).applyMatrix4(plane.matrixWorld).clone(); // the cannon sits in the nose
     const dir = fwdFrom(player.yaw, player.pitch, V());
     // aim assist (7 degree cone)
-    let best = null, bestA = 0.22;
+    let best = null, bestA = 0.22 + (assist ? 0.3 * ezv() : 0);
     for (const t of targets) {
       if (!t.alive) continue;
       tB.subVectors(t.pos, origin);
@@ -1223,7 +1390,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (best) {
       const tt = origin.distanceTo(best.pos) / 950;
       tC.copy(best.pos).addScaledVector(best.vel, tt).sub(origin).normalize();
-      dir.lerp(tC, 0.9).normalize();
+      dir.lerp(tC, 0.9 + 0.1 * ezv()).normalize();
     }
     dir.x += (Math.random() - 0.5) * 0.006; dir.y += (Math.random() - 0.5) * 0.006;
     const v = dir.multiplyScalar(950).add(player.vel);
@@ -1261,6 +1428,19 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     watchWeapon(r, "MSL " + (hi + 1));
     audio.rocket();
   }
+  function pickBombLock(cc) {
+    const fw = fwdFrom(player.yaw, player.pitch, tD); let best = null, bs = 1e9;
+    for (const t of targets) {
+      if (!t.alive || t.kind === "jet" || t.kind === "drone" || t.kind === "ally") continue;
+      if (bombs.some((b) => b.active && b.target === t)) continue;   // already has a bomb on the way: move on to the next one
+      tB.subVectors(t.pos, player.pos); const d = tB.length(); if (d > 4200 || d < 120) continue;
+      const ang = tB.normalize().angleTo(fw); if (ang > 0.75) continue;
+      const sc = cc ? Math.hypot(t.pos.x - cc.x, t.pos.z - cc.z) / Math.max(1, t.radius * 0.5 + 60) : ang * 2000;   // closest to the bomb aim line / impact point
+      const sc2 = sc * (t === bombLock ? 0.7 : 1) + ang * 1.5;
+      if (sc2 < bs) { bs = sc2; best = t; }
+    }
+    return best;
+  }
   function dropBomb() {
     if (bombCd > 0) return;
     if (player.bombs <= 0) { if (emptyT <= 0) { emptyT = 0.5; audio.empty(); events.onEmpty?.("bomb"); } return; }
@@ -1272,7 +1452,8 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     b.p.copy(tA.set(0, -1.1, 0.6).applyMatrix4(plane.matrixWorld)); // released from the belly bay
     b.v.copy(player.vel).add(tB.set(0, -6, 0));
     // guided: lock the target under the nose (or the current ground lock)
-    let bt = lockTarget && lockTarget.alive && lockTarget.kind !== "jet" ? lockTarget : null;
+    let bt = bombLock && bombLock.alive ? bombLock : lockTarget && lockTarget.alive && lockTarget.kind !== "jet" && lockTarget.kind !== "drone" ? lockTarget : null;
+    bombLock = null;   // after the release the aim marker cycles on to the next nearest ground target
     if (!bt) {
       const fw = fwdFrom(player.yaw, player.pitch, V()); let bs = 0.9;
       for (const t of targets) {
@@ -1303,7 +1484,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   function launchSam(site, from) {
     const m = missiles.find((x) => !x.active);
     if (!m) return;
-    m.active = true; m.life = 9;
+    m.active = true; m.life = 9; m.decoy = null;
     m.p.copy(site.pos).add(tA.set(0, from === "jet" ? -1 : 7, 0));
     if (from === "jet") m.v.copy(site.vel).setLength(Math.max(260, site.speed + 90));
     else m.v.set(0, 140, 0);
@@ -1311,13 +1492,47 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     audio.warn();
     setAlert("Missile! Turn hard!", 1.5);
   }
-  let flareAt = -9;
+  // ---------- automatic defensive flares: bright magnesium flares fan out in an angel-wing pattern and decoy incoming missiles ----------
+  let flareAt = -9, flareRegen = 0;
+  const flares = [], FLARE_MAX = 12;
+  let flareTex = null;
+  function flareSprite() {
+    if (!flareTex) {
+      const c = document.createElement("canvas"); c.width = c.height = 64; const x = c.getContext("2d");
+      const g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+      g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(0.18, "rgba(255,248,215,1)"); g.addColorStop(0.42, "rgba(255,170,60,0.85)"); g.addColorStop(0.75, "rgba(255,110,20,0.25)"); g.addColorStop(1, "rgba(255,90,10,0)");
+      x.fillStyle = g; x.fillRect(0, 0, 64, 64); flareTex = new THREE.CanvasTexture(c); flareTex.colorSpace = THREE.SRGBColorSpace;
+    }
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: flareTex, transparent: true, depthWrite: false, fog: false }));
+    return sp;
+  }
+  const FLARE_SMOKE = { life: 2.8, w0: 0.35, w1: 2.4, r: 0.8, g: 0.81, b: 0.84, a: 0.8, rise: 0.4, spread: 0.3, fade: 1.2 };
+  const FLARE_FIRE = { life: 0.4, w0: 1.1, w1: 0.15, r: 1, g: 0.62, b: 0.18, a: 0.95, fade: 0.9 };
+  // decoy success per burst: ~95% on level 1, ~90% on level 10, easing down to ~60% on later levels
+  const flareOk = () => { const n = (L && L.n) || 1; return n <= 10 ? 0.95 - 0.05 * (n - 1) / 9 : Math.max(0.6, 0.9 - (n - 10) * 0.03); };
   function deployFlares(m) {
-    flareAt = elapsed; fwdFrom(player.yaw, player.pitch, tD);
-    const fp = player.pos.clone().addScaledVector(tD, -45).add(tB.set(0, -22, 0));
-    for (let i = 0; i < 14; i++) { tB.set((Math.random() - 0.5) * 30, -Math.random() * 12, (Math.random() - 0.5) * 30); fx(fp, tB, 3.2, 1.2, 1.6 + Math.random(), 0xfff0b0, GRAV * 0.12, 0.8); puff(fp, tB.set((Math.random() - 0.5) * 8, 1, (Math.random() - 0.5) * 8), 2, 9, 1.8, 0xe8e8ee); }
-    audio.hiss(); events.toast?.("Flares away!");
-    if (Math.random() < 0.85) m.decoy = fp;
+    flareAt = elapsed; player.flares = Math.max(0, player.flares - 1);
+    fwdFrom(player.yaw, player.pitch, tD); const fwd = tD.clone(), right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize();
+    const fresh = [];
+    for (const side of [-1, 1]) for (let k = 0; k < 3; k++) {
+      const spr = flareSprite(); scene.add(spr);
+      const f = { p: player.pos.clone().addScaledVector(fwd, -12).addScaledVector(right, side * 2.5).add(tB.set(0, -2.5, 0)), v: player.vel.clone().multiplyScalar(0.5).addScaledVector(fwd, -22).addScaledVector(right, side * (13 + k * 9)), life: 3.6, max: 3.6, spr, rb: rbStart(FLARE_SMOKE), rf: rbStart(FLARE_FIRE) };
+      f.v.y += 9 - k * 7;
+      flares.push(f); fresh.push(f);
+    }
+    audio.flare(); events.toast?.("Flares!");
+    if (m && Math.random() < flareOk()) { let b = null, bd = 1e9; for (const f of fresh) { const d = f.p.distanceTo(m.p); if (d < bd) { bd = d; b = f; } } m.decoy = b; }
+  }
+  function updateFlares(dt) {
+    for (let i = flares.length - 1; i >= 0; i--) {
+      const f = flares[i]; f.life -= dt;
+      f.v.multiplyScalar(Math.exp(-0.85 * dt)); f.v.y -= 6 * dt; f.p.addScaledVector(f.v, dt);
+      const k = Math.max(0, f.life / f.max);
+      f.spr.position.copy(f.p); f.spr.scale.setScalar((11 + Math.random() * 4) * (0.35 + 0.65 * Math.min(1, k * 2.5))); f.spr.material.opacity = Math.min(1, k * 3);
+      if (f.life > 0.2) { rbEmit(f.rb, f.p); rbEmit(f.rf, f.p); }
+      if (f.life <= 0) { rbStop(f.rb); rbStop(f.rf); scene.remove(f.spr); f.spr.material.dispose?.(); flares.splice(i, 1); }
+    }
+    if (player.flares < FLARE_MAX) { flareRegen += dt; if (flareRegen > 6) { flareRegen = 0; player.flares++; } } else flareRegen = 0;
   }
   let rwrT = 0;
   function rwrUpdate(dt) {
@@ -1352,7 +1567,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (slowT > 0) { slowT -= dt; dt *= 0.3; }
     elapsed += dt;
     if (L.baseHostile === undefined) L.baseHostile = L.hostile;
-    L.hostile = L.baseHostile * Math.min(1, 0.2 + elapsed / 150 + L.difficulty * 0.55);
+    L.hostile = L.baseHostile * Math.min(1, 0.2 + elapsed / 150 + L.difficulty * 0.55) * (1 - 0.75 * ezv());
     rwrUpdate(dt); updateGlows();
     controls.update(dt);
     if (crashing) {
@@ -1394,14 +1609,14 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     // slow refill, one at a time, whenever below max (timer only runs while below max)
     if (player.rockets < RACK) { rocketRegen += dt; if (rocketRegen >= ROCKET_REGEN) { rocketRegen = 0; player.rockets++; audio.reload("missile"); } } else rocketRegen = 0;
     if (player.bombs < RACK) { bombRegen += dt; if (bombRegen >= BOMB_REGEN) { bombRegen = 0; player.bombs++; audio.reload("bomb"); } } else bombRegen = 0;
-    if (elapsed - lastDamage > (assist ? 2.5 : 4) && player.hp < 100) player.hp = Math.min(100, player.hp + dt * (assist ? 5 : 2));
+    if (elapsed - lastDamage > (assist ? 2.5 - 1.5 * ezv() : 4) && player.hp < 100) player.hp = Math.min(100, player.hp + dt * (assist ? 5 + 7 * ezv() : 2));
 
     // auto-fire the gun while an enemy sits in the gun cone
     autoGun = false;
     { const fw = fwdFrom(player.yaw, player.pitch, tD); for (const t of targets) { if (!t.alive) continue; tA.subVectors(t.pos, player.pos); const d = tA.length(); if (d > 1500 || d < 40) continue; if (tA.normalize().angleTo(fw) < (assist ? 0.11 + 0.1 * akv() : 0.11)) { autoGun = true; break; } } }
     // rocket lock (14 deg cone)
     const fwd = fwdFrom(player.yaw, player.pitch, tD);
-    let cand = null, candA = assist ? 0.36 + 0.26 * akv() : 0.36;
+    let cand = null, candA = assist ? 0.36 + 0.26 * akv() + 0.3 * ezv() : 0.36;
     for (const t of targets) {
       if (!t.alive) continue;
       tA.subVectors(t.pos, player.pos);
@@ -1437,10 +1652,13 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
         if (tA.y <= gh) { tA.y = gh; ccip = tA.clone(); break; }
       }
     }
-    ccipRing.visible = !!ccip && ccip.distanceTo(player.pos) < 4500;
-    if (ccipRing.visible) { ccipRing.position.copy(ccip).add(tA.set(0, 2, 0)); ccipRing.scale.setScalar(1 + 0.15 * Math.sin(elapsed * 6)); }
+    // bomb auto-lock: the ground target closest to the impact point (or to the nose) gets the aim marker; bombs are guided onto it
+    bombLock = (allowed.includes("bomb") && player.bombs > 0 && !crashing && !nearPad) ? pickBombLock(ccip) : null;
+    const aimP = bombLock ? bombLock.pos : ccip;
+    ccipRing.visible = !!aimP && aimP.distanceTo(player.pos) < 4500;
+    if (ccipRing.visible) { ccipRing.position.copy(aimP).add(tA.set(0, bombLock ? bombLock.radius * 0.4 + 2 : 2, 0)).add(tA.set(0, 2, 0)); ccipRing.scale.setScalar(1 + 0.15 * Math.sin(elapsed * 6)); }
     ccipLine.visible = ccipRing.visible;
-    if (ccipLine.visible) { const a = ccipLine.geometry.attributes.position; a.setXYZ(0, player.pos.x, player.pos.y - 4, player.pos.z); a.setXYZ(1, ccip.x, ccip.y + 2, ccip.z); a.needsUpdate = true; }
+    if (ccipLine.visible) { const a = ccipLine.geometry.attributes.position; a.setXYZ(0, player.pos.x, player.pos.y - 4, player.pos.z); a.setXYZ(1, ccipRing.position.x, ccipRing.position.y, ccipRing.position.z); a.needsUpdate = true; }
 
     if (lowAlt) {
       setAlert("PULL UP", 0.2);
@@ -1456,11 +1674,22 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       const cd = sky.cloudDensityAt(camera.position); inCloud += (cd - inCloud) * (1 - Math.exp(-dt * 5));
       updateWisps(dt);
       accT += dt; if (accT > 15) { accT = 0; const ds = stats.shots + stats.rockets - accS; if (ds >= 20) { const acc = (stats.hits - accH) / ds; bumpSkill(THREE.MathUtils.clamp((acc - 0.22) * 0.12, -0.03, 0.04)); } accS = stats.shots + stats.rockets; accH = stats.hits; }
-      vaporT -= dt;
-      if (vaporT <= 0 && plane && !crashing && plane.visible && ((gload > 0.45 && player.speed > 100) || (inCloud > 0.1))) {
-        vaporT = 0.04; const u = plane.userData;
-        for (const n of [u.navL, u.navR]) if (n) { n.getWorldPosition(tA); puff(tA, tB.set(0, 0, 0), 0.9, 4.5, 0.9, 0xf2f6ff); }
+      // wingtip vapour: one continuous ribbon per wing tip, fades in with g-load / cloud
+      {
+        const u = plane && plane.userData, want = !!(u && !crashing && plane.visible && ((gload + dbgG > 0.45 && player.speed > 50) || inCloud > 0.1));
+        const kk = want ? Math.min(1, Math.max(inCloud * 3, (gload + dbgG - 0.4) * 2.2)) : 0;
+        const tips = u ? [u.navL, u.navR] : [];
+        for (let ti = 0; ti < 2; ti++) {
+          const n = tips[ti]; if (!n) continue;
+          if (!wtRb[ti]) wtRb[ti] = rbStart(TIP_RB);
+          n.getWorldPosition(tA);
+          if (kk > 0.02 && !wtOn) rbEmit(wtRb[ti], tA, 0);   // break marker so a new streak never bridges to an old one
+          if (kk > 0.02 || wtOn) rbEmit(wtRb[ti], tA, kk > 0.02 ? kk : 0);
+        }
+        wtOn = kk > 0.02;
       }
+      updateFlares(dt);
+      rbUpdate(dt);
     }
     sky.update(dt, camera.position, player.vel);
   }
@@ -1490,7 +1719,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (jetSpawner && !ended) {
       waveT += dt;
       const aliveJ = targets.filter((t) => t.kind === "jet" && t.alive).length;
-      const esc = Math.min(6, Math.floor(elapsed / 48));
+      const esc = Math.min(6, Math.floor(elapsed / (48 + 60 * ezv())));
       if (waveT > Math.max(5, 9.5 - esc * 0.7) && aliveJ < jetSpawner.atOnce + 1 + esc) { waveT = 0; const nW = 1 + (esc >= 2 ? 1 : 0) + (esc >= 5 ? 1 : 0); for (let i = 0; i < nW; i++) spawnJet(player.pos); events.toast?.(esc >= 3 ? "Heavy enemy wave inbound!" : "Enemy wave incoming!"); }
       // ground reinforcements: new tanks / flak / SAMs arrive ahead of the player at long range, escalating all round
       if (!crashing && !landing) {
@@ -1498,8 +1727,8 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
         if (groundWave.t <= 0) {
           groundWave.n++; groundWave.t = Math.max(8, 18 - groundWave.n * 0.7);
           const gAlive = targets.filter((t) => t.alive && (t.kind === "tank" || t.kind === "flak" || t.kind === "sam")).length;
-          if (gAlive < 18) {
-            const cnt = Math.min(5, 1 + Math.floor(groundWave.n / 3));
+          if (gAlive < 18 - Math.round(10 * ezv())) {
+            const cnt = Math.max(1, Math.round(Math.min(5, 1 + Math.floor(groundWave.n / 3)) * (1 - 0.5 * ezv())));
             for (let i = 0; i < cnt; i++) spawnGroundAhead(groundWave.n);
             events.toast?.("New ground targets ahead!");
           }
@@ -1550,7 +1779,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
           const d = tA.length();
           if (hostile > 0 && d < 4200) {
             t.cool -= dt * hostile;
-            if (t.cool <= 0 && airMissiles() < 3) { t.cool = 7 - L.difficulty * 3; launchSam(t); }
+            if (t.cool <= 0 && airMissiles() < 3) { t.cool = (7 - L.difficulty * 3) * (1 + 1.6 * ezv()); launchSam(t); }
           }
           break;
         }
@@ -1593,6 +1822,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   }
 
   function updateJet(t, dt, hostile) {
+    if (t.mode === "flee" || t.mode === "cross") { updateEvader(t, dt); return; }
     tA.subVectors(player.pos, t.pos);
     const dist = tA.length(); hostile *= assist ? 0.55 + 0.45 * skill : 1;
     let goal = tB.copy(player.pos).addScaledVector(player.vel, Math.min(1.2, dist / 400));
@@ -1609,7 +1839,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     } else if (dist < 220 && inFront) { goal = tB.copy(t.pos).addScaledVector(tC, 300).add(tD.set(Math.cos(t.t) * 400, 120, Math.sin(t.t) * 400)); }
     const gx = goal.x - t.pos.x, gz = goal.z - t.pos.z, gy = goal.y - t.pos.y;
     const wantYaw = Math.atan2(-gx, -gz);
-    const turn = 0.75 + L.difficulty * 0.35;
+    const turn = (0.75 + L.difficulty * 0.35) * (1 - 0.55 * ezv());   // beginners: the jets turn slower than the player can
     const yr = THREE.MathUtils.clamp(wrapPi(wantYaw - t.yaw) * 1.4, -turn, turn);
     t.yaw += yr * dt;
     t.bank += (THREE.MathUtils.clamp(-yr / turn, -1, 1) * 1.05 - t.bank) * dt * 2.5;
@@ -1634,6 +1864,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   function enemyShot(origin, spread) {
     const lead = origin.distanceTo(player.pos) / 800;
     tA.copy(player.pos).addScaledVector(player.vel, lead * 0.8).sub(origin).normalize();
+    spread *= 1 + 2.5 * ezv();
     tA.x += (Math.random() - 0.5) * spread * 2; tA.y += (Math.random() - 0.5) * spread * 2; tA.z += (Math.random() - 0.5) * spread * 2;
     bullets.push({ p: origin.clone(), v: tA.normalize().multiplyScalar(800), life: 1.8, enemy: true });
   }
@@ -1761,13 +1992,13 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
 
     for (let i = 0; i < 4; i++) if (hpReload[i] > 0 && (hpReload[i] -= dt) <= 0) { const mm = plane?.userData.hardMissiles?.[i]; if (mm) mm.visible = player.rockets > 0; }
     for (const r of rockets) {
-      if (!r.active) continue;
+      if (!r.active) { if (r.rb) { rbStop(r.rb); rbStop(r.rf); r.rb = r.rf = null; } continue; }
       r.life -= dt;
       if (r.arm > 0) { r.arm -= dt; r.v.y -= 6 * dt; r.v.multiplyScalar(1 + dt * 1.2); }
       else if (r.target && r.target.alive) {
         tA.copy(r.target.pos).addScaledVector(r.target.vel, 0.3).sub(r.p).normalize();
         const sp = r.v.length();
-        tB.copy(r.v).normalize().lerp(tA, Math.min(1, dt * 6.5)).normalize();
+        tB.copy(r.v).normalize().lerp(tA, Math.min(1, dt * (6.5 + 8 * ezv()))).normalize();
         r.v.copy(tB).multiplyScalar(Math.min(780, sp + dt * 420));
       } else r.v.multiplyScalar(1 + dt * 0.4);
       p0.copy(r.p);
@@ -1775,8 +2006,14 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       r.o.position.copy(r.p);
       r.o.lookAt(tA.copy(r.p).add(r.v));
       r.o.rotateY(Math.PI);
-      if ((r.trail = (r.trail || 0) - dt) <= 0) {
-        // own smoke trail per missile: hot motor flame + a thin white smoke line that thickens and drifts
+      if (!r.rb) {
+        if (WS.kind === "std") { r.rb = rbStart(SMOKE_RB); r.rf = rbStart(FLAME_RB); }
+        else { const c = hexRGB(WS.fx); r.rb = rbStart({ life: 0.7, w0: 0.7, w1: 0.2, r: c[0], g: c[1], b: c[2], a: 0.9, add: true, fade: 1 }); r.rf = null; }
+      }
+      rbEmit(r.rb, r.p); if (r.rf) rbEmit(r.rf, r.p);
+      if (WS.kind === "std") r.o.rotateZ(Math.sin(elapsed * 23 + r.p.x) * 0.25);
+      if (false) {
+        // (old particle trail, replaced by ribbons) own smoke trail per missile: hot motor flame + a thin white smoke line that thickens and drifts
         if (WS.kind === "std") {
           r.trail = 0.035;
           fx(r.p, null, 2.4 + Math.random() * 0.8, 0.6, 0.12, 0xffa040, 0, 0); fx(r.p, null, 1.1, 0.3, 0.1, 0xfff0c0, 0, 0);
@@ -1797,26 +2034,29 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       }
     }
     for (const m of missiles) {
-      if (!m.active) continue;
+      if (!m.active) { if (m.rb) { rbStop(m.rb); rbStop(m.rf); m.rb = m.rf = null; } continue; }
       m.life -= dt;
-      if (assist && !m.decoy && elapsed - flareAt > 4 && m.p.distanceTo(player.pos) < 700 && !crashing) deployFlares(m);
-      tA.copy(m.decoy || player.pos).sub(m.p);
+      if (assist && !m.decoy && elapsed - flareAt > 1.3 && player.flares > 0 && m.p.distanceTo(player.pos) < 850 && !crashing) deployFlares(m);
+      if (m.decoy && m.decoy.life <= 0) { m.active = false; m.o.visible = false; explode(m.p.clone(), 6, 0.4); continue; }
+      tA.copy(m.decoy ? m.decoy.p : player.pos).sub(m.p);
       const d = tA.length();
       tA.normalize();
       const sp = Math.min(270, m.v.length() + dt * 90);
-      tB.copy(m.v).normalize().lerp(tA, Math.min(1, dt * 0.95)).normalize();
+      tB.copy(m.v).normalize().lerp(tA, Math.min(1, dt * (m.decoy ? 3.4 : 0.95))).normalize();
       m.v.copy(tB).multiplyScalar(sp);
       m.p.addScaledVector(m.v, dt);
       m.o.position.copy(m.p);
       m.o.lookAt(tC.copy(m.p).add(m.v)); m.o.rotateY(Math.PI);
-      if ((m.trail = (m.trail || 0) - dt) <= 0) { m.trail = 0.04; puff(m.p, tB.set((Math.random() - 0.5) * 2, 0.8, (Math.random() - 0.5) * 2), 1.0, 7, 3.6, 0xe4e4e8); puff(m.p, null, 1.8, 11, 5.2, 0xb8bcc4); fx(m.p, null, 3.2, 0.8, 0.12, 0xff7a30, 0, 0); fx(m.p, null, 1.5, 0.4, 0.1, 0xfff0c0, 0, 0); m.o.rotateZ(Math.sin(elapsed * 17) * 0.3); }
-      if (d < 16 && m.decoy) { m.active = false; m.o.visible = false; explode(m.p.clone(), 8, 0.5); }
-      else if (d < 16) { m.active = false; m.o.visible = false; explode(m.p.clone(), 10, 0.8); damagePlayer((14 + 10 * L.hostile) * (assist ? 0.65 : 1), "Ouch! Missile hit"); }
+      if (!m.rb) { m.rb = rbStart(EMISS_RB); m.rf = rbStart(FLAME_RB); }
+      rbEmit(m.rb, m.p); rbEmit(m.rf, m.p);
+      if (false) { m.trail = 0.04; puff(m.p, tB.set((Math.random() - 0.5) * 2, 0.8, (Math.random() - 0.5) * 2), 1.0, 7, 3.6, 0xe4e4e8); puff(m.p, null, 1.8, 11, 5.2, 0xb8bcc4); fx(m.p, null, 3.2, 0.8, 0.12, 0xff7a30, 0, 0); fx(m.p, null, 1.5, 0.4, 0.1, 0xfff0c0, 0, 0); m.o.rotateZ(Math.sin(elapsed * 17) * 0.3); }
+      if (d < 30 && m.decoy) { m.active = false; m.o.visible = false; explode(m.p.clone(), 8, 0.5); }
+      else if (d < 16) { m.active = false; m.o.visible = false; explode(m.p.clone(), 10, 0.8); damagePlayer((14 + 10 * L.hostile) * (assist ? 0.55 : 1), "Ouch! Missile hit"); }
       else if (m.life <= 0 || m.p.y < groundAt(m.p.x, m.p.z)) { m.active = false; m.o.visible = false; puff(m.p, null, 4, 14, 1.5, 0x888888); }
       else if ((m.beep = (m.beep || 0) - dt) <= 0) { m.beep = d < 1200 ? 0.35 : 0.8; audio.warn(); }
     }
     for (const b of bombs) {
-      if (!b.active) continue;
+      if (!b.active) { if (b.rb) { rbStop(b.rb); b.rb = null; } continue; }
       b.v.y -= GRAV * dt;
       if (b.target && b.target.alive) {
         // guided: steer the fall so it lands on the locked target (limited fin authority)
@@ -1824,11 +2064,13 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
         const tf = Math.max(0.4, (vy + Math.sqrt(vy * vy + 2 * GRAV * h)) / GRAV);
         tA.set((b.target.pos.x + b.target.vel.x * tf - b.p.x) / tf, 0, (b.target.pos.z + b.target.vel.z * tf - b.p.z) / tf);
         tB.set(tA.x - b.v.x, 0, tA.z - b.v.z);
-        const mx = 55 * dt, l = tB.length(); if (l > mx) tB.multiplyScalar(mx / l);
+        const mx = 80 * dt, l = tB.length(); if (l > mx) tB.multiplyScalar(mx / l);
         b.v.x += tB.x; b.v.z += tB.z;
       }
       if (b.glow.visible) b.core.scale.setScalar(1.1 + 0.4 * Math.sin(elapsed * 40 + b.p.x));
-      if ((b.trail = (b.trail || 0) - dt) <= 0) { b.trail = 0.05; puff(b.p, tB.set((Math.random() - 0.5) * 1.2, 0.5, (Math.random() - 0.5) * 1.2), 0.6, 3.6, 3.2, 0xdadde2); fx(b.p, null, 1.6, 0.4, 0.14, 0xff9a40, 0, 0); }
+      if (!b.rb) b.rb = rbStart(BOMB_RB);
+      rbEmit(b.rb, b.p);
+      if (false) { b.trail = 0.05; puff(b.p, tB.set((Math.random() - 0.5) * 1.2, 0.5, (Math.random() - 0.5) * 1.2), 0.6, 3.6, 3.2, 0xdadde2); fx(b.p, null, 1.6, 0.4, 0.14, 0xff9a40, 0, 0); }
       b.p.addScaledVector(b.v, dt);
       b.o.position.copy(b.p);
       b.o.lookAt(tA.copy(b.p).add(b.v)); b.o.rotateY(Math.PI);
@@ -1971,7 +2213,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   function hudState() {
     return {
       throttle, combo, recover, gload, tier: tierOf(), player, targets, rings, progress, objectives: L?.objectives || [], timeLeft, score, viewMode,
-      lockTarget, lockCand, lockTime, ccip, alert: alertMsg, camera, missiles, half, center, elapsed,
+      lockTarget, lockCand, lockTime, track: trackOn, ccip, alert: alertMsg, camera, missiles, half, center, elapsed,
       fwd: player ? fwdFrom(player.yaw, player.pitch, V()) : null,
       heat, overheated, crashing: !!crashing, pad, baseCenters, landingOpen, landing: !!landing, autoGun, rack: RACK, rockets: player ? player.rockets : 0, bombs: player ? player.bombs : 0,
       rocketRefill: player && player.rockets < RACK ? rocketRegen / ROCKET_REGEN : 0, bombRefill: player && player.bombs < RACK ? bombRegen / BOMB_REGEN : 0, rocketCd: Math.max(0, rocketCd), bombCd: Math.max(0, bombCd), endless, allies, lowAlt, maneuver: maneuver ? maneuver.dir : 0,
@@ -2034,6 +2276,6 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     loop: (d) => startLoop(d),
     roll: (d) => startRoll(d),
     stats: () => stats,
-    dbg: { sky, warpAt: (t, d) => { player.pos.set(t.pos.x, t.pos.y + d * 0.12 + 20, t.pos.z + d); player.q.setFromEuler(new THREE.Euler(-0.1, 0, 0, "YXZ")); return true; }, inCloud: () => inCloud, agl: () => player.pos.y - groundAt(player.pos.x, player.pos.z), warpNear: (kinds) => { const c = targets.filter((t) => t.alive && kinds.includes(t.kind)).sort((a, b) => a.pos.distanceTo(player.pos) - b.pos.distanceTo(player.pos))[0]; if (!c) return false; player.pos.set(c.pos.x, c.pos.y + 340, c.pos.z + 700); player.q.setFromEuler(new THREE.Euler(-0.3, 0, 0, "YXZ")); return true; }, hurtAlly: () => { const a = allies.find((x) => x.alive); if (a) friendlyHit(a, 1, 250); return !!a; }, killNear: (n) => targets.filter((t) => t.alive).sort((a, b) => a.pos.distanceTo(player.pos) - b.pos.distanceTo(player.pos)).slice(0, n).forEach((t) => kill(t)), hardState: () => ({ idx: hardIdx, rockets: player.rockets, live: rockets.filter((r) => r.active).map((r) => r.hp), wc: WC.state, world: L.run ? runLabel(L.run) : "" }), finish: (r) => finish(r), targets, allies, bullets, damageAlly: (a, n) => damageAlly(a, n), get player() { return player; }, get pad() { return pad; }, fxCount: () => fxs.length, openLanding() { landingOpen = true; }, explodeAt: (p, s, b) => explode(p, s, b), get landing() { return !!landing; }, get progress() { return progress; } },
+    dbg: { sky, fire: () => fireRocket(), flareN: () => flares.length, spawnMissile: () => { const m = missiles.find((x) => !x.active); if (!m) return false; m.active = true; m.life = 12; m.decoy = null; m.p.copy(player.pos).addScaledVector(fwdFrom(player.yaw, 0, V()), -900); m.p.y += 30; m.v.copy(player.vel).setLength(260); m.o.visible = true; return true; }, missilesLive: () => missiles.filter((x) => x.active).length, setG: (v) => { dbgG = v; }, setCam: (f) => { dbgCam = f; }, rockets: () => rockets.filter((r) => r.active).map((r) => ({ p: r.p.clone(), v: r.v.clone() })), tips: () => { const u = plane.userData; return [u.navL, u.navR].map((n) => n.getWorldPosition(new THREE.Vector3())); }, plane: () => plane, fl: () => ({ t: elapsed, pitch: player.pitch, bank: player.bank, speed: player.speed, y: player.pos.y, agl: player.pos.y - groundAt(player.pos.x, player.pos.z), hp: player.hp, yaw: player.yaw, crashing }), jets: () => targets.filter((t) => t.kind === "jet" && t.alive).map((t) => { const f = fwdFrom(player.yaw, 0, V()); const d = tA.subVectors(t.pos, player.pos); return { mode: t.mode, dist: Math.round(d.length()), ahead: Math.round(d.dot(f)), side: Math.round(d.x * f.z - d.z * f.x), sp: Math.round(t.speed) }; }), warpAt: (t, d) => { player.pos.set(t.pos.x, t.pos.y + d * 0.12 + 20, t.pos.z + d); player.q.setFromEuler(new THREE.Euler(-0.1, 0, 0, "YXZ")); return true; }, inCloud: () => inCloud, agl: () => player.pos.y - groundAt(player.pos.x, player.pos.z), warpNear: (kinds) => { const c = targets.filter((t) => t.alive && kinds.includes(t.kind)).sort((a, b) => a.pos.distanceTo(player.pos) - b.pos.distanceTo(player.pos))[0]; if (!c) return false; player.pos.set(c.pos.x, c.pos.y + 340, c.pos.z + 700); player.q.setFromEuler(new THREE.Euler(-0.3, 0, 0, "YXZ")); return true; }, hurtAlly: () => { const a = allies.find((x) => x.alive); if (a) friendlyHit(a, 1, 250); return !!a; }, killNear: (n) => targets.filter((t) => t.alive).sort((a, b) => a.pos.distanceTo(player.pos) - b.pos.distanceTo(player.pos)).slice(0, n).forEach((t) => kill(t)), hardState: () => ({ idx: hardIdx, rockets: player.rockets, live: rockets.filter((r) => r.active).map((r) => r.hp), wc: WC.state, world: L.run ? runLabel(L.run) : "" }), finish: (r) => finish(r), targets, allies, bullets, damageAlly: (a, n) => damageAlly(a, n), get player() { return player; }, get pad() { return pad; }, fxCount: () => fxs.length, openLanding() { landingOpen = true; }, explodeAt: (p, s, b) => explode(p, s, b), get landing() { return !!landing; }, get progress() { return progress; } },
   };
 }

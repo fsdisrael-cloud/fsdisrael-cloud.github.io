@@ -12,11 +12,11 @@ const D2R = Math.PI / 180;
 
 // ---- easy-to-adjust configuration ----
 export const CONTROL_CFG = {
-  stickDragUpIsNoseUp: false, // build 15: real aircraft - drag DOWN (pull back) = nose UP, drag up = nose down
+  stickDragUpIsNoseUp: true,  // build 19 default: push the stick UP = nose UP (climb). INVERT PITCH toggle (settings) = real aircraft style
   stickRadiusPx: 56,         // drag distance for full deflection
   tiltRangePitchDeg: 22,     // degrees of tilt for full pitch input
   tiltRangeRollDeg: 26,      // degrees of tilt for full roll input
-  tiltDeadZoneDeg: 3,
+  tiltDeadZoneDeg: 5,
   tiltSmoothing: 14,         // higher = snappier
   stickReturn: 12,           // spring-back speed of the joystick
   lookYawPerScreen: 3.6,     // head-look: radians of view yaw for a swipe across the full screen width
@@ -29,14 +29,15 @@ export function createControls() {
   const stick = { pitch: 0, roll: 0, yaw: 0 };
   const look = { yaw: 0, pitch: 0 };
   const keys = new Set();
-  let gyroOn = false, gotGyroEvent = false, tiltPref = true; try { tiltPref = localStorage.getItem("jet-tilt") !== "0"; } catch { /* ignore */ }
+  let gyroOn = false, gotGyroEvent = false, tiltPref = false, permOk = false; try { tiltPref = localStorage.getItem("jet-tilt-v2") === "1"; } catch { /* ignore */ }
+  let invertPitch = false; try { invertPitch = localStorage.getItem("jet-invert-v2") === "1"; } catch { /* ignore */ }
   let rawPitch = 0, rawRoll = 0, smPitch = 0, smRoll = 0;
   let zeroPitch = 35, zeroRoll = 0, wantCal = true, calAt = 0;
   let mslHeld = false, bombHeld = false, gunHeld = false, rocketEdge = false, bombEdge = false, viewEdge = false, boostKey = false;
   const joy = { x: 0, y: 0, active: false, id: null, sx: 0, sy: 0 };
   const lk = { active: false, id: null, x: 0, y: 0 };
   let lookMode = "chase";
-  let joyEl = null, gripEl = null;
+  let joyEl = null, gripEl = null, shadowEl = null;
   let enabled = false;
 
   function screenAngle() {
@@ -103,8 +104,8 @@ export function createControls() {
   <circle cx="100" cy="100" r="66" fill="url(#tb-boot)" stroke="#05070a" stroke-width="2.5"/>
   <circle cx="100" cy="100" r="57" fill="none" stroke="#3d4551" stroke-width="2" opacity=".8"/>
   <circle cx="100" cy="100" r="49" fill="none" stroke="#3d4551" stroke-width="2" opacity=".6"/>
+  <g class="stick-shadow"><ellipse cx="106" cy="114" rx="36" ry="46" fill="#000" opacity=".45"/></g>
   <g class="stick-grip" transform="rotate(-8 100 100)">
-    <ellipse cx="104" cy="108" rx="35" ry="47" fill="#000" opacity=".4"/>
     <path d="M100 52 Q132 52 135 90 Q137 124 124 142 Q112 152 98 152 Q82 150 74 132 Q64 104 70 80 Q76 52 100 52Z" fill="url(#tb-grip)" stroke="#040507" stroke-width="2.5"/>
     <path d="M78 76 Q82 58 100 57" stroke="#aab6c4" stroke-width="2.2" fill="none" opacity=".45" stroke-linecap="round"/>
     <path d="M131 96 q9 8 0 16 M130 118 q9 8 -1 15" stroke="#05060a" stroke-width="2.4" fill="none" opacity=".85"/>
@@ -124,7 +125,7 @@ export function createControls() {
   /** Builds the joystick UI inside `root` (the stick only: no weapon buttons on it). */
   function mountStick(root) {
     root.innerHTML = `<div class="stick-persp"><div class="stick-3d">${SVG}</div></div>`;
-    joyEl = root; gripEl = root.querySelector(".stick-grip"); gripEl.style.transformOrigin = "100px 100px";
+    joyEl = root; gripEl = root.querySelector(".stick-grip"); shadowEl = root.querySelector(".stick-shadow");
 
     root.addEventListener("pointerdown", (e) => {
       if (!enabled || joy.active) return;
@@ -184,7 +185,13 @@ export function createControls() {
   function paintStick() {
     if (!gripEl) return;
     const pv = stick.pitch, rl = stick.roll;
-    gripEl.style.transform = `translate(${(rl * 15).toFixed(1)}px, ${(-pv * 15).toFixed(1)}px) rotate(${(-8 + rl * 6).toFixed(1)}deg)`;
+    // pulled back (pitch > 0, nose up) = grip moves DOWN toward the pilot; right roll = grip moves right and leans right.
+    // Driven by the final combined input (thumb + tilt + keys) every frame. SVG attribute transforms work on every browser (iOS included).
+    const pd = invertPitch ? 1 : -1;   // grip moves exactly like the thumb: default push up = nose up = grip up
+    const gx = rl * 26, gy = pv * 26 * pd, lean = -8 + rl * 16 + pv * 3;
+    gripEl.setAttribute("transform", `translate(${gx.toFixed(1)} ${gy.toFixed(1)}) rotate(${lean.toFixed(1)} 100 100) scale(${(1 + Math.abs(pv) * 0.05 + Math.abs(rl) * 0.03).toFixed(3)})`);
+    // the shadow lags the grip and slides away from it (grip rises toward the viewer when deflected)
+    if (shadowEl) shadowEl.setAttribute("transform", `translate(${(rl * 15 + Math.abs(rl) * 3).toFixed(1)} ${(pv * 15 * pd + Math.abs(pv) * 3 + Math.abs(rl) * 2).toFixed(1)})`);
   }
 
   function update(dt) {
@@ -197,20 +204,20 @@ export function createControls() {
       const dz = C.tiltDeadZoneDeg;
       dp = Math.abs(dp) < dz ? 0 : dp - Math.sign(dp) * dz;
       dr = Math.abs(dr) < dz ? 0 : dr - Math.sign(dr) * dz;
-      tp = -dp / C.tiltRangePitchDeg;   // top of phone up (pitch angle falls) = nose up
+      tp = (-dp / C.tiltRangePitchDeg) * (invertPitch ? -1 : 1);   // top of phone up (pitch angle falls) = nose up (flipped by INVERT)
       tr = dr / C.tiltRangeRollDeg;
     }
     // joystick (spring back when released)
     if (!joy.active) { const k = Math.exp(-dt * C.stickReturn); joy.x *= k; joy.y *= k; }
-    const jp = (C.stickDragUpIsNoseUp ? -joy.y : joy.y), jr = joy.x;
+    const jp = (invertPitch ? joy.y : -joy.y), jr = joy.x;
     let kp = 0, kr = 0;
-    const kd = C.stickDragUpIsNoseUp ? 1 : -1;
+    const kd = invertPitch ? -1 : 1;
     if (keys.has("w") || keys.has("arrowup")) kp += kd;
     if (keys.has("s") || keys.has("arrowdown")) kp -= kd;
     if (keys.has("a") || keys.has("arrowleft")) kr -= 1;
     if (keys.has("d") || keys.has("arrowright")) kr += 1;
     const p = Math.max(-1, Math.min(1, tp + jp + kp)), r = Math.max(-1, Math.min(1, tr + jr + kr));
-    const k = 1 - Math.exp(-dt * 16);
+    const k = 1 - Math.exp(-dt * 34);
     stick.pitch += (p - stick.pitch) * k;
     stick.roll += (r - stick.roll) * k;
     // head-look eases back to forward when released
@@ -230,8 +237,10 @@ export function createControls() {
     requestView() { viewEdge = true; },
     boost: () => boostKey,
     gyroActive: () => gyroOn && gotGyroEvent && tiltPref,
-    tiltOn: () => tiltPref,
-    setTilt(v) { tiltPref = !!v; wantCal = true; try { localStorage.setItem("jet-tilt", tiltPref ? "1" : "0"); } catch { /* ignore */ } },
+    tiltOn: () => tiltPref && (permOk || typeof window.DeviceOrientationEvent?.requestPermission !== "function"),
+    setTilt(v) { tiltPref = !!v; wantCal = true; try { localStorage.setItem("jet-tilt-v2", tiltPref ? "1" : "0"); } catch { /* ignore */ } },
+    /** Game start: never prompts. Platforms without a permission API (Android, desktop) just switch the sensor on if TILT is on. */
+    startTiltIfAllowed() { if (tiltPref && typeof window.DeviceOrientationEvent?.requestPermission !== "function") { gyroOn = true; wantCal = true; } else if (permOk) wantCal = true; },
     gyroOn: () => gyroOn,
     needsPermission: () => typeof window.DeviceOrientationEvent?.requestPermission === "function",
     /** Call from the single first tap (iOS needs the user gesture). */
@@ -242,11 +251,14 @@ export function createControls() {
           const res = await Doe.requestPermission();
           if (res !== "granted") return false;
         }
-        gyroOn = true; wantCal = true;
+        permOk = true; gyroOn = true; wantCal = true;
         return true;
       } catch { return false; }
     },
     calibrate() { wantCal = true; },
+    invertOn: () => invertPitch,
+    setInvert(v) { invertPitch = !!v; try { localStorage.setItem("jet-invert-v2", invertPitch ? "1" : "0"); } catch { /* ignore */ } },
+    _joy(x, y) { if (x == null) { joy.active = false; return; } joy.active = true; joy.x = x; joy.y = y; },
     // test hooks
     _setTilt(p, r) { gyroOn = true; gotGyroEvent = true; rawPitch = smPitch = zeroPitch + p; rawRoll = smRoll = zeroRoll + r; },
   };
