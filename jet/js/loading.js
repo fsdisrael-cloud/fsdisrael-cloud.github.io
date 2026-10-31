@@ -3,21 +3,25 @@
 //   - styling lives in css/loading.css,
 //   - the game only calls loading.show(), loading.set(progress 0..1, text) and loading.hide().
 // Galoo's final loading graphics can replace the template/CSS without touching the game.
+const TITLE = "Jet"; // working title: change this one word when the final name is decided
+const ART = ["img/art/loading_portrait.jpg?v=8", "img/art/loading_landscape.jpg?v=8"]; // chosen by orientation in css/loading.css
 const TIPS = [
   "Tilt the top of your phone up to climb, down to dive.",
   "Your guns fire by themselves when an enemy is in front.",
-  "Tap the screen for a missile. Red button = missile, yellow = bomb.",
+  "Swipe the bare screen to look around. It never turns the plane.",
+  "Green forces are on your side. Your weapons cannot hurt them.",
   "Destroy every target, then land on the carrier.",
-  "Boost your speed to outrun enemy missiles.",
+  "Missile and bomb racks reload over time. Watch the gun heat.",
 ];
 export function createLoading(root) {
+  for (const u of ART) { const im = new Image(); im.src = u; } // warm the cache so the art is there when PLAY is tapped
   root.innerHTML = `
-    <div class="ld-bg" aria-hidden="true"><i class="ld-aurora"></i><i class="ld-aurora ld-b"></i></div>
-    <div class="ld-center">
-      <div class="ld-logo"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 4 41 30 60 46 60 51 38 45 35 58 32 60 29 58 26 45 4 51 4 46 23 30Z"/></svg><span>Jet</span></div>
-      <div class="ld-level" data-ld="level"></div>
-      <div class="ld-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i data-ld="fill"></i></div>
+    <div class="ld-bg" aria-hidden="true"></div>
+    <div class="ld-shade" aria-hidden="true"></div>
+    <div class="ld-top"><div class="ld-title">${TITLE}</div><div class="ld-level" data-ld="level"></div></div>
+    <div class="ld-bottom">
       <div class="ld-text" data-ld="text">Loading</div>
+      <div class="ld-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i data-ld="fill"></i></div>
       <div class="ld-tip" data-ld="tip"></div>
     </div>`;
   const q = (k) => root.querySelector(`[data-ld="${k}"]`);

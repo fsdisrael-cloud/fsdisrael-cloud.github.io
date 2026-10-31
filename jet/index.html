@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="ubu-build" content="7" />
+  <meta name="ubu-build" content="8" />
   <meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -16,8 +16,8 @@
   <link rel="icon" type="image/png" sizes="192x192" href="img/icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png" />
   <link rel="preload" href="fonts/Fredoka.ttf" as="font" type="font/ttf" crossorigin />
-  <link rel="stylesheet" href="css/jet.css?v=7" />
-  <link rel="stylesheet" href="css/loading.css?v=7" />
+  <link rel="stylesheet" href="css/jet.css?v=8" />
+  <link rel="stylesheet" href="css/loading.css?v=8" />
   <script type="importmap">{ "imports": { "three": "./js/vendor/three.module.min.js" } }</script>
 </head>
 <body class="on-title">
@@ -28,13 +28,18 @@
   <canvas id="game-canvas"></canvas>
   <canvas id="hud-canvas"></canvas>
 
-  <!-- ===== Music / Effects toggles: always reachable, title and play ===== -->
-  <div id="toggles" class="toggles">
-    <button type="button" class="tgl" id="btn-music" aria-label="Music on/off">
-      <svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="18" r="2.6" fill="currentColor"/><circle cx="17" cy="16" r="2.6" fill="currentColor"/><path class="slash" d="M3 3 21 21" stroke="#ff4d4d" stroke-width="2.6" stroke-linecap="round"/></svg><span>Music</span>
-    </button>
-    <button type="button" class="tgl" id="btn-sfx" aria-label="Effects on/off">
-      <svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16 9a4.5 4.5 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="slash" d="M3 3 21 21" stroke="#ff4d4d" stroke-width="2.6" stroke-linecap="round"/></svg><span>Effects</span>
+  <!-- ===== Settings (top right): gear + Music / Effects toggles. Open on the opening screen, tap the gear to open in play ===== -->
+  <div id="settings" class="settings open">
+    <div id="toggles" class="toggles">
+      <button type="button" class="tgl" id="btn-music" aria-label="Music on/off">
+        <svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="18" r="2.6" fill="currentColor"/><circle cx="17" cy="16" r="2.6" fill="currentColor"/><path class="slash" d="M3 3 21 21" stroke="#ff4d4d" stroke-width="2.6" stroke-linecap="round"/></svg><span>Music</span>
+      </button>
+      <button type="button" class="tgl" id="btn-sfx" aria-label="Effects on/off">
+        <svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16 9a4.5 4.5 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="slash" d="M3 3 21 21" stroke="#ff4d4d" stroke-width="2.6" stroke-linecap="round"/></svg><span>Effects</span>
+      </button>
+    </div>
+    <button type="button" class="tgl gear" id="btn-settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24"><path d="M12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8zm8.2 4.4v-2l-2.1-.5a6.6 6.6 0 0 0-.7-1.6l1.1-1.9-1.4-1.4-1.9 1.1a6.6 6.6 0 0 0-1.6-.7L13 3.8h-2l-.5 2.1a6.6 6.6 0 0 0-1.6.7L7 5.5 5.6 6.9l1.1 1.9c-.3.5-.5 1-.7 1.6l-2.1.5v2l2.1.5c.2.6.4 1.1.7 1.6l-1.1 1.9L7 17.3l1.9-1.1c.5.3 1 .5 1.6.7l.5 2.1h2l.5-2.1c.6-.2 1.1-.4 1.6-.7l1.9 1.1 1.4-1.4-1.1-1.9c.3-.5.5-1 .7-1.6z" fill="currentColor"/></svg><span>Settings</span>
     </button>
   </div>
 
@@ -42,6 +47,7 @@
   <section id="screen-title" class="screen title">
     <div class="sky-fx" aria-hidden="true"><i class="aurora a1"></i><i class="aurora a2"></i><i class="aurora a3"></i><i class="stars"></i><i class="cloud c1"></i><i class="cloud c2"></i><i class="cloud c3"></i><i class="horizon"></i></div>
     <div class="title-inner">
+     <div class="t-col t-left">
       <div class="logo" aria-label="Jet">
         <svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lg" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#ff7ad9"/><stop offset=".5" stop-color="#7ad9ff"/><stop offset="1" stop-color="#ffe27a"/></linearGradient></defs><path d="M32 4 41 30 60 46 60 51 38 45 35 58 32 60 29 58 26 45 4 51 4 46 23 30Z" fill="url(#lg)" stroke="#0b0a1f" stroke-width="2.5" stroke-linejoin="round"/></svg>
         <span class="logo-word">Jet</span>
@@ -63,8 +69,12 @@
         <path d="M300 103 Q320 102 332 106" stroke="#fff" stroke-width="2" fill="none" opacity=".8"/>
         <path d="M230 106 H290" stroke="#ff4d7a" stroke-width="3" stroke-linecap="round"/>
       </svg>
+     </div>
+     <div class="t-col t-right">
+      <div class="time-pick" id="time-pick" aria-label="Mission time"><span class="tp-label">MISSION TIME</span><div class="seg" id="time-seg"></div></div>
       <div id="menu-buttons" class="menu-buttons"></div>
       <div class="title-hint" id="title-hint">Hold your phone like a wheel. Tilt to fly.</div>
+     </div>
     </div>
     <div id="panel" class="panel hidden" role="dialog">
       <div class="panel-card"><h2 id="panel-title"></h2><div id="panel-body"></div><button type="button" class="metal-btn small" id="panel-close"><i class="led"></i><span>OK</span></button></div>
@@ -75,15 +85,31 @@
   <div id="hud" class="hud">
     <div class="radar-wrap">
       <canvas id="radar" aria-label="Radar"></canvas>
-      <button type="button" class="view-btn" id="btn-view" aria-label="Camera view">
+      <button type="button" class="view-btn" id="btn-view" aria-label="Camera view: cockpit or chase">
         <svg viewBox="0 0 24 24"><path d="M3 8h4l2-3h6l2 3h4v11H3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.6" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>View</span>
       </button>
     </div>
-    <div class="top-center"><div id="hud-timer" class="timer">0:00</div><div class="score"><b id="hud-score">0</b> pts</div><div class="lvl" id="hud-level"></div></div>
+    <div class="top-center">
+      <div class="top-row">
+        <div class="pill score-pill"><small>SCORE</small><b id="hud-score">0</b></div>
+        <div class="pill time-pill" id="time-pill"><small id="hud-time-label">TIME</small><b id="hud-timer" class="timer">0:00</b></div>
+      </div>
+      <div class="lvl" id="hud-level"></div>
+    </div>
     <div id="hud-obj" class="objectives"></div>
-    <div class="stats">
-      <div class="bar"><i id="hud-hp"></i></div>
+    <div class="stats" id="stats">
+      <div class="statrow"><span>HP</span><div class="bar"><i id="hud-hp"></i></div></div>
+      <div class="statrow heat"><span id="hud-heat-label">GUN</span><div class="bar"><i id="hud-heat"></i></div></div>
       <div class="nums"><span><b id="hud-spd">0</b> km/h</span><span><b id="hud-alt">0</b> m</span></div>
+    </div>
+    <!-- weapons: bottom left. One consistent ring cooldown on every button. -->
+    <div id="weapons" class="weapons">
+      <button type="button" class="wbtn w-gun" data-w="gun" aria-label="Guns"><i class="ring"></i>
+        <svg viewBox="0 0 24 24"><path d="M5 5v14M10 7v12M15 5v14M20 8v10" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg><em>GUN</em><b class="cnt">READY</b></button>
+      <button type="button" class="wbtn w-msl" data-w="missile" aria-label="Missile"><i class="ring"></i>
+        <svg viewBox="0 0 24 24"><path d="M3 21 8 16m0 0 8-8c2-2 4-3 5-3 0 1-1 3-3 5l-8 8m-2-2 2 2m-6 2 3-1M7 14l-3 1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="16.5" cy="7.5" r="1.4" fill="currentColor"/></svg><em>MISSILE</em><b class="cnt">10/10</b></button>
+      <button type="button" class="wbtn w-bomb" data-w="bomb" aria-label="Bomb"><i class="ring"></i>
+        <svg viewBox="0 0 24 24"><path d="M12 3v5M9 4h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><ellipse cx="12" cy="15" rx="5" ry="6.5" fill="currentColor"/><path d="M10 20.5 8.5 23M14 20.5 15.5 23" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><em>BOMB</em><b class="cnt">10/10</b></button>
     </div>
     <div id="stick" class="stick"></div>
     <div id="alert" class="alert hidden"></div>
@@ -112,6 +138,6 @@
   <section id="pause" class="screen pause hidden"><div class="res-card"><div class="res-title">Paused</div><button type="button" class="metal-btn" id="pause-btn"><i class="led"></i><span>RESUME</span></button></div></section>
 
   <div id="build-tag" class="build-tag"></div>
-  <script type="module" src="js/main.js?v=7"></script>
+  <script type="module" src="js/main.js?v=8"></script>
 </body>
 </html>

@@ -1,16 +1,16 @@
-/* Loading screen (separate component, see js/loading.js). Restyle freely: only this file + the template in loading.js. */
-.loading { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: #0b0a1f; color: #fff; transition: opacity .35s; }
+/* Loading screen (separate component, see js/loading.js). Key art background chosen by orientation, progress bar at the bottom. */
+.loading { position: fixed; inset: 0; z-index: 60; background: #070516; color: #fff; transition: opacity .35s; overflow: hidden; font-family: "Fredoka", system-ui, sans-serif; }
 .loading.hidden { display: none; }
 .loading.ld-out { opacity: 0; pointer-events: none; }
-.ld-bg { position: absolute; inset: 0; overflow: hidden; }
-.ld-aurora { position: absolute; inset: -30%; background: conic-gradient(from 0deg at 50% 60%, #ff4fd8, #6a5cff, #19d3ff, #4dffb0, #ffe45c, #ff4fd8); filter: blur(70px) saturate(1.2); opacity: .55; animation: ldspin 18s linear infinite; }
-.ld-aurora.ld-b { animation-duration: 27s; animation-direction: reverse; opacity: .35; transform: scale(.8); }
-@keyframes ldspin { to { transform: rotate(360deg) scale(1.05); } }
-.ld-center { position: relative; width: min(78vw, 420px); text-align: center; }
-.ld-logo { display: flex; align-items: center; justify-content: center; gap: 12px; font: 700 clamp(48px, 14vmin, 86px)/1 "Fredoka", system-ui, sans-serif; letter-spacing: .02em; text-shadow: 0 4px 0 #0b0a1f, 0 0 30px rgba(120,220,255,.6); }
-.ld-logo svg { width: .8em; height: .8em; fill: #fff; stroke: #0b0a1f; stroke-width: 3; stroke-linejoin: round; filter: drop-shadow(0 0 12px #7ad9ff); }
-.ld-level { margin-top: 6px; font: 600 16px "Fredoka", system-ui; opacity: .85; letter-spacing: .08em; text-transform: uppercase; min-height: 20px; }
-.ld-bar { margin: 18px auto 0; height: 14px; border-radius: 99px; background: rgba(0,0,0,.45); border: 2px solid rgba(255,255,255,.55); overflow: hidden; box-shadow: inset 0 2px 5px rgba(0,0,0,.6); }
-.ld-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ff7ad9, #ffe27a, #7affb0, #7ad9ff); border-radius: 99px; box-shadow: 0 0 14px rgba(255,255,255,.7); }
-.ld-text { margin-top: 10px; font: 500 15px "Fredoka", system-ui; opacity: .9; }
-.ld-tip { margin-top: 18px; font: 500 14px/1.35 "Fredoka", system-ui; opacity: .7; min-height: 40px; }
+.ld-bg { position: absolute; inset: 0; background: #070516 url(../img/art/loading_portrait.jpg?v=8) center / cover no-repeat; }
+@media (orientation: landscape) { .ld-bg { background-image: url(../img/art/loading_landscape.jpg?v=8); } }
+.ld-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5,3,20,.55) 0%, rgba(5,3,20,0) 26%, rgba(5,3,20,0) 62%, rgba(5,3,20,.72) 100%); }
+.ld-top { position: absolute; left: 0; right: 0; top: calc(env(safe-area-inset-top, 0px) + 5vh); text-align: center; }
+.ld-title { font: 700 clamp(54px, 15vmin, 104px)/1 "Fredoka", system-ui, sans-serif; letter-spacing: .04em; text-shadow: 0 4px 0 #0b0a1f, 0 0 34px rgba(150,120,255,.75); }
+.ld-level { margin-top: 6px; font: 600 clamp(12px, 2.4vmin, 16px) "Fredoka", system-ui; opacity: .9; letter-spacing: .1em; text-transform: uppercase; min-height: 20px; text-shadow: 0 2px 0 rgba(0,0,0,.7); }
+.ld-bottom { position: absolute; left: 50%; transform: translateX(-50%); width: min(80vw, 520px); bottom: calc(env(safe-area-inset-bottom, 0px) + 9vh); text-align: center; }
+.ld-text { font: 600 clamp(13px, 2.6vmin, 17px) "Fredoka", system-ui; letter-spacing: .16em; text-transform: uppercase; opacity: .95; text-shadow: 0 2px 0 rgba(0,0,0,.8); }
+.ld-bar { margin: 10px auto 0; height: 16px; border-radius: 99px; background: rgba(5,3,22,.7); border: 2px solid rgba(255,255,255,.7); overflow: hidden; box-shadow: inset 0 2px 5px rgba(0,0,0,.7), 0 0 18px rgba(130,100,255,.45); }
+.ld-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ff4fd8, #ffcf5a, #5affb0, #5ad7ff); border-radius: 99px; box-shadow: 0 0 14px rgba(255,255,255,.8); }
+.ld-tip { margin-top: 14px; font: 500 clamp(12px, 2.3vmin, 14px)/1.35 "Fredoka", system-ui; opacity: .8; min-height: 38px; text-shadow: 0 2px 0 rgba(0,0,0,.8); }
+@media (orientation: landscape) { .ld-top { top: calc(env(safe-area-inset-top, 0px) + 3vh); } .ld-title { font-size: clamp(44px, 12vmin, 90px); } .ld-bottom { bottom: calc(env(safe-area-inset-bottom, 0px) + 6vh); } .ld-tip { margin-top: 8px; min-height: 0; } }

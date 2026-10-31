@@ -219,6 +219,9 @@ export function createAudio() {
       tone({ f0: 140, f1: 40, dur: 0.6, peak: 0.25, type: "triangle", delay: 0.05 });
     },
     hiss() { noise({ dur: 1.1, peak: 0.32, type: "highpass", f0: 5000, f1: 2200, a: 0.02 }); tone({ f0: 340, f1: 170, dur: 0.22, peak: 0.07, type: "square" }); },
+    /** subtle rack-reload tick (missile / bomb back in the rack) and empty-rack click; both respect the Effects toggle */
+    reload(kind = "missile") { tone({ f0: kind === "bomb" ? 330 : 560, f1: kind === "bomb" ? 440 : 840, dur: 0.07, peak: 0.045, type: "triangle", prio: 0 }); tone({ f0: kind === "bomb" ? 660 : 1120, dur: 0.05, peak: 0.03, type: "sine", delay: 0.06, prio: 0 }); },
+    empty() { tone({ f0: 180, f1: 120, dur: 0.06, peak: 0.07, type: "square", prio: 0 }); },
     cool() { tone({ f0: 880, f1: 1320, dur: 0.12, peak: 0.07, type: "sine" }); },
     whoosh() { noise({ dur: 1.4, peak: 0.25, type: "bandpass", f0: 400, f1: 1600, q: 0.8, a: 0.3 }); },
     respawn() { [0, 7, 12, 19].forEach((s, i) => tone({ f0: 659.25 * 2 ** (s / 12), dur: 0.25, peak: 0.09, type: "sine", delay: i * 0.07 })); noise({ dur: 0.6, peak: 0.15, type: "highpass", f0: 6000, a: 0.05 }); },

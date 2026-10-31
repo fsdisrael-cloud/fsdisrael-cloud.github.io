@@ -3,7 +3,8 @@
 //   title, biome (snow|desert|valley|mountains), place {name, lat, lon}, time, weather,
 //   seconds (time limit), jets (enemy planes to shoot down), tank / flak / sam / base (ground targets
 //   to destroy), carrier (true = land on the aircraft carrier to finish; needs sea in the place),
-//   hostile (0-1.2, how hard ground and air enemies shoot), diff (0-1).
+//   hostile (0-1.2, how hard ground and air enemies shoot), diff (0-1),
+//   ally (optional) { jet, tank, ship } = friendly forces fighting on the player's side (defaults below).
 export const BIOMES = {
   snow: "Alaskan snow, lakes and sea",
   desert: "Desert",
@@ -54,6 +55,7 @@ export function buildLevel(n) {
     seconds: d.seconds, difficulty: d.diff, hostile: d.hostile, calm: false,
     seed: (n * 2654435761) >>> 0, objectives,
     ground: { tank: d.tank + 1, flak: d.flak, sam: d.sam, base: d.base, ship: 0 }, jets: d.jets,
+    allies: { jet: 2 + (n >= 5 ? 1 : 0) + (n >= 9 ? 1 : 0), tank: 2 + (d.diff > 0.5 ? 2 : 0), ship: d.carrier || d.biome === "snow" ? 2 : 1, ...(d.ally || {}) },
     carrier: !!d.carrier, balloons: 0, drones: 0, targets: 0, ring: null, weapons: ["gun", "rocket", "bomb"], view: "chase", lockView: false,
   };
 }

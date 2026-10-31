@@ -3,8 +3,10 @@
 //  - Tilt: top of the phone toward the sky = nose up, toward the ground = nose down (fixed, no invert option).
 //    Neutral is calibrated to how the phone is held at the first tap, and again after a screen rotation.
 //    Works in portrait and landscape: gravity is rotated into the current screen frame.
-//  - Joystick: drag the stick (bottom right). Weapons sit ON the stick: trigger = guns (hold), red = missile, yellow = bomb.
-//  - Tap anywhere else on the screen = missile (auto-aimed). The gun also auto-fires on a target in the cone.
+//  - Joystick (bottom right, joystick ALONE): drag the stick. No weapons on it. No barrel roll.
+//  - Weapons (bottom left, separate buttons): GUN (hold), MISSILE, BOMB. The gun also auto-fires on a target in the cone.
+//  - HEAD-LOOK: swipe anywhere else (not on the stick / buttons) = only the pilot's view/camera turns, never the flight path.
+//    Releasing eases the view back to forward.
 //  - Desktop: arrows/WASD, space = guns, F = missile, B = bomb, shift = boost, V = camera.
 const D2R = Math.PI / 180;
 
@@ -17,6 +19,9 @@ export const CONTROL_CFG = {
   tiltDeadZoneDeg: 3,
   tiltSmoothing: 14,         // higher = snappier
   stickReturn: 12,           // spring-back speed of the joystick
+  lookYawPerScreen: 3.6,     // head-look: radians of view yaw for a swipe across the full screen width
+  lookPitchPerScreen: 2.4,   // head-look: radians of view pitch for a swipe across the full screen height
+  lookReturn: 3.2,           // head-look: how fast the view eases back to forward after release
 };
 
 export function createControls() {
@@ -29,6 +34,8 @@ export function createControls() {
   let zeroPitch = 35, zeroRoll = 0, wantCal = true, calAt = 0;
   let gunHeld = false, rocketEdge = false, bombEdge = false, viewEdge = false, boostKey = false;
   const joy = { x: 0, y: 0, active: false, id: null, sx: 0, sy: 0 };
+  const lk = { active: false, id: null, x: 0, y: 0 };
+  let lookMode = "chase";
   let joyEl = null, gripEl = null;
   let enabled = false;
 
@@ -111,24 +118,10 @@ export function createControls() {
   </g>
 </svg>`;
 
-  /** Builds the stick UI inside `root`. Weapon buttons are children of the grip so they move with it. */
+  /** Builds the joystick UI inside `root` (the stick only: no weapon buttons on it). */
   function mountStick(root) {
-    root.innerHTML = `<div class="stick-persp"><div class="stick-3d">${SVG}
-      <button class="stick-btn sb-bomb" data-w="bomb" aria-label="Bomb"><i>BOMB</i><b class="n"></b></button>
-      <button class="stick-btn sb-msl" data-w="missile" aria-label="Missile"><i>MSL</i><b class="n"></b></button>
-      <button class="stick-btn sb-gun" data-w="gun" aria-label="Guns"><i>GUN</i></button>
-    </div></div>`;
+    root.innerHTML = `<div class="stick-persp"><div class="stick-3d">${SVG}</div></div>`;
     joyEl = root; gripEl = root.querySelector(".stick-3d");
-    const btn = (sel) => root.querySelector(sel);
-    const press = (b, on) => b.classList.toggle("pressed", on);
-    const bGun = btn(".sb-gun"), bMsl = btn(".sb-msl"), bBomb = btn(".sb-bomb");
-    const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
-    bGun.addEventListener("pointerdown", (e) => { stop(e); gunHeld = true; press(bGun, true); try { bGun.setPointerCapture(e.pointerId); } catch {} root.dispatchEvent(new CustomEvent("weapon", { detail: "gun" })); });
-    for (const t of ["pointerup", "pointercancel", "lostpointercapture"]) bGun.addEventListener(t, () => { gunHeld = false; press(bGun, false); });
-    bMsl.addEventListener("pointerdown", (e) => { stop(e); if (enabled) rocketEdge = true; press(bMsl, true); root.dispatchEvent(new CustomEvent("weapon", { detail: "missile" })); });
-    bBomb.addEventListener("pointerdown", (e) => { stop(e); if (enabled) bombEdge = true; press(bBomb, true); root.dispatchEvent(new CustomEvent("weapon", { detail: "bomb" })); });
-    for (const b of [bMsl, bBomb]) for (const t of ["pointerup", "pointercancel", "pointerleave"]) b.addEventListener(t, () => press(b, false));
-    for (const b of [bGun, bMsl, bBomb]) b.addEventListener("contextmenu", (e) => e.preventDefault());
 
     root.addEventListener("pointerdown", (e) => {
       if (!enabled || joy.active) return;
@@ -152,9 +145,36 @@ export function createControls() {
     root.addEventListener("contextmenu", (e) => e.preventDefault());
   }
 
-  /** Tap anywhere on the game surface (outside the stick and HUD buttons) = missile. */
-  function bindTapMissile(el) {
-    el.addEventListener("pointerdown", (e) => { if (enabled && e.target === el) rocketEdge = true; });
+  /** Weapon buttons (bottom left): `root` holds .wbtn[data-w=gun|missile|bomb]. Gun = hold, missile / bomb = tap. */
+  function bindWeapons(root) {
+    const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const press = (b, on) => b.classList.toggle("pressed", on);
+    const bGun = root.querySelector('[data-w="gun"]'), bMsl = root.querySelector('[data-w="missile"]'), bBomb = root.querySelector('[data-w="bomb"]');
+    bGun.addEventListener("pointerdown", (e) => { stop(e); gunHeld = true; press(bGun, true); try { bGun.setPointerCapture(e.pointerId); } catch {} });
+    for (const t of ["pointerup", "pointercancel", "lostpointercapture"]) bGun.addEventListener(t, () => { gunHeld = false; press(bGun, false); });
+    bMsl.addEventListener("pointerdown", (e) => { stop(e); if (enabled) rocketEdge = true; press(bMsl, true); });
+    bBomb.addEventListener("pointerdown", (e) => { stop(e); if (enabled) bombEdge = true; press(bBomb, true); });
+    for (const b of [bMsl, bBomb]) for (const t of ["pointerup", "pointercancel", "pointerleave"]) b.addEventListener(t, () => press(b, false));
+    for (const b of [bGun, bMsl, bBomb]) b.addEventListener("contextmenu", (e) => e.preventDefault());
+  }
+
+  /** HEAD-LOOK: a swipe on the bare game surface turns only the view (look.yaw: + = look left, look.pitch: + = look up). */
+  function bindLookSurface(el) {
+    el.addEventListener("pointerdown", (e) => {
+      if (!enabled || e.target !== el || lk.active) return;
+      lk.active = true; lk.id = e.pointerId; lk.x = e.clientX; lk.y = e.clientY;
+      try { el.setPointerCapture(e.pointerId); } catch {}
+    });
+    el.addEventListener("pointermove", (e) => {
+      if (!lk.active || e.pointerId !== lk.id) return;
+      const dx = e.clientX - lk.x, dy = e.clientY - lk.y; lk.x = e.clientX; lk.y = e.clientY;
+      const cock = lookMode === "cockpit", my = cock ? 2.4 : 3.1, mp = cock ? 1.1 : 0.95;
+      look.yaw = Math.max(-my, Math.min(my, look.yaw - dx / innerWidth * C.lookYawPerScreen));
+      look.pitch = Math.max(-mp, Math.min(mp, look.pitch - dy / innerHeight * C.lookPitchPerScreen));
+      e.preventDefault();
+    });
+    const end = (e) => { if (lk.active && e.pointerId === lk.id) { lk.active = false; lk.id = null; } };
+    for (const t of ["pointerup", "pointercancel", "lostpointercapture"]) el.addEventListener(t, end);
   }
 
   function paintStick() {
@@ -188,14 +208,15 @@ export function createControls() {
     const k = 1 - Math.exp(-dt * 16);
     stick.pitch += (p - stick.pitch) * k;
     stick.roll += (r - stick.roll) * k;
+    // head-look eases back to forward when released
+    if (!lk.active) { const kk = Math.exp(-dt * C.lookReturn); look.yaw *= kk; look.pitch *= kk; if (Math.abs(look.yaw) < 1e-3) look.yaw = 0; if (Math.abs(look.pitch) < 1e-3) look.pitch = 0; }
     paintStick();
   }
 
   return {
-    stick, look, update, mountStick, bindTapMissile,
-    bindLookSurface() {}, bindWeapons() {}, bindLoops() {},
-    setEnabled(v) { enabled = v; if (!v) { gunHeld = false; joy.active = false; joy.x = joy.y = 0; } },
-    setLookMode() {}, resetLook() {},
+    stick, look, update, mountStick, bindWeapons, bindLookSurface, bindLoops() {},
+    setEnabled(v) { enabled = v; if (!v) { gunHeld = false; joy.active = false; lk.active = false; joy.x = joy.y = 0; } },
+    setLookMode(m) { lookMode = m; }, resetLook() { look.yaw = 0; look.pitch = 0; },
     gunHeld: () => gunHeld,
     consumeRocket() { const v = rocketEdge; rocketEdge = false; return v; },
     consumeBomb() { const v = bombEdge; bombEdge = false; return v; },

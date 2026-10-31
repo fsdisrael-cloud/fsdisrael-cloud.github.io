@@ -1,18 +1,18 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=7";
-import { createHud } from "./hud.js?v=7";
-import { createControls } from "./controls.js?v=7";
-import { createAudio, trackFor } from "./audio.js?v=7";
-import { createHaptics } from "./haptics.js?v=7";
-import { createLoading } from "./loading.js?v=7";
-import { setSurreal, tickStyle } from "./surreal.js?v=7";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=7";
+import { createGame } from "./game.js?v=8";
+import { createHud } from "./hud.js?v=8";
+import { createControls } from "./controls.js?v=8";
+import { createAudio, trackFor } from "./audio.js?v=8";
+import { createHaptics } from "./haptics.js?v=8";
+import { createLoading } from "./loading.js?v=8";
+import { setSurreal, tickStyle } from "./surreal.js?v=8";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=8";
 
 const $ = (id) => document.getElementById(id);
 
 // ---------- build / version check ----------
-const BUILD = 7;
+const BUILD = 8;
 { const t = $("build-tag"); if (t) t.textContent = "Jet b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;
@@ -42,7 +42,8 @@ renderer.setSize(innerWidth, innerHeight, false);
 const audio = createAudio();
 const controls = createControls();
 controls.mountStick($("stick"));
-controls.bindTapMissile(canvas);
+controls.bindWeapons($("weapons"));
+controls.bindLookSurface(canvas); // head-look: swipe the bare screen = turn the view only
 const haptics = createHaptics();
 const hud = createHud();
 const loading = createLoading($("loading"));
@@ -57,6 +58,7 @@ const game = createGame({
     onBoom: (k) => { const f = $("boom-flash"); f.style.transition = "none"; f.style.opacity = String(Math.min(0.75, k)); void f.offsetWidth; f.style.transition = "opacity .4s ease-out"; f.style.opacity = "0"; },
     onCrash: () => $("crash").classList.remove("hidden"),
     onRespawn: () => { $("crash").classList.add("hidden"); hud.toast("Back in the sky!"); },
+    onEmpty: (kind) => { const b = document.querySelector(kind === "bomb" ? ".w-bomb" : ".w-msl"); if (b) { b.classList.remove("shake"); void b.offsetWidth; b.classList.add("shake"); } },
     onLoading: (t, p) => { if (typeof p === "number") lastProg = p; if (t) lastText = t; loading.set(p, t); },
   },
 });
@@ -84,7 +86,7 @@ document.addEventListener("dblclick", (e) => e.preventDefault());
 document.addEventListener("pointerdown", (e) => {
   const b = e.target.closest?.("button");
   if (!b || b.disabled) return;
-  if (!b.classList.contains("stick-btn")) { audio.click(); haptics.tick(); }
+  if (!b.classList.contains("wbtn")) { audio.click(); haptics.tick(); }
   if (b.classList.contains("metal-btn")) { b.classList.add("pressed"); setTimeout(() => b.classList.remove("pressed"), 140); }
 }, { capture: true });
 
@@ -96,11 +98,34 @@ function syncAudioButtons() {
 $("btn-music").addEventListener("click", () => { audio.setMusic(!audio.musicOn()); syncAudioButtons(); });
 $("btn-sfx").addEventListener("click", () => { audio.setSfx(!audio.sfxOn()); syncAudioButtons(); if (audio.sfxOn()) audio.click(); });
 syncAudioButtons();
+// settings gear (top right): open on the opening screen, collapsed in play, tap the gear to open / close
+{
+  const st = $("settings"); let tm = 0;
+  const setOpen = (v) => { st.classList.toggle("open", v); clearTimeout(tm); if (v && document.body.classList.contains("in-game")) tm = setTimeout(() => st.classList.remove("open"), 6000); };
+  $("btn-settings").addEventListener("click", () => setOpen(!st.classList.contains("open")));
+  for (const id of ["btn-music", "btn-sfx"]) $(id).addEventListener("click", () => setOpen(true));
+  window.__settingsOpen = setOpen;
+}
+
+// ---------- mission time choice (opening screen): 3 / 5 / 10 minutes / Endless, remembered ----------
+const TIME_CHOICES = [{ label: "3 min", sec: 180 }, { label: "5 min", sec: 300 }, { label: "10 min", sec: 600 }, { label: "Endless", sec: 0 }];
+function loadTime() { try { const v = localStorage.getItem("jet-time"); if (v !== null && TIME_CHOICES.some((c) => String(c.sec) === v)) return +v; } catch { /* ignore */ } return 300; }
+let timeSec = loadTime();
+function buildTimePick() {
+  const seg = $("time-seg"); seg.innerHTML = "";
+  for (const c of TIME_CHOICES) {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = c.label; b.className = c.sec === timeSec ? "on" : ""; b.setAttribute("aria-pressed", String(c.sec === timeSec));
+    b.addEventListener("click", () => { timeSec = c.sec; try { localStorage.setItem("jet-time", String(c.sec)); } catch { /* ignore */ } buildTimePick(); });
+    seg.appendChild(b);
+  }
+}
+buildTimePick();
 
 // ---------- opening screen: 3 buttons ----------
 // EASY TO RELABEL / REWIRE: each entry is { label, sub (optional small text), primary, run }.
 // Button 1 is PLAY. Buttons 2 and 3 are PLACEHOLDERS (final function pending): change label/run here.
-const HOW_HTML = `<p><b>Tilt</b> your phone like a wheel: top edge up = nose up, top edge down = nose down. Tilt sideways to bank and turn.</p><p>Or drag the <b>stick</b> (bottom right). Both work at once.</p><p>Guns fire <b>by themselves</b> on a target. Tap the screen or the red button for a missile, yellow for a bomb.</p>`;
+const HOW_HTML = `<p><b>Tilt</b> your phone like a wheel: top edge up = nose up, top edge down = nose down. Tilt sideways to bank and turn.</p><p>Or drag the <b>stick</b> (bottom right). Both work at once.</p><p><b>Weapons</b> are bottom left: hold GUN, tap MISSILE or BOMB. Racks of 10 reload over time; the gun cools down after it overheats.</p><p><b>Swipe</b> anywhere else to look around. It only turns your view, never the plane. Green forces are your friends.</p>`;
 const MENU_BUTTONS = [
   { label: "PLAY", sub: () => `Level ${levelNo}`, primary: true, run: () => play() },
   { label: "LEVELS", sub: () => `${levelNo}/${levelCount()}`, run: () => showPanel("Levels", levelsHtml()) },   // PLACEHOLDER (function pending)
@@ -143,7 +168,9 @@ async function launch(n, fromTap) {
   document.body.classList.remove("on-title"); document.body.classList.add("in-game");
   $("screen-title").classList.add("hidden");
   audio.playTrack(trackFor(L.time, L.weather));
-  controls.calibrate(); controls.setEnabled(true);
+  controls.calibrate(); controls.resetLook(); controls.setEnabled(true);
+  game.setTime(timeSec);
+  window.__settingsOpen?.(false);
   game.start();
   state = "playing";
   loading.hide();
@@ -161,7 +188,7 @@ function onLevelEnd(r) {
   audio.stopEngine(); controls.setEnabled(false);
   const n = levelNo, last = n >= levelCount();
   const won = r.reason === "complete";
-  $("res-title").textContent = won ? (last ? "YOU WIN!" : `LEVEL ${n} CLEAR`) : "TIME UP";
+  $("res-title").textContent = won ? (last ? "YOU WIN!" : `LEVEL ${n} CLEAR`) : r.reason === "down" ? "SHOT DOWN" : "TIME UP";
   $("res-stars").textContent = won ? "★".repeat(r.stars) + "☆".repeat(3 - r.stars) : "";
   $("res-sub").textContent = `Score ${r.score}`;
   const k = r.stats.kills || {};

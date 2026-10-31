@@ -2,7 +2,7 @@
 // Player + enemy jets: PBR-lit (metal, glossy canopy, environment reflections) with a thin illustrated outline.
 // Ground units: toon + outline. Illustrated look, readable colours.
 import * as THREE from "three";
-import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=7";
+import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=8";
 
 const PI = Math.PI;
 
@@ -108,6 +108,7 @@ const addMat = (color, op) => new THREE.MeshBasicMaterial({ color, transparent: 
 
 const PAL = {
   player: { lo: 0x2f3b50, hi: 0x9aaac4, wing: 0x66768f, dark: 0x1a2029, glass: 0xffc15a, glow: 0x35e6ff, burn: [0xff7a2e, 0xffd27a, 0xcfeaff] },
+  ally: { lo: 0x1d4a44, hi: 0xcdeee2, wing: 0x2f8f78, dark: 0x0f2a26, glass: 0x7affc0, glow: 0x3dff8b, burn: [0x3dffb0, 0xb8ffe0, 0xeafff6] },
   enemy: { lo: 0x2a1418, hi: 0x7a3a40, wing: 0x4a2a30, dark: 0x120a0c, glass: 0xff5a4a, glow: 0xff4030, burn: [0xff3a1a, 0xff9a40, 0xffe0b0] },
 };
 const jetGeo = {};
@@ -120,7 +121,7 @@ function jetGeometry(kind) {
     [-3.0, 1.18, 0.78, 0.56, 0.08], [-1.2, 1.55, 0.74, 0.6, 0.06], [0.8, 1.85, 0.7, 0.58, 0.04], [2.8, 1.8, 0.66, 0.56, 0.02],
     [4.6, 1.5, 0.58, 0.5, 0.0], [6.0, 1.2, 0.52, 0.48, 0.0], [6.5, 1.1, 0.5, 0.46, 0.0],
   ], 20, 2.7, pal.lo, pal.hi);
-  const wingPts = kind === "player"
+  const wingPts = kind !== "enemy"
     ? [[1.2, -2.8], [5.7, 1.3], [5.7, 3.0], [2.6, 4.5], [1.2, 4.5]]
     : [[1.2, -1.6], [5.4, 2.4], [5.4, 3.6], [2.4, 4.6], [1.2, 4.6]];
   G2.wing = plate(wingPts, 0.12);
@@ -196,7 +197,7 @@ function buildJet(kind) {
   cockpit.visible = false; root.add(cockpit);
   const body0 = [];
   root.traverse((o) => { if (o.isMesh && o !== canopy && o !== pilot) body0.push(o); });
-  const light = lean ? null : new THREE.PointLight(0xff9a50, 0, 60);
+  const light = kind !== "player" ? null : new THREE.PointLight(0xff9a50, 0, 60);
   if (light) { light.position.set(0, 0, 8); root.add(light); }
   root.userData = {
     flame, core, navL, navR, canopy, pilot, cockpit, radius: lean ? 7 : 6, eye: new THREE.Vector3(0, 1.0, -2.4),
@@ -226,6 +227,18 @@ export function createEnemyJet() {
   const beacon = new THREE.Mesh(G.sphereLo, new THREE.MeshBasicMaterial({ color: 0xff2020, fog: false }));
   beacon.position.set(0, 3.4, 5.6); beacon.scale.setScalar(0.35);
   g.add(beacon);
+  g.userData.beacon = beacon;
+  return g;
+}
+
+/** Friendly AI jet: green/white livery, green glow strips and a green marker so it is never confused with an enemy. */
+export function createAllyJet() {
+  const g = buildJet("ally");
+  const star = glowSprite(0x3dff8b, 15, 0.85); star.position.set(0, 4.2, 0); g.add(star);
+  const stripe = new THREE.Mesh(G.box, new THREE.MeshBasicMaterial({ color: 0x3dff8b, toneMapped: false, fog: false }));
+  stripe.position.set(0, 1.9, 3.2); stripe.scale.set(2.6, 0.06, 0.55); g.add(stripe);
+  const beacon = new THREE.Mesh(G.sphereLo, new THREE.MeshBasicMaterial({ color: 0x3dff8b, fog: false }));
+  beacon.position.set(0, 3.4, 5.6); beacon.scale.setScalar(0.35); g.add(beacon);
   g.userData.beacon = beacon;
   return g;
 }
@@ -335,9 +348,9 @@ export function createFlakGun() {
 const geoCache = {};
 function cached(name, fn) { return geoCache[name] || (geoCache[name] = fn()); }
 
-export function createTank() {
-  const geo = cached("tank", () => {
-    const olive = 0x7f8e4b, dark = 0x34362f, sand = 0xb7a76a;
+export function createTank(ally = false) {
+  const geo = cached(ally ? "tank-ally" : "tank", () => {
+    const olive = ally ? 0x2f9a7e : 0x7f8e4b, dark = 0x34362f, sand = ally ? 0xe9f6ef : 0xb7a76a;
     const b = new PartBuilder();
     b.add(G.sphere, olive, { pos: [0, 0.9, 0], scale: [1.7, 0.62, 2.6] });
     for (const s of [-1, 1]) {
@@ -347,18 +360,20 @@ export function createTank() {
     b.add(G.sphere, sand, { pos: [0, 1.55, 0.3], scale: [1.1, 0.62, 1.25] });
     b.add(G.capsule, olive, { pos: [0, 1.65, -1.9], rot: [PI / 2, 0, 0], scale: [0.16, 0.85, 0.16] });
     b.add(G.sphere, dark, { pos: [0, 1.65, -3.6], scale: [0.22, 0.22, 0.3] });
-    b.add(G.sphere, 0xff4d3d, { pos: [0.45, 2.15, 0.6], scale: [0.18, 0.18, 0.18] });
+    b.add(G.sphere, ally ? 0x3dff8b : 0xff4d3d, { pos: [0.45, 2.15, 0.6], scale: [0.18, 0.18, 0.18] });
+    if (ally) b.add(G.box, 0x3dff8b, { pos: [0, 2.0, 0.3], scale: [0.9, 0.08, 0.9] });
     return b.build();
   });
   const g = toonModel(geo);
+  if (ally) { const m = glowSprite(0x3dff8b, 11, 0.8); m.position.set(0, 3.6, 0); g.add(m); }
   g.scale.setScalar(2.4);
   g.userData.radius = 9;
   return g;
 }
 
-export function createShip() {
-  const geo = cached("ship", () => {
-    const hull = 0x7d8a99, deck = 0x5d6876, light = 0xd2d9e2, dark = 0x2b3038, red = 0xd9443a;
+export function createShip(ally = false) {
+  const geo = cached(ally ? "ship-ally" : "ship", () => {
+    const hull = ally ? 0xdfe9e6 : 0x7d8a99, deck = ally ? 0x4f8f80 : 0x5d6876, light = 0xd2d9e2, dark = 0x2b3038, red = ally ? 0x2fbf6f : 0xd9443a;
     const b = new PartBuilder();
     b.add(G.sphere, hull, { pos: [0, 0, 0], scale: [2.7, 1.5, 12] });
     b.add(G.sphere, red, { pos: [0, -0.35, 0], scale: [2.75, 0.5, 11.6] });
@@ -374,6 +389,7 @@ export function createShip() {
     return b.build();
   });
   const g = toonModel(geo);
+  if (ally) { const m = glowSprite(0x3dff8b, 16, 0.8); m.position.set(0, 9, 0); g.add(m); }
   g.scale.setScalar(1.7);
   g.userData.radius = 22;
   return g;

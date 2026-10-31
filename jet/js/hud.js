@@ -1,7 +1,8 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=7";
+import { LABEL } from "./missions.js?v=8";
 
+const ALLY = "#3dff8b";
 const COL = { jet: "#ff3b3b", tank: "#ffa91f", flak: "#ff7a1f", sam: "#ff6a1a", base: "#ffa91f", ship: "#ffa91f", pad: "#3dff8b", ring: "#ffe14d" };
 const v = new THREE.Vector3();
 
@@ -12,7 +13,8 @@ export function createHud() {
   const rctx = radar.getContext("2d");
   const el = (id) => document.getElementById(id);
   const dom = { timer: el("hud-timer"), score: el("hud-score"), obj: el("hud-obj"), hp: el("hud-hp"), spd: el("hud-spd"), alt: el("hud-alt"), alert: el("alert"), toasts: el("toasts"), flash: el("hit-flash"), low: el("low-alt"), edge: el("low-edge"),
-    bGun: document.querySelector(".sb-gun"), bMsl: document.querySelector(".sb-msl"), bBomb: document.querySelector(".sb-bomb"), nMsl: document.querySelector(".sb-msl .n"), nBomb: document.querySelector(".sb-bomb .n") };
+    tlabel: el("hud-time-label"), heat: el("hud-heat"), heatRow: document.querySelector(".statrow.heat"),
+    bGun: document.querySelector(".w-gun"), bMsl: document.querySelector(".w-msl"), bBomb: document.querySelector(".w-bomb") };
   let dpr = 1, W = 0, H = 0, domT = 0, radarT = 0, sweep = 0;
 
   function resize() {
@@ -66,6 +68,18 @@ export function createHud() {
         }
         if (d < 2500 || t === s.lockTarget) label(pr.x, pr.y - r - 8, d < 1000 ? `${Math.round(d)}m` : `${(d / 1000).toFixed(1)}km`, "#fff", 11);
       } else if (t.objective) arrows.push({ t, d, pr });
+    }
+    // friendly forces: small green diamond markers (never targetable)
+    for (const a of s.allies || []) {
+      if (!a.alive) continue;
+      const d = a.pos.distanceTo(s.player.pos);
+      if (d > 7000) continue;
+      const pr = project(a.pos, cam);
+      if (!pr.on) continue;
+      const r = Math.max(7, Math.min(13, 1500 / Math.max(d, 1)));
+      ctx.save(); ctx.translate(pr.x, pr.y - r * 1.6); ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(r * 0.8, 0); ctx.lineTo(0, r); ctx.lineTo(-r * 0.8, 0); ctx.closePath();
+      ctx.fillStyle = "rgba(61,255,139,0.85)"; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "#04120a"; ctx.stroke(); ctx.restore();
+      if (d < 1800) label(pr.x, pr.y - r * 3.2 - 4, "ALLY", ALLY, 10);
     }
     // carrier marker
     if (s.pad) {
@@ -202,6 +216,23 @@ export function createHud() {
       rctx.beginPath(); rctx.moveTo(0, -z * 1.15); rctx.lineTo(z * 0.85, z * 0.8); rctx.lineTo(-z * 0.85, z * 0.8); rctx.closePath();
       rctx.fillStyle = "#ff2e2e"; rctx.fill(); outline(1.4); rctx.restore();
     }
+    // FRIENDLY forces (green): jets = triangles pointing along their heading, ground forces = squares, ships = diamonds
+    for (const a of s.allies || []) {
+      if (!a.alive) continue;
+      const q = toScope(a.pos);
+      if (a.kind === "jet") {
+        const hx = -Math.sin(a.yaw), hz = -Math.cos(a.yaw);
+        const rx = hx * cs - hz * sn, rz = hx * sn + hz * cs;
+        rctx.save(); rctx.translate(q.x, q.y); rctx.rotate(Math.atan2(rx, -rz));
+        const z = 6 * u;
+        rctx.beginPath(); rctx.moveTo(0, -z * 1.15); rctx.lineTo(z * 0.85, z * 0.8); rctx.lineTo(-z * 0.85, z * 0.8); rctx.closePath();
+        rctx.fillStyle = ALLY; rctx.fill(); outline(1.4); rctx.restore();
+      } else if (a.kind === "tank") {
+        const z = 3.6 * u; rctx.beginPath(); rctx.rect(q.x - z, q.y - z, z * 2, z * 2); rctx.fillStyle = ALLY; rctx.fill(); outline(1.2);
+      } else {
+        const z = 5.6 * u; rctx.beginPath(); rctx.moveTo(q.x, q.y - z); rctx.lineTo(q.x + z, q.y); rctx.lineTo(q.x, q.y + z); rctx.lineTo(q.x - z, q.y); rctx.closePath(); rctx.fillStyle = ALLY; rctx.fill(); outline(1.3);
+      }
+    }
     rctx.restore();
     // own jet
     rctx.save(); rctx.translate(c, c);
@@ -214,9 +245,10 @@ export function createHud() {
   }
 
   function updateDom(s) {
-    const t = Math.max(0, Math.ceil(s.timeLeft));
+    const t = s.endless ? Math.floor(s.elapsed || 0) : Math.max(0, Math.ceil(s.timeLeft));
+    if (dom.tlabel) dom.tlabel.textContent = s.endless ? "ENDLESS" : "TIME LEFT";
     dom.timer.textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
-    dom.timer.classList.toggle("urgent", t <= 20);
+    dom.timer.classList.toggle("urgent", !s.endless && t <= 20);
     dom.score.textContent = s.score;
     dom.obj.innerHTML = s.objectives.map((o) => {
       const got = Math.min(o.need, s.progress[o.kind] || 0);
@@ -229,8 +261,21 @@ export function createHud() {
     dom.hp.style.background = hp > 60 ? "var(--mint)" : hp > 30 ? "var(--sun)" : "var(--red)";
     dom.spd.textContent = Math.round(s.player.speed * 3.6);
     dom.alt.textContent = Math.round(s.player.pos.y);
-    if (dom.nMsl) { dom.nMsl.textContent = s.player.rockets; dom.nBomb.textContent = s.player.bombs; dom.bMsl.classList.toggle("empty", s.player.rockets <= 0); dom.bBomb.classList.toggle("empty", s.player.bombs <= 0); }
-    if (dom.bGun) { dom.bGun.style.setProperty("--heat", String(Math.round(Math.max(0, Math.min(1, s.heat || 0)) * 100))); dom.bGun.classList.toggle("hot", !!s.overheated); }
+    // weapons: the same ring (arc = how much is ready) on all three buttons
+    const rack = s.rack || 10;
+    const ringSet = (b, p, cls, cnt) => {
+      if (!b) return;
+      b.style.setProperty("--p", String(Math.round(Math.max(0, Math.min(1, p)) * 100)));
+      for (const k of ["empty", "low", "hot"]) b.classList.toggle(k, k === cls);
+      const c = b.querySelector(".cnt"); if (c && c.textContent !== cnt) c.textContent = cnt;
+    };
+    const R_ = s.player.rockets, B_ = s.player.bombs;
+    ringSet(dom.bMsl, (R_ + (s.rocketRefill || 0)) / rack, R_ <= 0 ? "empty" : R_ <= 3 ? "low" : "", `${R_}/${rack}`);
+    ringSet(dom.bBomb, (B_ + (s.bombRefill || 0)) / rack, B_ <= 0 ? "empty" : B_ <= 3 ? "low" : "", `${B_}/${rack}`);
+    const heat = Math.max(0, Math.min(1, s.heat || 0));
+    ringSet(dom.bGun, 1 - heat, s.overheated ? "hot" : heat > 0.7 ? "low" : "", s.overheated ? "COOLING" : heat > 0.02 ? `${Math.round((1 - heat) * 100)}%` : "READY");
+    if (dom.heat) { dom.heat.style.width = Math.round(heat * 100) + "%"; dom.heat.style.background = s.overheated ? "#ff3b3b" : heat > 0.7 ? "#ffb02e" : "#38e8ff"; }
+    dom.heatRow?.classList.toggle("hot", !!s.overheated);
     const lo = !!s.lowAlt && !s.crashing;
     dom.low?.classList.toggle("on", lo); dom.edge?.classList.toggle("on", lo);
     if (s.alert) { dom.alert.textContent = s.alert; dom.alert.classList.remove("hidden"); } else dom.alert.classList.add("hidden");

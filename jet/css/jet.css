@@ -4,8 +4,9 @@
   --safe-t: env(safe-area-inset-top, 0px); --safe-r: env(safe-area-inset-right, 0px); --safe-b: env(safe-area-inset-bottom, 0px); --safe-l: env(safe-area-inset-left, 0px);
   --mint: #4dffa6; --sun: #ffd23f; --red: #ff4d4d; --ink: #0b0a1f;
   /* adjustable layout */
-  --radar: clamp(104px, 25vmin, 170px);
-  --stick: clamp(190px, min(52vw, 40vh), 290px);
+  --radar: clamp(96px, 24vmin, 160px);
+  --stick: clamp(176px, min(50vw, 44vh), 290px);
+  --wb: 64px;
   --gap: 12px;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
@@ -16,14 +17,6 @@ canvas#hud-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointe
 #ios-haptic-switch, #ios-haptic-label { position: fixed; opacity: 0; pointer-events: none; width: 1px; height: 1px; left: -10px; top: -10px; }
 
 /* ---------- Music / Effects toggles (always on top) ---------- */
-.toggles { position: fixed; z-index: 80; top: calc(var(--safe-t) + 8px); right: calc(var(--safe-r) + 10px); display: flex; gap: 8px; }
-.tgl { position: relative; display: grid; place-items: center; width: 50px; height: 50px; padding: 0; border-radius: 50%; color: #1a2028; cursor: pointer; border: 2px solid #0a0c10;
-  background: radial-gradient(circle at 35% 25%, #fdfeff, #b4bdc8 45%, #6d7782 72%, #c6ced8); box-shadow: 0 3px 0 #05060a, 0 5px 10px rgba(0,0,0,.45), inset 0 1px 1px #fff; transition: transform .08s, box-shadow .08s; }
-.tgl svg { width: 22px; height: 22px; margin-top: -4px; }
-.tgl span { position: absolute; bottom: 6px; font: 600 7px/1 "Fredoka", sans-serif; letter-spacing: 0; text-transform: uppercase; color: #2a323c; }
-.tgl .slash { display: none; }
-.tgl.off { color: #6a7480; } .tgl.off .slash { display: block; }
-.tgl:active { transform: translateY(2px); box-shadow: 0 1px 0 #05060a, inset 0 2px 5px rgba(0,0,0,.4); }
 
 /* ---------- Opening screen ---------- */
 .screen { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; }
@@ -43,7 +36,6 @@ canvas#hud-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointe
 .cloud.c1 { bottom: 4%; left: -30%; } .cloud.c2 { bottom: 14%; left: -60%; animation-duration: 55s; opacity: .8; transform: scale(.7); } .cloud.c3 { bottom: -4%; left: -10%; animation-duration: 33s; transform: scale(1.2); opacity: .9; }
 @keyframes cloudmove { from { translate: 0 0; } to { translate: 160vw 0; } }
 .horizon { left: 0; right: 0; bottom: 0; height: 30%; background: linear-gradient(180deg, transparent, rgba(255,160,120,.35)); }
-.title-inner { position: relative; width: min(92vw, 420px); display: flex; flex-direction: column; align-items: center; gap: 10px; padding: calc(var(--safe-t) + 54px) 0 calc(var(--safe-b) + 14px); max-height: 100%; }
 .logo { display: flex; align-items: center; gap: 10px; }
 .logo-mark { width: clamp(34px, 8vmin, 52px); height: clamp(34px, 8vmin, 52px); filter: drop-shadow(0 0 10px rgba(122,217,255,.9)); }
 .logo-word { font: 700 clamp(54px, 13vmin, 92px)/1 "Fredoka", sans-serif; letter-spacing: .02em; color: #fff; text-shadow: 0 4px 0 #0b0a1f, 0 0 26px rgba(255,255,255,.55); background: linear-gradient(180deg, #fff, #cfe9ff 60%, #ffd6f4); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; paint-order: stroke fill; -webkit-text-stroke: 2px #0b0a1f; }
@@ -80,26 +72,19 @@ canvas#hud-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointe
 /* ---------- HUD ---------- */
 .hud { position: fixed; inset: 0; z-index: 10; pointer-events: none; display: none; }
 body.in-game .hud { display: block; }
-body.on-title .tgl-hide, body.on-title .hud { display: none; }
+body.on-title .hud { display: none; }
 .radar-wrap { position: absolute; left: calc(var(--safe-l) + 10px); top: calc(var(--safe-t) + 10px); width: var(--radar); display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 #radar { width: var(--radar); height: var(--radar); display: block; filter: drop-shadow(0 4px 8px rgba(0,0,0,.6)); }
 .view-btn { pointer-events: auto; display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px 0 9px; border-radius: 99px; border: 2px solid #0a0c10; color: #1a2028; cursor: pointer; font: 700 12px "Fredoka"; letter-spacing: .06em; text-transform: uppercase;
   background: linear-gradient(180deg, #f4f7fa, #a9b3bf 50%, #7a8490 52%, #c3ccd6); box-shadow: 0 3px 0 #05060a, 0 5px 8px rgba(0,0,0,.45), inset 0 1px 1px #fff; }
 .view-btn svg { width: 20px; height: 20px; }
 .view-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #05060a, inset 0 2px 4px rgba(0,0,0,.4); }
-.top-center { position: absolute; top: calc(var(--safe-t) + 8px); left: 50%; transform: translateX(-50%); text-align: center; text-shadow: 0 2px 0 rgba(0,0,0,.7), 0 0 8px rgba(0,0,0,.5); }
-.timer { font: 700 clamp(26px, 6.5vmin, 38px)/1 "Fredoka"; letter-spacing: .04em; } .timer.urgent { color: var(--red); animation: pulse .5s infinite alternate; }
-.score { font: 500 clamp(12px, 2.6vmin, 15px) "Fredoka"; opacity: .9; } .score b { font-weight: 700; }
-.lvl { font: 600 11px "Fredoka"; letter-spacing: .12em; text-transform: uppercase; opacity: .75; }
 @keyframes pulse { to { transform: scale(1.12); } }
 .objectives { position: absolute; right: calc(var(--safe-r) + 10px); top: calc(var(--safe-t) + 62px); max-width: 44vw; font: 600 clamp(11px, 2.4vmin, 14px)/1.25 "Fredoka"; text-align: right; text-shadow: 0 1px 0 #000, 0 0 6px rgba(0,0,0,.8); display: flex; flex-direction: column; gap: 3px; align-items: flex-end; }
 .objectives div { background: rgba(8,6,28,.55); border: 1px solid rgba(255,255,255,.22); border-radius: 10px; padding: 3px 8px; display: flex; gap: 6px; align-items: center; }
 .objectives .chk { width: 11px; height: 11px; border-radius: 3px; border: 2px solid #fff; display: inline-block; flex: none; }
 .objectives .done { opacity: .6; } .objectives .done .chk { background: var(--mint); border-color: var(--mint); }
 .objectives b { color: var(--sun); }
-.stats { position: absolute; left: calc(var(--safe-l) + 12px); bottom: calc(var(--safe-b) + 12px); width: min(40vw, 200px); text-shadow: 0 1px 0 #000; }
-.bar { height: 14px; border-radius: 99px; background: rgba(0,0,0,.55); border: 2px solid rgba(255,255,255,.7); overflow: hidden; } .bar i { display: block; height: 100%; width: 100%; background: var(--mint); transition: width .15s; }
-.nums { margin-top: 5px; display: flex; gap: 12px; font: 500 clamp(12px, 2.6vmin, 14px) "Fredoka"; } .nums b { font-weight: 700; font-size: 1.25em; }
 .alert { position: absolute; top: 24%; left: 50%; transform: translateX(-50%); padding: 8px 18px; border-radius: 14px; background: rgba(255,60,60,.9); border: 2px solid #fff; font: 700 clamp(16px, 3.6vmin, 22px) "Fredoka"; letter-spacing: .05em; text-align: center; animation: pulse .35s infinite alternate; white-space: nowrap; }
 .toasts { position: absolute; top: 31%; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .toast { padding: 5px 14px; border-radius: 99px; background: rgba(8,6,28,.72); border: 1.5px solid rgba(255,255,255,.5); font: 600 clamp(13px, 2.8vmin, 16px) "Fredoka"; animation: toastIn .2s ease-out; white-space: nowrap; }
@@ -115,17 +100,6 @@ body.on-title .tgl-hide, body.on-title .hud { display: none; }
 .stick-persp { position: absolute; inset: 0; perspective: 520px; perspective-origin: 50% 20%; }
 .stick-3d { position: absolute; inset: 0; transform-origin: 50% 84%; transition: none; will-change: transform; }
 .stick-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 8px 10px rgba(0,0,0,.55)); }
-.stick-btn { position: absolute; transform: translate(-50%, -50%); padding: 0; cursor: pointer; border-radius: 50%; border: 2.5px solid #05060a; color: #fff; display: grid; place-items: center; touch-action: none;
-  font: 700 clamp(9px, 1.8vmin, 11px)/1 "Fredoka"; letter-spacing: .06em; box-shadow: 0 3px 0 #05060a, 0 5px 8px rgba(0,0,0,.5), inset 0 1px 2px rgba(255,255,255,.7), inset 0 -3px 5px rgba(0,0,0,.35); transition: transform .06s, box-shadow .06s, filter .06s; }
-.stick-btn i { font-style: normal; text-shadow: 0 1px 0 rgba(0,0,0,.6); pointer-events: none; margin-top: 2px; }
-.stick-btn .n { position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 4px; border-radius: 10px; background: #0b0a1f; border: 1.5px solid #fff; font: 700 12px/17px "Fredoka"; color: #fff; text-align: center; pointer-events: none; }
-.stick-btn.pressed { transform: translate(-50%, calc(-50% + 3px)) scale(.94); box-shadow: 0 0 0 #05060a, inset 0 3px 6px rgba(0,0,0,.5); filter: brightness(.9); }
-.stick-btn.empty { filter: grayscale(.8) brightness(.7); }
-.sb-msl { left: 35.4%; top: 23%; width: 21%; aspect-ratio: 1; background: radial-gradient(circle at 35% 28%, #ffb0a0, #ff3b2f 48%, #8c0e08); }
-.sb-bomb { left: 64.6%; top: 23%; width: 21%; aspect-ratio: 1; color: #1a1200; background: radial-gradient(circle at 35% 28%, #fff2a8, #ffc928 50%, #9a6a00); }
-.sb-gun { left: 50%; top: 47.5%; width: 24%; aspect-ratio: 1; background: radial-gradient(circle at 35% 28%, #7d8794, #2c333c 55%, #0d0f13); border-color: #d63b2f; --heat: 0; }
-.sb-gun::before { content: ""; position: absolute; inset: -7px; border-radius: 50%; background: conic-gradient(#ff4d2e calc(var(--heat) * 1%), transparent 0); -webkit-mask: radial-gradient(circle, transparent 62%, #000 64%); mask: radial-gradient(circle, transparent 62%, #000 64%); pointer-events: none; }
-.sb-gun.hot { filter: hue-rotate(-20deg) brightness(1.1); }
 
 /* ---------- results / pause ---------- */
 .results, .pause { background: rgba(8,6,28,.72); backdrop-filter: blur(5px); z-index: 70; }
@@ -137,12 +111,82 @@ body.on-title .tgl-hide, body.on-title .hud { display: none; }
 .build-tag { position: fixed; left: calc(var(--safe-l) + 6px); bottom: calc(var(--safe-b) + 2px); font: 500 10px "Fredoka"; opacity: .35; z-index: 3; pointer-events: none; }
 body.in-game .build-tag { display: none; }
 
+/* ---------- Settings (top right): gear + Music / Effects ---------- */
+.settings { position: fixed; z-index: 80; top: calc(var(--safe-t) + 8px); right: calc(var(--safe-r) + 10px); display: flex; flex-direction: row; align-items: center; gap: 8px; }
+.toggles { display: flex; gap: 8px; max-width: 0; opacity: 0; overflow: hidden; pointer-events: none; transition: max-width .22s ease, opacity .18s; padding: 4px 0; margin: -4px 0; }
+.settings.open .toggles { max-width: 130px; opacity: 1; pointer-events: auto; }
+.tgl { position: relative; display: grid; place-items: center; width: 46px; height: 46px; flex: none; padding: 0; border-radius: 50%; color: #1a2028; cursor: pointer; border: 2px solid #0a0c10;
+  background: radial-gradient(circle at 35% 25%, #fdfeff, #b4bdc8 45%, #6d7782 72%, #c6ced8); box-shadow: 0 3px 0 #05060a, 0 5px 10px rgba(0,0,0,.45), inset 0 1px 1px #fff; transition: transform .08s, box-shadow .08s; }
+.tgl svg { width: 21px; height: 21px; margin-top: -4px; }
+.tgl span { position: absolute; bottom: 5px; font: 600 7px/1 "Fredoka", sans-serif; letter-spacing: 0; text-transform: uppercase; color: #2a323c; }
+.tgl .slash { display: none; }
+.tgl.off { color: #6a7480; } .tgl.off .slash { display: block; }
+.tgl:active { transform: translateY(2px); box-shadow: 0 1px 0 #05060a, inset 0 2px 5px rgba(0,0,0,.4); }
+.settings.open .gear { box-shadow: 0 3px 0 #05060a, 0 0 0 2px rgba(122,217,255,.9), inset 0 1px 1px #fff; }
+
+/* ---------- Opening screen layout ---------- */
+.title-inner { position: relative; width: min(92vw, 420px); display: flex; flex-direction: column; align-items: center; gap: 10px; padding: calc(var(--safe-t) + 54px) 0 calc(var(--safe-b) + 14px); max-height: 100%; }
+.t-col { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+.time-pick { display: flex; flex-direction: column; align-items: center; gap: 5px; width: min(78vw, 330px); }
+.tp-label { font: 600 11px/1 "Fredoka"; letter-spacing: .18em; opacity: .85; text-shadow: 0 1px 0 rgba(0,0,0,.6); }
+.seg { display: flex; width: 100%; gap: 6px; padding: 5px; border-radius: 16px; background: rgba(8,6,28,.55); border: 2px solid rgba(255,255,255,.28); box-shadow: inset 0 2px 6px rgba(0,0,0,.5); }
+.seg button { flex: 1; height: 38px; padding: 0 2px; border-radius: 11px; border: 2px solid #07080b; cursor: pointer; font: 700 14px/1 "Fredoka"; letter-spacing: .04em; color: #1a2028;
+  background: linear-gradient(180deg, #f3f6fa, #aeb8c4 48%, #7e8894 52%, #c6cfd9); box-shadow: 0 3px 0 #05060a, inset 0 1px 1px #fff; transition: transform .07s, box-shadow .07s; }
+.seg button:active { transform: translateY(2px); box-shadow: 0 1px 0 #05060a, inset 0 2px 4px rgba(0,0,0,.4); }
+.seg button.on { color: #3a0a06; background: linear-gradient(180deg, #fff3dc, #ffc27a 46%, #e0701d 52%, #ffb066); box-shadow: 0 3px 0 #05060a, 0 0 12px rgba(255,176,46,.8), inset 0 1px 1px #fff; }
+
+/* ---------- HUD: top centre (score + mission timer), stats, weapons ---------- */
+.top-center { position: absolute; top: calc(var(--safe-t) + 8px); left: 50%; transform: translateX(-50%); text-align: center; text-shadow: 0 2px 0 rgba(0,0,0,.7), 0 0 8px rgba(0,0,0,.5); }
+.top-row { display: flex; gap: 6px; justify-content: center; }
+.pill { min-width: 70px; padding: 3px 10px 4px; border-radius: 14px; background: rgba(8,6,28,.6); border: 1.5px solid rgba(255,255,255,.3); display: flex; flex-direction: column; align-items: center; }
+.pill small { font: 600 8px/1 "Fredoka"; letter-spacing: .16em; opacity: .75; margin-bottom: 1px; }
+.pill b { font: 700 clamp(18px, 4.6vmin, 26px)/1.05 "Fredoka"; letter-spacing: .03em; font-variant-numeric: tabular-nums; }
+.timer.urgent { color: var(--red); animation: pulse .5s infinite alternate; }
+.lvl { margin-top: 2px; font: 600 10px "Fredoka"; letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
+.stats { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-b) + 10px); width: min(34vw, 230px); text-shadow: 0 1px 0 #000; display: flex; flex-direction: column; gap: 4px; }
+.statrow { display: flex; align-items: center; gap: 6px; font: 700 9px/1 "Fredoka"; letter-spacing: .1em; }
+.statrow span { width: 24px; text-align: right; opacity: .85; }
+.bar { flex: 1; height: 12px; border-radius: 99px; background: rgba(0,0,0,.6); border: 2px solid rgba(255,255,255,.7); overflow: hidden; } .bar i { display: block; height: 100%; width: 100%; background: var(--mint); transition: width .15s; }
+.statrow.heat .bar i { width: 0; background: #38e8ff; box-shadow: 0 0 8px currentColor; transition: width .08s linear; }
+.statrow.heat.hot .bar { border-color: #ff4d4d; animation: hotblink .35s infinite alternate; } .statrow.heat.hot span { color: #ff6a6a; opacity: 1; }
+@keyframes hotblink { to { box-shadow: 0 0 12px #ff3030; } }
+.nums { display: flex; justify-content: center; gap: 12px; font: 500 clamp(11px, 2.4vmin, 13px) "Fredoka"; } .nums b { font-weight: 700; font-size: 1.2em; }
+
+/* weapons: bottom left. --wb = button size. */
+.weapons { position: absolute; left: calc(var(--safe-l) + 8px); bottom: calc(var(--safe-b) + 6px); width: calc(var(--wb) * 2.55); height: calc(var(--wb) * 2.55); pointer-events: none; }
+.wbtn { --p: 100; --rc: #38e8ff; position: absolute; width: var(--wb); height: var(--wb); padding: 0; border-radius: 50%; cursor: pointer; pointer-events: auto; touch-action: none; display: grid; place-items: center; color: #e9f4ff; border: 2.5px solid #05060a;
+  background: radial-gradient(circle at 35% 25%, #6c7a8c, #2a323d 55%, #0f1319); box-shadow: 0 4px 0 #05060a, 0 7px 12px rgba(0,0,0,.55), inset 0 1.5px 2px rgba(255,255,255,.55), inset 0 -4px 6px rgba(0,0,0,.4); transition: transform .06s, box-shadow .06s, filter .06s; }
+.wbtn svg { width: 38%; height: 38%; margin-top: -9%; filter: drop-shadow(0 1px 0 rgba(0,0,0,.6)); }
+.wbtn em { position: absolute; top: 61%; font: 700 clamp(7px, 1.7vmin, 9px)/1 "Fredoka"; font-style: normal; letter-spacing: .08em; opacity: .9; pointer-events: none; }
+.wbtn .cnt { position: absolute; bottom: -9px; left: 50%; transform: translateX(-50%); min-width: 40px; padding: 2px 6px 3px; border-radius: 99px; background: #0b0a1f; border: 1.5px solid rgba(255,255,255,.85); font: 700 12px/1 "Fredoka"; color: #fff; text-align: center; pointer-events: none; font-variant-numeric: tabular-nums; }
+/* the one ring-style cooldown graphic (all 3 weapons): arc = how much of the rack / gun is ready */
+.wbtn .ring { position: absolute; inset: -8px; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(var(--rc) calc(var(--p) * 1%), rgba(255,255,255,.16) 0); -webkit-mask: radial-gradient(circle, transparent 62%, #000 64%); mask: radial-gradient(circle, transparent 62%, #000 64%); filter: drop-shadow(0 0 4px var(--rc)); }
+.wbtn.low { --rc: #ffb02e; } .wbtn.empty, .wbtn.hot { --rc: #ff4040; }
+.wbtn.empty { filter: grayscale(.6) brightness(.75); } .wbtn.hot { animation: hotblink .35s infinite alternate; filter: hue-rotate(-25deg) brightness(.95); }
+.wbtn.pressed { transform: translateY(3px) scale(.94); box-shadow: 0 0 0 #05060a, inset 0 3px 6px rgba(0,0,0,.5); filter: brightness(.9); }
+.wbtn.shake { animation: wshake .25s; } @keyframes wshake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+.w-gun { left: 2%; bottom: 2%; width: calc(var(--wb) * 1.12); height: calc(var(--wb) * 1.12); }
+.w-msl { left: 13%; bottom: 57%; }
+.w-bomb { left: 59%; bottom: 8%; }
+
+/* ---------- joystick (bottom right, joystick alone) ---------- */
+
 /* portrait vs landscape adaptation */
-@media (orientation: landscape) and (max-height: 520px) {
-  .title-inner { flex-direction: column; padding-top: calc(var(--safe-t) + 8px); gap: 4px; }
-  .hero-jet { width: min(30vw, 200px); } .logo-word { font-size: 44px; } .title-hint { display: none; }
-  .metal-btn { height: 46px; font-size: 18px; width: min(54vw, 300px); } .menu-buttons { gap: 8px; margin-top: 0; }
-  .objectives { top: calc(var(--safe-t) + 58px); }
-  .stats { bottom: calc(var(--safe-b) + 8px); }
+@media (orientation: portrait) {
+  :root { --wb: clamp(58px, 16vmin, 92px); --stick: clamp(176px, 50vw, 260px); }
+  .objectives { max-width: 52vw; }
+  .stats { bottom: calc(var(--safe-b) + var(--stick) * 1.04 + 12px); width: min(46vw, 230px); }
+  .weapons { bottom: calc(var(--safe-b) + 14px); }
 }
-@media (orientation: portrait) { .objectives { max-width: 52vw; } .stats { bottom: calc(var(--safe-b) + 14px); width: min(36vw, 170px); } }
+@media (orientation: landscape) {
+  :root { --wb: clamp(54px, 15vmin, 84px); }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .title-inner { width: min(94vw, 760px); flex-direction: row; align-items: center; justify-content: center; gap: 22px; padding: calc(var(--safe-t) + 52px) 0 calc(var(--safe-b) + 8px); }
+  .t-col { width: 50%; gap: 6px; }
+  .hero-jet { width: min(28vw, 190px, 30vh * 1.8); } .logo-word { font-size: 46px; } .title-hint { display: none; }
+  .metal-btn { height: 44px; font-size: 18px; width: min(40vw, 300px); } .menu-buttons { gap: 8px; margin-top: 0; }
+  .seg button { height: 32px; font-size: 13px; } .time-pick { width: min(40vw, 300px); }
+  .objectives { top: calc(var(--safe-t) + 62px); }
+}
