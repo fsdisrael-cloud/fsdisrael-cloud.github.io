@@ -2,22 +2,22 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="ubu-build" content="8" />
+  <meta name="ubu-build" content="9" />
   <meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Jet" />
+  <meta name="apple-mobile-web-app-title" content="JET-𝕏" />
   <meta name="theme-color" content="#0b0a1f" />
   <meta name="format-detection" content="telephone=no" />
-  <title>Jet</title>
+  <title>JET-𝕏</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" type="image/png" sizes="192x192" href="img/icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png" />
   <link rel="preload" href="fonts/Fredoka.ttf" as="font" type="font/ttf" crossorigin />
-  <link rel="stylesheet" href="css/jet.css?v=8" />
-  <link rel="stylesheet" href="css/loading.css?v=8" />
+  <link rel="stylesheet" href="css/jet.css?v=9" />
+  <link rel="stylesheet" href="css/loading.css?v=9" />
   <script type="importmap">{ "imports": { "three": "./js/vendor/three.module.min.js" } }</script>
 </head>
 <body class="on-title">
@@ -48,9 +48,8 @@
     <div class="sky-fx" aria-hidden="true"><i class="aurora a1"></i><i class="aurora a2"></i><i class="aurora a3"></i><i class="stars"></i><i class="cloud c1"></i><i class="cloud c2"></i><i class="cloud c3"></i><i class="horizon"></i></div>
     <div class="title-inner">
      <div class="t-col t-left">
-      <div class="logo" aria-label="Jet">
-        <svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lg" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#ff7ad9"/><stop offset=".5" stop-color="#7ad9ff"/><stop offset="1" stop-color="#ffe27a"/></linearGradient></defs><path d="M32 4 41 30 60 46 60 51 38 45 35 58 32 60 29 58 26 45 4 51 4 46 23 30Z" fill="url(#lg)" stroke="#0b0a1f" stroke-width="2.5" stroke-linejoin="round"/></svg>
-        <span class="logo-word">Jet</span>
+      <div class="logo" aria-label="JET-𝕏">
+        <img class="logo-img" src="img/wordmark.png?v=9" alt="JET-𝕏" draggable="false">
       </div>
       <svg class="hero-jet" viewBox="0 0 400 220" aria-hidden="true">
         <defs>
@@ -81,13 +80,13 @@
     </div>
   </section>
 
+  <div id="nv" class="nv" aria-hidden="true"><i class="nv-vig"></i><i class="nv-scan"></i><i class="nv-noise"></i></div>
   <!-- ===== In-game HUD ===== -->
   <div id="hud" class="hud">
     <div class="radar-wrap">
       <canvas id="radar" aria-label="Radar"></canvas>
-      <button type="button" class="view-btn" id="btn-view" aria-label="Camera view: cockpit or chase">
-        <svg viewBox="0 0 24 24"><path d="M3 8h4l2-3h6l2 3h4v11H3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.6" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>View</span>
-      </button>
+      <button type="button" class="view-btn" id="btn-view" aria-label="Camera view: cockpit or chase"><span class="vseg" data-v="cockpit">COCKPIT</span><span class="vseg" data-v="chase">CHASE</span></button>
+      <div class="wcam" id="wcam" aria-label="Weapon camera"><canvas id="wcam-c" width="160" height="160"></canvas><i class="wcam-ring"></i></div>
     </div>
     <div class="top-center">
       <div class="top-row">
@@ -95,6 +94,7 @@
         <div class="pill time-pill" id="time-pill"><small id="hud-time-label">TIME</small><b id="hud-timer" class="timer">0:00</b></div>
       </div>
       <div class="lvl" id="hud-level"></div>
+      <div class="lvl world" id="hud-world"></div>
     </div>
     <div id="hud-obj" class="objectives"></div>
     <div class="stats" id="stats">
@@ -138,6 +138,6 @@
   <section id="pause" class="screen pause hidden"><div class="res-card"><div class="res-title">Paused</div><button type="button" class="metal-btn" id="pause-btn"><i class="led"></i><span>RESUME</span></button></div></section>
 
   <div id="build-tag" class="build-tag"></div>
-  <script type="module" src="js/main.js?v=8"></script>
+  <script type="module" src="js/main.js?v=9"></script>
 </body>
 </html>

@@ -32,7 +32,7 @@ export function createControls() {
   let gyroOn = false, gotGyroEvent = false;
   let rawPitch = 0, rawRoll = 0, smPitch = 0, smRoll = 0;
   let zeroPitch = 35, zeroRoll = 0, wantCal = true, calAt = 0;
-  let gunHeld = false, rocketEdge = false, bombEdge = false, viewEdge = false, boostKey = false;
+  let mslHeld = false, bombHeld = false, gunHeld = false, rocketEdge = false, bombEdge = false, viewEdge = false, boostKey = false;
   const joy = { x: 0, y: 0, active: false, id: null, sx: 0, sy: 0 };
   const lk = { active: false, id: null, x: 0, y: 0 };
   let lookMode = "chase";
@@ -152,9 +152,9 @@ export function createControls() {
     const bGun = root.querySelector('[data-w="gun"]'), bMsl = root.querySelector('[data-w="missile"]'), bBomb = root.querySelector('[data-w="bomb"]');
     bGun.addEventListener("pointerdown", (e) => { stop(e); gunHeld = true; press(bGun, true); try { bGun.setPointerCapture(e.pointerId); } catch {} });
     for (const t of ["pointerup", "pointercancel", "lostpointercapture"]) bGun.addEventListener(t, () => { gunHeld = false; press(bGun, false); });
-    bMsl.addEventListener("pointerdown", (e) => { stop(e); if (enabled) rocketEdge = true; press(bMsl, true); });
-    bBomb.addEventListener("pointerdown", (e) => { stop(e); if (enabled) bombEdge = true; press(bBomb, true); });
-    for (const b of [bMsl, bBomb]) for (const t of ["pointerup", "pointercancel", "pointerleave"]) b.addEventListener(t, () => press(b, false));
+    bMsl.addEventListener("pointerdown", (e) => { stop(e); if (enabled) { rocketEdge = true; mslHeld = true; } press(bMsl, true); });
+    bBomb.addEventListener("pointerdown", (e) => { stop(e); if (enabled) { bombEdge = true; bombHeld = true; } press(bBomb, true); });
+    for (const b of [bMsl, bBomb]) for (const t of ["pointerup", "pointercancel", "pointerleave"]) b.addEventListener(t, () => { press(b, false); if (b === bMsl) mslHeld = false; else bombHeld = false; });
     for (const b of [bGun, bMsl, bBomb]) b.addEventListener("contextmenu", (e) => e.preventDefault());
   }
 
@@ -218,8 +218,8 @@ export function createControls() {
     setEnabled(v) { enabled = v; if (!v) { gunHeld = false; joy.active = false; lk.active = false; joy.x = joy.y = 0; } },
     setLookMode(m) { lookMode = m; }, resetLook() { look.yaw = 0; look.pitch = 0; },
     gunHeld: () => gunHeld,
-    consumeRocket() { const v = rocketEdge; rocketEdge = false; return v; },
-    consumeBomb() { const v = bombEdge; bombEdge = false; return v; },
+    consumeRocket() { const v = rocketEdge || mslHeld; rocketEdge = false; return v; },
+    consumeBomb() { const v = bombEdge || bombHeld; bombEdge = false; return v; },
     consumeLoop() { return 0; },
     consumeView() { const v = viewEdge; viewEdge = false; return v; },
     requestView() { viewEdge = true; },

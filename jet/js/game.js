@@ -1,12 +1,13 @@
 // Ubu game world: flight model, camera, targets, AI, weapons, effects, objectives.
 import * as THREE from "three";
-import { buildTerrain } from "./terrain.js?v=8";
-import { createSky } from "./sky.js?v=8";
-import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createShip, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun } from "./models.js?v=8";
-import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=8";
-import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=8";
-import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=8";
-import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=8";
+import { buildTerrain } from "./terrain.js?v=9";
+import { createSky } from "./sky.js?v=9";
+import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createShip, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=9";
+import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=9";
+import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=9";
+import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=9";
+import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=9";
+import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=9";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V();
@@ -43,7 +44,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   const stats = { shots: 0, hits: 0, rockets: 0, bombs: 0, kills: {}, rings: 0, damage: 0, crashes: 0, loops: 0 };
   let lastDamage = -10, shake = 0, lockTarget = null, lockTime = 0, lockCand = null;
   let alertMsg = null, alertTimer = 0, warnTimer = 0, pullUpTimer = 0, lastYaw = 0, orbitAccum = 0;
-  let ccip = null, muzzleFlip = 0, gunCool = 0, rocketRegen = 0, bombRegen = 0, rocketSide = 1;
+  let hardIdx = 0; const hpReload = [0, 0, 0, 0]; let ccip = null, muzzleFlip = 0, gunCool = 0, rocketRegen = 0, bombRegen = 0, rocketSide = 1;
   // weapon racks: 10 missiles + 10 bombs, one round is restored every N seconds; short delay between launches.
   const RACK = 10, ROCKET_REGEN = 2.6, BOMB_REGEN = 4.5, ROCKET_GAP = 0.28, BOMB_GAP = 0.45;
   let rocketCd = 0, bombCd = 0, emptyT = 0;
@@ -73,12 +74,24 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   for (const m of [pTracers, eTracers, aTracers]) { m.count = 0; m.frustumCulled = false; scene.add(m); }
   const bullets = []; // {p, v, life, enemy}
 
-  const PUFFS = 420;
+  const PUFFS = 760;
   const puffGeo = puffGeometry();
-  const puffMesh = new THREE.InstancedMesh(puffGeo, toonMaterial(), PUFFS);
+  // smoke: soft, translucent, lit puffs (no cartoon outline) - realistic smoke trails and explosion plumes
+  const smokeGeo = puffGeo.clone();
+  const aCol = new THREE.InstancedBufferAttribute(new Float32Array(PUFFS * 3), 3), aAlp = new THREE.InstancedBufferAttribute(new Float32Array(PUFFS), 1);
+  smokeGeo.setAttribute("aCol", aCol); smokeGeo.setAttribute("aA", aAlp);
+  const smokeMat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, uniforms: { uLight: { value: 1 } },
+    vertexShader: `attribute vec3 aCol; attribute float aA; varying vec3 vN; varying vec3 vC; varying float vA;
+      void main(){ vN = normalize(mat3(modelViewMatrix) * normal); vC = aCol; vA = aA; gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `uniform float uLight; varying vec3 vN; varying vec3 vC; varying float vA;
+      void main(){ vec3 n = normalize(vN); float edge = pow(clamp(abs(n.z), 0.0, 1.0), 0.7); float lit = 0.55 + 0.45 * clamp(dot(n, normalize(vec3(0.45, 0.8, 0.4))) * 0.5 + 0.5, 0.0, 1.0);
+        gl_FragColor = vec4(vC * lit * uLight, vA * edge); }`,
+  });
+  const puffMesh = new THREE.InstancedMesh(smokeGeo, smokeMat, PUFFS);
   const puffOutline = new THREE.InstancedMesh(puffGeo, outlineMaterial(0x2a2a2a, 0.55), PUFFS);
-  puffMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(PUFFS * 3), 3);
   for (const m of [puffMesh, puffOutline]) { m.count = 0; m.frustumCulled = false; scene.add(m); }
+  puffOutline.visible = false; puffMesh.renderOrder = 4;
   const puffs = [];
   const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = V(), _c = new THREE.Color();
 
@@ -101,13 +114,13 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     for (let i = 0; i < 8; i++) {
       const mat = new THREE.ShaderMaterial({
         transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
-        uniforms: { uK: { value: 0 }, uHue: { value: 0 } },
+        uniforms: { uK: { value: 0 }, uHue: { value: 0 }, uCol: { value: new THREE.Color(1, 0.7, 0.4) }, uMix: { value: 0 } },
         vertexShader: "varying vec2 vUv; void main(){ vUv = uv * 2.0 - 1.0; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
-        fragmentShader: `varying vec2 vUv; uniform float uK, uHue;
+        fragmentShader: `varying vec2 vUv; uniform float uK, uHue, uMix; uniform vec3 uCol;
           vec3 hsv(float h){ return clamp(abs(mod(h*6.0+vec3(0.0,4.0,2.0),6.0)-3.0)-1.0,0.0,1.0); }
           void main(){ float r = length(vUv); float a = atan(vUv.y, vUv.x) / 6.2832;
             float ring = smoothstep(0.62, 0.86, r) * (1.0 - smoothstep(0.88, 1.0, r));
-            vec3 c = hsv(fract(a * 2.0 + uHue + r * 0.8));
+            vec3 c = mix(uCol, hsv(fract(a * 2.0 + uHue + r * 0.8)), uMix);
             float fade = (1.0 - uK); gl_FragColor = vec4(c * 1.4 * ring * fade * fade, ring * fade); }`,
       });
       const m = new THREE.Mesh(geo, mat); m.visible = false; m.frustumCulled = false; m.renderOrder = 7; scene.add(m);
@@ -117,6 +130,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   function shock(p, size) {
     const s = shocks.find((x) => !x.active) || shocks[0];
     s.active = true; s.t = 0; s.life = 0.55 + size * 0.004; s.size = size; s.m.visible = true; s.m.position.copy(p); s.mat.uniforms.uHue.value = Math.random();
+    if (WS.kind === "std") { s.mat.uniforms.uCol.value.setRGB(1.0, 0.72, 0.42); s.mat.uniforms.uMix.value = 0; } else { s.mat.uniforms.uCol.value.setHex(WS.fx).multiplyScalar(1.4); s.mat.uniforms.uMix.value = 0.0; }
   }
   const explosions = [];
   for (let i = 0; i < 10; i++) {
@@ -137,11 +151,30 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     }
   }
   const rockets = [];
-  for (let i = 0; i < 12; i++) { const o = createRocket(); o.visible = false; scene.add(o); rockets.push({ o, active: false, p: V(), v: V() }); }
+  // player missiles: realistic body + an energy-bolt glow that replaces it on alien worlds
+  for (let i = 0; i < 12; i++) {
+    const o = new THREE.Group(), model = createRocket(0xe6e9ec, 0x2b3036), glow = glowSprite(0xffffff, 9, 0.95);
+    glow.visible = false; o.add(model, glow); o.visible = false; scene.add(o);
+    rockets.push({ o, model, glow, active: false, p: V(), v: V() });
+  }
   const missiles = [];
   for (let i = 0; i < 6; i++) { const o = createRocket(0xe9e4ff, 0xa040ff); o.visible = false; scene.add(o); missiles.push({ o, active: false, p: V(), v: V() }); }
   const bombs = [];
-  for (let i = 0; i < 12; i++) { const o = createBomb(); o.visible = false; scene.add(o); bombs.push({ o, active: false, p: V(), v: V() }); }
+  for (let i = 0; i < 12; i++) {
+    const o = new THREE.Group(), model = createBomb(), glow = glowSprite(0xffffff, 14, 0.95);
+    const core = new THREE.Mesh(G.sphereLo, new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false, fog: false })); core.scale.setScalar(1.3);
+    glow.visible = false; core.visible = false; o.add(model, glow, core); o.visible = false; scene.add(o);
+    bombs.push({ o, model, glow, core, active: false, p: V(), v: V() });
+  }
+  // weapon style for this world: std = realistic missiles and bombs, laser / plasma = alien energy weapons
+  const WS = { kind: "std", fx: 0xffffff };
+  function applyWeaponStyle(planet) {
+    WS.kind = planet?.weapon || "std"; WS.fx = planet?.fx || 0xffffff;
+    pTracers.material.color.setHex(WS.kind === "std" ? 0xfff06a : WS.fx);
+    for (const r of rockets) { r.model.visible = WS.kind === "std"; r.glow.visible = WS.kind !== "std"; r.glow.material.color.setHex(WS.fx); }
+    for (const b of bombs) { b.model.visible = WS.kind === "std"; b.glow.visible = b.core.visible = WS.kind !== "std"; b.glow.material.color.setHex(WS.fx); b.core.material.color.setHex(0xffffff); }
+    for (const e of explosions) { if (WS.kind === "std") { e.mat.color.setHex(0xffc040); e.mat.emissive.setHex(0xff7a20); } else { e.mat.color.setHex(WS.fx); e.mat.emissive.setHex(WS.fx); } }
+  }
   const muzzle = new THREE.Mesh(G.sphereLo, new THREE.MeshBasicMaterial({ color: 0xfff2a0, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
   muzzle.visible = false;
   // CCIP ground ring
@@ -149,9 +182,9 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   ccipRing.visible = false; scene.add(ccipRing);
 
   // ---------- effects ----------
-  function puff(p, v, s0, s1, life, color) {
+  function puff(p, v, s0, s1, life, color, big) {
     if (puffs.length >= PUFFS) puffs.shift();
-    puffs.push({ p: p.clone(), v: v ? v.clone() : V(), s0, s1, life, t: 0, color });
+    puffs.push({ p: p.clone(), v: v ? v.clone() : V(), s0, s1, life, t: 0, color, big });
   }
   function spawnDebris(p, n, speed, inherit) {
     let k = 0;
@@ -171,24 +204,28 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   function explode(p, size = 12, big = 1) {
     const e = explosions.find((x) => !x.active) || explosions[0];
     e.active = true; e.t = 0; e.life = 0.55 + big * 0.2; e.size = size * 0.8; e.g.visible = true; e.g.position.copy(p);
-    // fireball (additive, white-yellow to orange to red)
-    const nf = Math.round(7 + big * 5);
+    const std = WS.kind === "std";
+    // fireball (additive; hot white-yellow core cooling to orange-red). Alien worlds: energy colour instead.
+    const nf = Math.round(8 + big * 6);
     for (let i = 0; i < nf; i++) {
-      tA.set(rng() - 0.5, rng() * 0.8 - 0.1, rng() - 0.5).normalize().multiplyScalar(size * (0.6 + rng() * 2.4));
-      fx(tB.copy(p).addScaledVector(tA, 0.1), tA, size * 0.55, size * (1.0 + rng() * 0.9), 0.45 + rng() * 0.55, null, -3, 1.8);
+      tA.set(rng() - 0.5, rng() * 0.8 - 0.05, rng() - 0.5).normalize().multiplyScalar(size * (0.5 + rng() * 2.2));
+      fx(tB.copy(p).addScaledVector(tA, 0.1), tA, size * 0.55, size * (1.0 + rng() * 0.9), 0.45 + rng() * 0.6, std ? null : (rng() < 0.4 ? 0xffffff : WS.fx), -3, 1.8);
     }
-    // sparks with prismatic tint
-    const ns = Math.round(10 + big * 8);
+    // embers / sparks: glowing orange streaks that fall (alien: bright electric arcs)
+    const ns = Math.round(14 + big * 10);
     for (let i = 0; i < ns; i++) {
-      tA.set(rng() - 0.5, rng() * 0.9, rng() - 0.5).normalize().multiplyScalar(size * (3 + rng() * 5));
-      fx(p, tA, Math.max(0.5, size * 0.07), 0.1, 0.5 + rng() * 0.7, prismHex(elapsed, rng() * 0.5), GRAV * 0.5, 0.5);
+      tA.set(rng() - 0.5, rng() * 0.9, rng() - 0.5).normalize().multiplyScalar(size * (3 + rng() * 6));
+      fx(p, tA, Math.max(0.45, size * 0.06), 0.1, 0.5 + rng() * 0.9, std ? (rng() < 0.5 ? 0xffb040 : 0xff6a20) : (rng() < 0.5 ? 0xffffff : WS.fx), GRAV * 0.6, 0.5);
     }
-    fx(p, null, size * 2.4, size * 3.4, 0.12, 0xb8a070, 0, 0); // white flash
+    fx(p, null, size * 2.4, size * 3.4, 0.12, std ? 0xb8a070 : WS.fx, 0, 0); // flash
     shock(p, size * (2.6 + big * 0.8));
-    // smoke
-    for (let i = 0; i < 5 + big * 3; i++) {
-      tA.set(rng() - 0.5, rng() * 0.8, rng() - 0.5).multiplyScalar(size * 1.6);
-      puff(tB.copy(p).add(tA), tA.multiplyScalar(0.5), size * 0.4, size * (0.9 + rng() * 0.6), 2.0 + rng() * 1.5, rng() < 0.5 ? 0x4a4a52 : 0x7a7a84);
+    if (!std) { shock(p, size * (1.6 + big * 0.4)); for (let i = 0; i < 6; i++) { tA.set(rng() - 0.5, rng() - 0.3, rng() - 0.5).normalize().multiplyScalar(size * (6 + rng() * 6)); fx(p, tA, size * 0.12, 0.05, 0.25, 0xffffff, 0, 2); } }
+    // smoke: dark billowing plume that climbs and lingers (std worlds only; alien energy bursts leave a faint haze)
+    const sm = std ? 6 + big * 4 : 2;
+    for (let i = 0; i < sm; i++) {
+      tA.set(rng() - 0.5, 0.2 + rng() * 0.9, rng() - 0.5).multiplyScalar(size * 1.4);
+      tA.y += size * (0.5 + big * 0.4);
+      puff(tB.copy(p).add(tA.clone().multiplyScalar(0.25)), tA.multiplyScalar(0.55), size * 0.45, size * (1.0 + rng() * 0.8), std ? 3.4 + rng() * 3 : 1.6, std ? (rng() < 0.55 ? 0x26262a : rng() < 0.6 ? 0x4a4a50 : 0x7b6a58) : WS.fx, true);
     }
     if (big >= 1) spawnDebris(p, 4 + Math.round(big * 3), size * 3.2);
     const d = camera.position.distanceTo(p);
@@ -201,7 +238,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   function makePlayer(colorKey) {
     if (plane) scene.remove(plane);
     initEnv(renderer);
-    plane = createPlayerJet(colorKey);
+    plane = createPlayerJet(colorKey, JET_TYPES[colorKey] || null);
     plane.scale.setScalar(1.15);
     muzzle.scale.setScalar(0.5);
     plane.add(muzzle);
@@ -334,7 +371,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     p.x = THREE.MathUtils.clamp(p.x, center.x - half + 800, center.x + half - 800);
     p.z = THREE.MathUtils.clamp(p.z, center.z - half + 800, center.z + half - 800);
     p.y = Math.max(groundAt(p.x, p.z) + 400, near.y + (rng() - 0.5) * 200);
-    const t = addTarget("jet", createEnemyJet(), p, { yaw: Math.atan2(-(near.x - p.x), -(near.z - p.z)), pitch: 0, bank: 0, speed: 150 + L.difficulty * 60, burst: 0, mcool: 6 + rng() * 5 });
+    const t = addTarget("jet", createEnemyJet(L.run?.foe, FOE_TYPES[L.run?.foe]), p, { yaw: Math.atan2(-(near.x - p.x), -(near.z - p.z)), pitch: 0, bank: 0, speed: 150 + L.difficulty * 60, burst: 0, mcool: 6 + rng() * 5 });
     t.objective = progress.jet != null;
     return t;
   }
@@ -547,10 +584,13 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     half = terrain.half; center.copy(terrain.center);
     style.uCenter.value.set(center.x, center.z);
     for (const m of terrain.materials) patchTerrain(m);
-    sky.apply(level.time, level.weather, { center, half, seed: (level.seed % 100000) + 1, terrain: terrain.materials });
+    smokeMat.uniforms.uLight.value = level.time === "night" ? 0.3 : level.time === "dusk" || level.time === "dawn" ? 0.75 : 1;
+    sky.apply(level.time, level.weather, { center, half, seed: (level.seed % 100000) + 1, terrain: terrain.materials, planet: level.run?.planet, season: level.run?.planetKey === "earth" ? SEASONS[level.run.season] : null });
 
     for (const o of level.objectives) progress[o.kind] = 0;
-    makePlayer(opts.color || "sky");
+    setTargetStyle(level.run?.tgt || "army");
+    applyWeaponStyle(level.run?.planet);
+    makePlayer(level.run?.jet || "viper");
 
     // spawn: south of centre heading north
     const sp = new THREE.Vector3(center.x, 0, center.z + Math.min(4000, half * 0.45));
@@ -612,7 +652,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (pad) { scene.remove(pad.obj); pad = null; }
     fxs.length = 0; for (const sh of shocks) { sh.active = false; sh.m.visible = false; }
     for (const k of Object.keys(progress)) delete progress[k];
-    bullets.length = 0; puffs.length = 0;
+    bullets.length = 0; puffs.length = 0; WC.state = "idle"; WC.obj = null; wcStandby(); hardIdx = 0;
     for (const p of [...rockets, ...missiles, ...bombs]) { p.active = false; p.o.visible = false; }
     for (const e of explosions) { e.active = false; e.g.visible = false; }
     for (const d of debris) { d.active = false; d.g.visible = false; }
@@ -968,8 +1008,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (gunCool > 0) return;
     gunCool = 1 / 12;
     muzzleFlip = 1 - muzzleFlip;
-    const side = muzzleFlip ? 0.95 : -0.95;
-    const origin = tA.set(side, -0.25, -4.6).applyMatrix4(plane.matrixWorld).clone();
+    const origin = tA.set(0, -0.28, -8.1).applyMatrix4(plane.matrixWorld).clone(); // the cannon sits in the nose
     const dir = fwdFrom(player.yaw, player.pitch, V());
     // aim assist (7 degree cone)
     let best = null, bestA = 0.16;
@@ -991,7 +1030,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     bullets.push({ p: origin, v, life: 1.6, enemy: false });
     stats.shots++;
     audio.gun();
-    muzzle.visible = true; muzzle.position.set(side, -0.25, -5.2); muzzle.scale.setScalar(0.5 + Math.random() * 0.4);
+    muzzle.visible = true; muzzle.position.set(0, -0.28 / 1.15, -8.6 / 1.15); muzzle.scale.setScalar(0.5 + Math.random() * 0.4);
   }
   function fireRocket() {
     if (rocketCd > 0) return;
@@ -1006,11 +1045,20 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       if (bt) lockTarget = bt;
     }
     player.rockets--; stats.rockets++;
-    rocketSide = -rocketSide;
-    r.active = true; r.life = 7; r.target = lockTarget && lockTarget.alive ? lockTarget : null; r.trail = 0;
-    r.p.copy(tA.set(rocketSide * 2.6, -0.8, 0).applyMatrix4(plane.matrixWorld));
-    r.v.copy(fwdFrom(player.yaw, player.pitch, tB)).multiplyScalar(player.speed + 120);
+    // four hardpoints across the wing: missiles leave one at a time in turn 1-2-3-4, never together
+    const hi = hardIdx; hardIdx = (hardIdx + 1) % HARDPOINTS.length;
+    const hp = HARDPOINTS[hi];
+    r.active = true; r.life = 8; r.target = lockTarget && lockTarget.alive ? lockTarget : null; r.trail = 0; r.arm = 0.28; r.hp = hi; r.result = null;
+    r.p.copy(tA.set(hp[0], hp[1] - 0.2, hp[2]).applyMatrix4(plane.matrixWorld));
+    const fw = fwdFrom(player.yaw, player.pitch, V());
+    r.v.copy(fw).multiplyScalar(player.speed + 45);
+    r.v.y -= 9; // drops off the rail, then the motor lights
+    r.v.x += Math.sign(hp[0]) * 4 * Math.cos(player.yaw); r.v.z += -Math.sign(hp[0]) * 4 * Math.sin(player.yaw);
     r.o.visible = true;
+    const mm = plane.userData.hardMissiles?.[hi]; if (mm) { mm.visible = false; hpReload[hi] = 2.4; }
+    for (let k = 0; k < 4; k++) puff(r.p, tB.set((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6), 1.2, 7 + k * 1.5, 1.8 + k * 0.3, 0xe8e8ea);
+    fx(r.p, null, 5, 1, 0.16, WS.kind === "std" ? 0xffd890 : WS.fx, 0, 0);
+    watchWeapon(r, "MSL " + (hi + 1));
     audio.rocket();
   }
   function dropBomb() {
@@ -1020,10 +1068,22 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (!b) return;
     bombCd = BOMB_GAP;
     player.bombs--; stats.bombs++;
-    b.active = true; b.life = 30;
-    b.p.copy(tA.set(0, -1.6, 0.5).applyMatrix4(plane.matrixWorld));
+    b.active = true; b.life = 30; b.result = null;
+    b.p.copy(tA.set(0, -1.1, 0.6).applyMatrix4(plane.matrixWorld)); // released from the belly bay
     b.v.copy(player.vel).add(tB.set(0, -6, 0));
+    // guided: lock the target under the nose (or the current ground lock)
+    let bt = lockTarget && lockTarget.alive && lockTarget.kind !== "jet" ? lockTarget : null;
+    if (!bt) {
+      const fw = fwdFrom(player.yaw, player.pitch, V()); let bs = 0.9;
+      for (const t of targets) {
+        if (!t.alive || t.kind === "jet") continue;
+        tB.subVectors(t.pos, player.pos); const d = tB.length(); if (d > 3800 || d < 60 || tB.y > 0) continue;
+        const a = tB.normalize().angleTo(fw); if (a < bs) { bs = a; bt = t; }
+      }
+    }
+    b.target = bt;
     b.o.visible = true;
+    watchWeapon(b, "BOMB");
     audio.bomb();
   }
   function blast(p, radius, dmg) {
@@ -1298,7 +1358,75 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     bullets.push({ p: origin.clone(), v: tA.normalize().multiplyScalar(800), life: 1.8, enemy: true });
   }
 
+  // ---------- weapon camera (green circle under the radar) ----------
+  // A small off-screen render of the latest missile / bomb, chasing it until it hits (explosion hold) or misses (fade out).
+  const WC = { state: "idle", obj: null, label: "", t: 0, canvas: null, ctx: null, rt: null, buf: null, img: null, lastDraw: 0, lastP: V(), lastV: V(), camP: V(), cam: null, lut: null, dist: 0, flash: 0 };
+  const WCS = 160;
+  function attachWeaponCam(canvas) {
+    WC.canvas = canvas; canvas.width = canvas.height = WCS; WC.ctx = canvas.getContext("2d");
+    WC.cam = new THREE.PerspectiveCamera(62, 1, 0.5, 20000);
+    WC.rt = new THREE.WebGLRenderTarget(WCS, WCS, { depthBuffer: true });
+    WC.buf = new Uint8Array(WCS * WCS * 4); WC.img = WC.ctx.createImageData(WCS, WCS);
+    WC.lut = new Uint8Array(256); for (let i = 0; i < 256; i++) WC.lut[i] = Math.min(255, Math.round(255 * Math.pow(Math.min(1, (i / 255) * 1.5), 0.45)));
+    wcStandby();
+  }
+  function wcStandby() {
+    const c = WC.ctx; if (!c) return;
+    c.fillStyle = "#031006"; c.fillRect(0, 0, WCS, WCS);
+    for (let y = 0; y < WCS; y += 3) { c.fillStyle = "rgba(60,255,110,0.05)"; c.fillRect(0, y, WCS, 1); }
+    c.strokeStyle = "rgba(90,255,130,0.35)"; c.lineWidth = 1; c.beginPath(); c.moveTo(WCS / 2 - 14, WCS / 2); c.lineTo(WCS / 2 + 14, WCS / 2); c.moveTo(WCS / 2, WCS / 2 - 14); c.lineTo(WCS / 2, WCS / 2 + 14); c.stroke();
+    c.fillStyle = "rgba(120,255,150,0.6)"; c.font = "bold 11px monospace"; c.textAlign = "center"; c.fillText("WPN CAM", WCS / 2, WCS / 2 + 34); c.fillText("STANDBY", WCS / 2, WCS / 2 + 48);
+    if (WC.canvas) { WC.canvas.style.opacity = 1; WC.canvas.dataset.live = "0"; }
+  }
+  function watchWeapon(obj, label) { WC.obj = obj; WC.label = label; WC.state = "follow"; WC.t = 0; WC.lastP.copy(obj.p); WC.lastV.copy(obj.v); WC.camP.copy(obj.p); }
+  function updateWeaponCam(dt) {
+    if (WC.state === "idle" || !WC.canvas) return;
+    WC.t += dt;
+    if (WC.state === "follow") {
+      const o = WC.obj;
+      if (o.active) { WC.lastP.copy(o.p); WC.lastV.copy(o.v); tA.copy(o.v).normalize(); WC.camP.copy(o.p).addScaledVector(tA, -15).add(tB.set(0, 3.2, 0)); WC.dist = o.target && o.target.alive ? o.target.pos.distanceTo(o.p) : 0; }
+      else { WC.state = o.result === "hit" ? "boom" : "fade"; WC.t = 0; }
+    } else if (WC.state === "boom") { if (WC.t > 1.6) { WC.state = "fade"; WC.t = 0; } }
+    else if (WC.state === "fade") { if (WC.t > 0.9) { WC.state = "idle"; wcStandby(); } }
+  }
+  function renderWeaponCam() {
+    if (WC.state === "idle" || !WC.canvas) return;
+    const now = performance.now();
+    if (now - WC.lastDraw < 66) return;
+    WC.lastDraw = now;
+    const cam = WC.cam;
+    cam.position.copy(WC.camP);
+    if (WC.state === "follow") cam.lookAt(tA.copy(WC.lastP).addScaledVector(tB.copy(WC.lastV).normalize(), 40));
+    else cam.lookAt(WC.lastP);
+    const rtPrev = renderer.getRenderTarget(), pr = outlineUniforms.uRes.value.clone();
+    outlineUniforms.uRes.value.set(WCS * 2.2, WCS * 2.2);
+    const wasMuz = muzzle.visible; muzzle.visible = false;
+    renderer.setRenderTarget(WC.rt); renderer.render(scene, cam); renderer.readRenderTargetPixels(WC.rt, 0, 0, WCS, WCS, WC.buf);
+    renderer.setRenderTarget(rtPrev); outlineUniforms.uRes.value.copy(pr); muzzle.visible = wasMuz;
+    const b = WC.buf, d = WC.img.data, lut = WC.lut, night = L && L.time === "night" ? 1.6 : 1;
+    for (let y = 0; y < WCS; y++) {
+      const sy = WCS - 1 - y, sl = (y & 1) ? 0.82 : 1;
+      for (let x = 0; x < WCS; x++) {
+        const i = (sy * WCS + x) * 4, o = (y * WCS + x) * 4;
+        const l = Math.min(255, (b[i] * 0.3 + b[i + 1] * 0.59 + b[i + 2] * 0.11) * night);
+        const g = lut[l | 0] * sl, n = (Math.random() - 0.5) * 14;
+        d[o] = g * 0.16 + n * 0.2; d[o + 1] = Math.min(255, g * 1.05 + n); d[o + 2] = g * 0.32 + n * 0.3; d[o + 3] = 255;
+      }
+    }
+    const c = WC.ctx; c.putImageData(WC.img, 0, 0);
+    c.strokeStyle = "rgba(150,255,170,0.85)"; c.lineWidth = 1.2; c.beginPath();
+    for (const [x0, y0, x1, y1] of [[-24, 0, -10, 0], [10, 0, 24, 0], [0, -24, 0, -10], [0, 10, 0, 24]]) { c.moveTo(WCS / 2 + x0, WCS / 2 + y0); c.lineTo(WCS / 2 + x1, WCS / 2 + y1); }
+    c.stroke();
+    c.fillStyle = "rgba(160,255,180,0.95)"; c.font = "bold 11px monospace"; c.textAlign = "center";
+    c.fillText(WC.label, WCS / 2, 20);
+    c.fillStyle = WC.state === "boom" ? "rgba(255,200,120,1)" : "rgba(160,255,180,0.95)";
+    c.fillText(WC.state === "follow" ? (WC.dist > 0 ? Math.round(WC.dist) + " M" : "TRACKING") : WC.state === "boom" ? "IMPACT" : "LOST", WCS / 2, WCS - 14);
+    WC.canvas.dataset.live = "1";
+    WC.canvas.style.opacity = WC.state === "fade" ? Math.max(0, 1 - WC.t / 0.9).toFixed(2) : 1;
+  }
+
   function updateProjectiles(dt) {
+    updateWeaponCam(dt);
     let pc = 0, ec = 0, ac = 0;
     const p0 = V();
     for (let i = bullets.length - 1; i >= 0; i--) {
@@ -1339,10 +1467,12 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     pTracers.count = Math.min(MAXB, pc); eTracers.count = Math.min(MAXB, ec); aTracers.count = Math.min(MAXB, ac);
     pTracers.instanceMatrix.needsUpdate = true; eTracers.instanceMatrix.needsUpdate = true; aTracers.instanceMatrix.needsUpdate = true;
 
+    for (let i = 0; i < 4; i++) if (hpReload[i] > 0 && (hpReload[i] -= dt) <= 0) { const mm = plane?.userData.hardMissiles?.[i]; if (mm) mm.visible = player.rockets > 0; }
     for (const r of rockets) {
       if (!r.active) continue;
       r.life -= dt;
-      if (r.target && r.target.alive) {
+      if (r.arm > 0) { r.arm -= dt; r.v.y -= 6 * dt; r.v.multiplyScalar(1 + dt * 1.2); }
+      else if (r.target && r.target.alive) {
         tA.copy(r.target.pos).addScaledVector(r.target.vel, 0.3).sub(r.p).normalize();
         const sp = r.v.length();
         tB.copy(r.v).normalize().lerp(tA, Math.min(1, dt * 4)).normalize();
@@ -1353,12 +1483,20 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       r.o.position.copy(r.p);
       r.o.lookAt(tA.copy(r.p).add(r.v));
       r.o.rotateY(Math.PI);
-      if ((r.trail = (r.trail || 0) - dt) <= 0) { r.trail = 0.02; fx(r.p, null, 1.5, 2.8, 0.9, prismHex(elapsed * 2.2, r.p.x * 0.0004), 0, 0); puff(r.p, null, 1.0, 3.2, 0.9, 0xf4f4f4); }
+      if ((r.trail = (r.trail || 0) - dt) <= 0) {
+        // own smoke trail per missile: hot motor flame + a thin white smoke line that thickens and drifts
+        if (WS.kind === "std") {
+          r.trail = 0.035;
+          fx(r.p, null, 1.9, 0.5, 0.14, 0xffb050, 0, 0);
+          puff(r.p, tB.set((Math.random() - 0.5) * 1.2, 0.5 + Math.random() * 0.6, (Math.random() - 0.5) * 1.2), 0.45, 3.2, 2.9, 0xf2f2f4);
+        } else { r.trail = 0.02; fx(r.p, null, 2.2, 0.4, 0.5, WS.fx, 0, 0); fx(r.p, tB.set((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8), 0.9, 0.2, 0.35, 0xffffff, 0, 1); }
+      }
       let hit = null;
       for (const t of targets) if (t.alive && segSphere(p0, r.p, t.pos, t.radius + 6)) { hit = t; break; }
       const gh = groundAt(r.p.x, r.p.z);
       if (hit || r.p.y < gh || r.life <= 0) {
         r.active = false; r.o.visible = false;
+        r.result = r.life > 0 ? "hit" : "miss";
         if (hit) { stats.hits++; damageTarget(hit, 12, "rocket"); }
         if (r.life > 0) { explode(r.p.clone(), 9, 0.6); blast(r.p, 30, 6); }
       }
@@ -1383,14 +1521,25 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     for (const b of bombs) {
       if (!b.active) continue;
       b.v.y -= GRAV * dt;
+      if (b.target && b.target.alive) {
+        // guided: steer the fall so it lands on the locked target (limited fin authority)
+        const h = Math.max(1, b.p.y - b.target.pos.y), vy = Math.max(0, -b.v.y);
+        const tf = Math.max(0.4, (vy + Math.sqrt(vy * vy + 2 * GRAV * h)) / GRAV);
+        tA.set((b.target.pos.x + b.target.vel.x * tf - b.p.x) / tf, 0, (b.target.pos.z + b.target.vel.z * tf - b.p.z) / tf);
+        tB.set(tA.x - b.v.x, 0, tA.z - b.v.z);
+        const mx = 55 * dt, l = tB.length(); if (l > mx) tB.multiplyScalar(mx / l);
+        b.v.x += tB.x; b.v.z += tB.z;
+      }
+      if (b.glow.visible) b.core.scale.setScalar(1.1 + 0.4 * Math.sin(elapsed * 40 + b.p.x));
       b.p.addScaledVector(b.v, dt);
       b.o.position.copy(b.p);
       b.o.lookAt(tA.copy(b.p).add(b.v)); b.o.rotateY(Math.PI);
       const gh = groundAt(b.p.x, b.p.z);
       let near = false;
       for (const t of targets) if (t.alive && t.kind !== "jet" && t.pos.distanceTo(b.p) < t.radius + 8) { near = true; break; }
+      if (WS.kind !== "std" && (b.trail = (b.trail || 0) - dt) <= 0) { b.trail = 0.03; fx(b.p, tB.set((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10), 1.6, 0.2, 0.3, WS.fx, 0, 1); }
       if (b.p.y <= gh + 1 || near) {
-        b.active = false; b.o.visible = false;
+        b.active = false; b.o.visible = false; b.result = "hit";
         b.p.y = Math.max(b.p.y, gh + 1);
         explode(b.p.clone(), 20, 1.6);
         const water = terrain.isWater(b.p.x, b.p.z);
@@ -1455,13 +1604,14 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       p.v.multiplyScalar(1 - dt * 0.8);
       const s = (p.s0 + (p.s1 - p.s0) * Math.sqrt(k)) * (k > 0.75 ? (1 - k) / 0.25 : 1) * Math.min(1, Math.max(0.12, (p.p.distanceTo(camera.position) - 8) / 40));
       _m.compose(p.p, _q.identity(), _s.set(s, s, s));
-      puffMesh.setMatrixAt(n, _m); puffOutline.setMatrixAt(n, _m);
-      puffMesh.setColorAt(n, _c.setHex(p.color));
+      puffMesh.setMatrixAt(n, _m);
+      _c.setHex(p.color); aCol.setXYZ(n, _c.r, _c.g, _c.b);
+      aAlp.setX(n, (p.big ? 0.85 : 0.7) * Math.pow(1 - k, 1.25) * Math.min(1, p.t / 0.07));
       n++;
     }
     puffMesh.count = puffOutline.count = n;
     puffMesh.instanceMatrix.needsUpdate = puffOutline.instanceMatrix.needsUpdate = true;
-    if (puffMesh.instanceColor) puffMesh.instanceColor.needsUpdate = true;
+    aCol.needsUpdate = aAlp.needsUpdate = true;
     for (const d of debris) {
       if (!d.active) continue;
       d.life -= dt;
@@ -1531,10 +1681,11 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   function render() {
     outlineUniforms.uRes.value.set(innerWidth, innerHeight);
     renderer.render(scene, camera);
+    renderWeaponCam();
   }
 
   return {
-    scene, camera, load, update, render, hudState,
+    scene, camera, load, update, render, hudState, attachWeaponCam, runLabel,
     /** seconds > 0 = mission countdown; 0 / null = endless (timer counts up) */
     setTime(sec) { endless = !sec; timeLeft = sec || 0; },
     start() { running = true; ended = false; controls.setEnabled(true); audio.startEngine(); },
@@ -1549,6 +1700,6 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     loop: (d) => startLoop(d),
     roll: (d) => startRoll(d),
     stats: () => stats,
-    dbg: { finish: (r) => finish(r), targets, allies, bullets, damageAlly: (a, n) => damageAlly(a, n), get player() { return player; }, get pad() { return pad; }, fxCount: () => fxs.length, openLanding() { landingOpen = true; }, explodeAt: (p, s, b) => explode(p, s, b), get landing() { return !!landing; }, get progress() { return progress; } },
+    dbg: { hardState: () => ({ idx: hardIdx, rockets: player.rockets, live: rockets.filter((r) => r.active).map((r) => r.hp), wc: WC.state, world: L.run ? runLabel(L.run) : "" }), finish: (r) => finish(r), targets, allies, bullets, damageAlly: (a, n) => damageAlly(a, n), get player() { return player; }, get pad() { return pad; }, fxCount: () => fxs.length, openLanding() { landingOpen = true; }, explodeAt: (p, s, b) => explode(p, s, b), get landing() { return !!landing; }, get progress() { return progress; } },
   };
 }

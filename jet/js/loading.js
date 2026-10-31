@@ -3,8 +3,9 @@
 //   - styling lives in css/loading.css,
 //   - the game only calls loading.show(), loading.set(progress 0..1, text) and loading.hide().
 // Galoo's final loading graphics can replace the template/CSS without touching the game.
-const TITLE = "Jet"; // working title: change this one word when the final name is decided
-const ART = ["img/art/loading_portrait.jpg?v=8", "img/art/loading_landscape.jpg?v=8"]; // chosen by orientation in css/loading.css
+const TITLE = "JET-𝕏"; // alt text; the visible wordmark is img/wordmark.png (swap that file to rebrand)
+const WORDMARK = "img/wordmark.png?v=9";
+const ART = ["img/art/v2_portrait.jpg?v=9", "img/art/v2_landscape.jpg?v=9"]; // chosen by orientation in css/loading.css
 const TIPS = [
   "Tilt the top of your phone up to climb, down to dive.",
   "Your guns fire by themselves when an enemy is in front.",
@@ -18,7 +19,7 @@ export function createLoading(root) {
   root.innerHTML = `
     <div class="ld-bg" aria-hidden="true"></div>
     <div class="ld-shade" aria-hidden="true"></div>
-    <div class="ld-top"><div class="ld-title">${TITLE}</div><div class="ld-level" data-ld="level"></div></div>
+    <div class="ld-top"><img class="ld-title" src="${WORDMARK}" alt="${TITLE}" draggable="false"><div class="ld-level" data-ld="level"></div></div>
     <div class="ld-bottom">
       <div class="ld-text" data-ld="text">Loading</div>
       <div class="ld-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i data-ld="fill"></i></div>

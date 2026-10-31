@@ -49,7 +49,7 @@ export function createAudio() {
   /** Try to get the context running again (works without a gesture after an iOS interruption ends). */
   function kick() {
     if (!ctx) return;
-    if (ctx.state === "closed") { ensure(); if (wanted) playTrack(wanted); return; }
+    if (ctx.state === "closed") { ensure(); tech = null; if (wanted) playTrack(wanted, wantedOpts); return; }
     if (ctx.state !== "running") { try { const r = ctx.resume(); if (r && r.catch) r.catch(() => {}); } catch { /* ignore */ } }
   }
   // resume on every touch / visibility change + a light watchdog while the page is visible
@@ -61,7 +61,7 @@ export function createAudio() {
     if (!ctx || document.hidden || !wantRunning) return;
     if (ctx.state !== "running") kick();
     // music source died (iOS can drop sources after an interruption): restart it
-    if (wanted && ctx.state === "running" && (!current || current.dead)) { current = null; playTrack(wanted); }
+    if (wanted && wanted !== "techno" && ctx.state === "running" && (!current || current.dead)) { current = null; playTrack(wanted); }
   }, 1000);
 
   async function load(name) {
@@ -78,9 +78,91 @@ export function createAudio() {
     try { return await p; } finally { loading.delete(name); }
   }
 
-  async function playTrack(name) {
-    wanted = name;
+  // ---------- procedural techno: a new random fast track every run ----------
+  let tech = null, wantedOpts = null;
+  function mulberry(a) { return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
+  function stopTechno() {
+    if (!tech) return;
+    const t = tech; tech = null;
+    clearInterval(t.timer);
+    try { t.bus.gain.setTargetAtTime(0, ctx.currentTime, 0.25); } catch { /* ignore */ }
+    setTimeout(() => { try { t.bus.disconnect(); t.fb.disconnect(); t.delay.disconnect(); } catch { /* ignore */ } }, 1500);
+  }
+  function startTechno(o = {}) {
+    stopTechno();
+    const r = mulberry(((o.seed || 0) ^ ((Math.random() * 4294967295) >>> 0)) >>> 0);
+    const alien = !!o.alien;
+    const bpm = 138 + Math.floor(r() * 22);                       // 138 - 159 bpm
+    const step = 60 / bpm / 4;
+    const root = 31 + Math.floor(r() * 9);                        // low bass root
+    const scales = alien ? [[0, 1, 4, 5, 7, 8, 11], [0, 2, 3, 6, 7, 8, 11], [0, 1, 3, 7, 8, 10, 12]] : [[0, 2, 3, 5, 7, 8, 10], [0, 1, 3, 5, 7, 8, 10], [0, 2, 3, 5, 7, 9, 10]];
+    const sc = scales[Math.floor(r() * scales.length)];
+    const prog = [[0, 0, 5, 3], [0, 3, 5, 4], [0, 0, 3, 6], [0, 5, 3, 4]][Math.floor(r() * 4)]; // scale degrees per bar
+    const deg = (d) => sc[((d % 7) + 7) % 7] + 12 * Math.floor(d / 7);
+    const bassPat = Array.from({ length: 16 }, (_, i) => (i % 4 === 2 ? (r() < 0.9 ? 1 : 0) : i % 4 === 0 ? 0 : r() < 0.28 ? 1 : 0));
+    const bassOct = r() < 0.3 ? 12 : 0;
+    const arpPat = Array.from({ length: 16 }, () => (r() < 0.7 ? 1 + Math.floor(r() * 3) : 0)); // 0 = rest, else a chord tone index
+    const arpDeg = [0, 2, 4, 7, 9, 11, 14];
+    const leadWave = ["sawtooth", "square", "sawtooth"][Math.floor(r() * 3)];
+    const hatSwing = r() < 0.5;
+    const bus = ctx.createGain(); bus.gain.value = 0; bus.gain.setTargetAtTime(0.78, ctx.currentTime, 0.4); bus.connect(musicGain);
+    const duck = ctx.createGain(); duck.connect(bus);
+    const delay = ctx.createDelay(1); delay.delayTime.value = step * 3; const fb = ctx.createGain(); fb.gain.value = 0.32;
+    const dwet = ctx.createGain(); dwet.gain.value = 0.35; delay.connect(fb); fb.connect(delay); delay.connect(dwet); dwet.connect(duck);
+    let next = ctx.currentTime + 0.1, idx = 0;
+    const noise = (t, dur, type, f, g0, q = 0.7) => {
+      const src = ctx.createBufferSource(); src.buffer = noiseBuf; const flt = ctx.createBiquadFilter(); flt.type = type; flt.frequency.value = f; flt.Q.value = q;
+      const g = ctx.createGain(); env(g, t, 0.002, g0, dur); src.connect(flt); flt.connect(g); g.connect(bus); src.start(t, Math.random()); src.stop(t + dur + 0.02);
+    };
+    const kick = (t, g0 = 0.95) => {
+      const o = ctx.createOscillator(), g = ctx.createGain(); o.type = "sine";
+      o.frequency.setValueAtTime(165, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.13);
+      env(g, t, 0.003, g0, 0.32); o.connect(g); g.connect(bus); o.start(t); o.stop(t + 0.36);
+      duck.gain.cancelScheduledValues(t); duck.gain.setValueAtTime(0.3, t); duck.gain.linearRampToValueAtTime(1, t + step * 3.2);
+    };
+    const bass = (t, m, len) => {
+      const o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain(); o.type = "sawtooth"; o.frequency.value = mtof(m);
+      f.type = "lowpass"; f.Q.value = 6; f.frequency.setValueAtTime(900 + r() * 500, t); f.frequency.exponentialRampToValueAtTime(140, t + len);
+      env(g, t, 0.005, 0.36, len); o.connect(f); f.connect(g); g.connect(duck); o.start(t); o.stop(t + len + 0.03);
+    };
+    const lead = (t, m, len, vol) => {
+      const o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain(); o.type = leadWave; o.frequency.value = mtof(m);
+      o.detune.value = (r() - 0.5) * 14; f.type = "lowpass"; f.frequency.setValueAtTime(3200, t); f.frequency.exponentialRampToValueAtTime(700, t + len); f.Q.value = 3;
+      env(g, t, 0.004, vol, len); o.connect(f); f.connect(g); g.connect(duck); g.connect(delay); o.start(t); o.stop(t + len + 0.03);
+    };
+    const tick = () => {
+      if (!ctx || tech == null) return;
+      while (next < ctx.currentTime + 0.18) {
+        const s = idx % 16, bar = Math.floor(idx / 16), ph = bar % 16, t = next;
+        const breakdown = ph === 8 || ph === 9, riser = ph === 15;
+        const bd = deg(prog[bar % 4]);
+        if (!breakdown && s % 4 === 0) kick(t);
+        if (!breakdown && ph >= 0 && (s === 4 || s === 12)) { noise(t, 0.16, "bandpass", 1700, 0.5, 1.2); noise(t + 0.012, 0.1, "bandpass", 2300, 0.3, 1.2); }
+        if (ph >= 1 && (s % 4 === 2)) noise(t, 0.16, "highpass", 7500, 0.22);
+        else if (ph >= 2 && s % 2 === 1 && !breakdown) noise(t + (hatSwing && s % 4 === 3 ? 0.012 : 0), 0.045, "highpass", 9000, 0.1 + r() * 0.08);
+        if (ph >= 2 && !breakdown && bassPat[s]) bass(t, root + sc[0] + bd + bassOct, step * (s % 4 === 2 ? 1.7 : 0.9));
+        if (ph >= 4 && arpPat[s] && !(ph === 15 && s > 8)) lead(t, root + 24 + bd + deg(arpDeg[(arpPat[s] * 2 + (s >> 2)) % arpDeg.length]), step * 1.5, breakdown ? 0.14 : 0.09);
+        if (breakdown && s === 0) { for (const d of [0, 2, 4]) lead(t, root + 24 + deg(d + bd), step * 14, 0.07); }
+        if (riser && s % 2 === 0) noise(t, step * 2, "highpass", 1500 + s * 380, 0.1 + s * 0.012);
+        if (riser && s >= 12 && s % 1 === 0) kick(t, 0.5);
+        if (ph === 0 && s === 0 && bar > 0) noise(t, 0.7, "highpass", 3500, 0.2);
+        next += step; idx++;
+      }
+    };
+    tech = { timer: setInterval(tick, 25), bus, fb, delay, bpm };
+    tick();
+  }
+
+  async function playTrack(name, opts) {
+    wanted = name; wantedOpts = opts || null;
+    if (name !== "techno") stopTechno();
     if (!ctx) return;
+    if (name === "techno") {
+      if (current) { const old = current; old.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.3); old.retired = true; setTimeout(() => { try { old.src.stop(); } catch { /* ignore */ } }, 2000); current = null; }
+      startTechno(opts || {});
+      return;
+    }
     if (current && current.name === name) return;
     let buf;
     try { buf = await load(TRACK_FOR[name] || "day"); } catch (e) { console.warn("music load failed", e); return; }
@@ -151,11 +233,12 @@ export function createAudio() {
         // iOS: play a silent buffer inside the gesture
         try { const b = c.createBuffer(1, 1, 22050); const s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0); } catch { /* ignore */ }
       }
-      if (wanted && (!current || current.name !== wanted)) playTrack(wanted);
+      if (wanted && (wanted === "techno" ? !tech : (!current || current.name !== wanted))) playTrack(wanted, wantedOpts);
     },
     unlocked: () => !!ctx && ctx.state === "running",
     state: () => (ctx ? ctx.state : "none"),
     voices: () => active,
+    techno: () => (tech ? { bpm: tech.bpm } : null),
     playTrack, preload(name) { if (ctx) load(TRACK_FOR[name] || name).catch(() => {}); },
     currentTrack: () => current?.name || null,
     setMusic(v) { musicOn = !!v; save(); if (musicGain) musicGain.gain.setTargetAtTime(musicOn ? 0.55 : 0, ctx.currentTime, 0.1); },

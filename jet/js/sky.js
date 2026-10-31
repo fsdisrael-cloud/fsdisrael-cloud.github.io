@@ -1,7 +1,7 @@
 // Time of day + weather: sky dome, sun/moon, stars, lights, fog, toon clouds, rain/snow, lightning.
 import * as THREE from "three";
-import { PartBuilder, G, getGradientMap, outlineMaterial } from "./toon.js?v=8";
-import { style, skyHueChunk } from "./surreal.js?v=8";
+import { PartBuilder, G, getGradientMap, outlineMaterial } from "./toon.js?v=9";
+import { style, skyHueChunk } from "./surreal.js?v=9";
 
 export const TIMES = ["dawn", "day", "dusk", "night"];
 export const WEATHERS = ["clear", "cloudy", "rain", "fog", "snow", "storm"];
@@ -213,10 +213,17 @@ export function createSky(scene, renderer) {
       fogCol.setHex(time === "night" ? 0x5a4a8a : 0xf6d8ff).lerp(new THREE.Color(0xd8d0e8), over * 0.4);
       if (weather === "fog") { hor.copy(fogCol); bot.copy(fogCol); }
     }
+    const pl = opts.planet && opts.planet.top != null ? opts.planet : null, se = !pl && opts.season ? opts.season : null;
+    const nK = time === "night" ? 0.34 : time === "dawn" || time === "dusk" ? 0.78 : 1;
+    if (pl) {
+      top.setHex(pl.top).multiplyScalar(nK); hor.setHex(pl.hor).multiplyScalar(nK); bot.setHex(pl.bot).multiplyScalar(nK);
+      fogCol.setHex(pl.fog).multiplyScalar(nK);
+      if (weather === "fog") { hor.copy(fogCol); bot.copy(fogCol); }
+    }
     skyMat.uniforms.top.value.copy(top);
     skyMat.uniforms.hor.value.copy(hor);
     skyMat.uniforms.bot.value.copy(bot);
-    skyMat.uniforms.sunCol.value.setHex(T.sun);
+    skyMat.uniforms.sunCol.value.setHex(pl ? pl.sun : T.sun);
     skyMat.uniforms.stars.value = T.stars;
     skyMat.uniforms.night.value = time === "night" ? 1 : 0;
     skyMat.uniforms.over.value = over;
@@ -241,9 +248,12 @@ export function createSky(scene, renderer) {
     const tint = new THREE.Color(style.surreal ? (time === "night" ? 0xb0a0e0 : 0xffffff) : T.tint);
     if (weather === "snow") tint.lerp(new THREE.Color(0xeef4ff), 0.25);
     if (over > 0.4) tint.multiplyScalar(1 - over * 0.15);
+    if (pl) tint.multiply(new THREE.Color(pl.tint[0], pl.tint[1], pl.tint[2]));
+    else if (se && se.tint) tint.multiply(new THREE.Color(se.tint[0], se.tint[1], se.tint[2]));
     for (const m of terrain) m.color.copy(tint);
     const ct = new THREE.Color(style.surreal ? 0xffd6f4 : T.cloud);
     if (over > 0.5) ct.multiplyScalar(1 - (over - 0.5) * 0.6);
+    if (pl) ct.setHex(pl.cloud).multiplyScalar(nK);
     cloudMat.color.copy(ct);
     cloudMat.emissive.copy(ct).multiplyScalar(time === "night" ? 0.12 : 0.28);
     buildClouds(W.clouds, center, half, over > 0.5, seed);

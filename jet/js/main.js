@@ -1,19 +1,20 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=8";
-import { createHud } from "./hud.js?v=8";
-import { createControls } from "./controls.js?v=8";
-import { createAudio, trackFor } from "./audio.js?v=8";
-import { createHaptics } from "./haptics.js?v=8";
-import { createLoading } from "./loading.js?v=8";
-import { setSurreal, tickStyle } from "./surreal.js?v=8";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=8";
+import { createGame } from "./game.js?v=9";
+import { createHud } from "./hud.js?v=9";
+import { createControls } from "./controls.js?v=9";
+import { runLabel } from "./variety.js?v=9";
+import { createAudio, trackFor } from "./audio.js?v=9";
+import { createHaptics } from "./haptics.js?v=9";
+import { createLoading } from "./loading.js?v=9";
+import { setSurreal, tickStyle } from "./surreal.js?v=9";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=9";
 
 const $ = (id) => document.getElementById(id);
 
 // ---------- build / version check ----------
-const BUILD = 8;
-{ const t = $("build-tag"); if (t) t.textContent = "Jet b" + BUILD; }
+const BUILD = 9;
+{ const t = $("build-tag"); if (t) t.textContent = "JET-𝕏 b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;
   try { if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, "1"); } catch { /* ignore */ }
@@ -149,6 +150,7 @@ function buildMenu() {
 function showPanel(title, html) { $("panel-title").textContent = title; $("panel-body").innerHTML = html; $("panel").classList.remove("hidden"); }
 $("panel-close").addEventListener("click", () => $("panel").classList.add("hidden"));
 buildMenu();
+game.attachWeaponCam($("wcam-c"));
 
 // ---------- start / levels ----------
 async function launch(n, fromTap) {
@@ -156,18 +158,21 @@ async function launch(n, fromTap) {
   state = "loading";
   levelNo = n; saveLevelNo(n);
   $("results").classList.add("hidden"); $("pause").classList.add("hidden"); $("crash").classList.add("hidden");
-  loading.show(`Level ${n} - ${LEVELS[n - 1].title}`);
-  loading.set(lastProg, lastText);
   let p = preload && preload.n === n ? preload : null;
-  if (!p) { game.quit(); p = startPreload(n); }
+  if (!p) { game.quit(); p = startPreload(n); } // every launch rolls a new random world
+  loading.show(`Level ${n} - ${runLabel(p.level.run)}`);
+  loading.set(lastProg, lastText);
   const ok = await p.promise;
   preload = null;
   if (!ok) { loading.set(1, "Could not load the map. Check your connection and tap PLAY again."); state = "title"; setTimeout(() => loading.hide(), 2200); preload = null; return; }
   const L = game.level();
   $("hud-level").textContent = `Level ${n}/${levelCount()}`;
+  const nightOn = L.time === "night";
+  document.body.classList.toggle("nv-on", nightOn);
+  $("hud-world").textContent = runLabel(L.run);
   document.body.classList.remove("on-title"); document.body.classList.add("in-game");
   $("screen-title").classList.add("hidden");
-  audio.playTrack(trackFor(L.time, L.weather));
+  audio.playTrack("techno", { seed: L.run?.seed, alien: L.run?.planetKey !== "earth" });
   controls.calibrate(); controls.resetLook(); controls.setEnabled(true);
   game.setTime(timeSec);
   window.__settingsOpen?.(false);
@@ -223,6 +228,7 @@ function frame(now) {
   if (state === "playing") {
     game.update(dt);
     game.render();
+    { const vb = $("btn-view"), vv = game.view(); if (vb.dataset.view !== vv) vb.dataset.view = vv; }
     hud.draw(game.hudState(), dt);
     fpsAcc += dt; fpsN++;
     if (fpsAcc > 2) {

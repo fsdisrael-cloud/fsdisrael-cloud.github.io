@@ -190,3 +190,87 @@ body.in-game .build-tag { display: none; }
   .seg button { height: 32px; font-size: 13px; } .time-pick { width: min(40vw, 300px); }
   .objectives { top: calc(var(--safe-t) + 62px); }
 }
+
+.logo-img { width: clamp(180px, 46vmin, 380px); height: auto; filter: drop-shadow(0 6px 14px rgba(0,0,0,.7)) drop-shadow(0 0 18px rgba(255,160,60,.18)); user-select: none; pointer-events: none; }
+
+/* =====================================================================
+   v2 SKIN: dark military, gunmetal panels with amber corner brackets
+   ===================================================================== */
+:root { --gm-hi: #4a525e; --gm-mid: #2a3038; --gm-lo: #13161b; --amber: #ff9a1f; --grn: #4dff84; --mil: "Bahnschrift", "Avenir Next Condensed", "Roboto Condensed", "Arial Narrow", "DejaVu Sans Condensed", system-ui, sans-serif; }
+.hud *, .settings *, .objectives *, .alert, .toast, .low-alt { font-family: var(--mil) !important; }
+.hud { color: #dfe6ee; }
+.pill, .objectives div { position: relative; border-radius: 3px; border: 1px solid #04060a; background: linear-gradient(180deg, var(--gm-hi), var(--gm-mid) 40%, var(--gm-lo)); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), inset 0 0 0 1px rgba(0,0,0,.35), 0 3px 8px rgba(0,0,0,.6); }
+.pill::before, .pill::after, .wcam::before { content: ""; position: absolute; width: 9px; height: 9px; border: 2px solid var(--amber); pointer-events: none; }
+.pill::before { left: -3px; top: -3px; border-right: 0; border-bottom: 0; }
+.pill::after { right: -3px; bottom: -3px; border-left: 0; border-top: 0; }
+.pill small { font-weight: 700; letter-spacing: .24em; opacity: .8; color: #c4ccd6; font-size: 8px; }
+.pill b { font-weight: 700; letter-spacing: .06em; }
+.time-pill b { color: var(--grn); text-shadow: 0 0 10px rgba(77,255,132,.55); }
+.score-pill b { color: #f2f5f8; }
+.timer.urgent { color: #ff5a4a !important; text-shadow: 0 0 10px rgba(255,70,50,.7) !important; }
+.lvl { letter-spacing: .2em; opacity: .85; color: #d9e0e8; }
+.lvl.world { color: var(--amber); margin-top: 0; font-size: 9px; opacity: .95; }
+.objectives div { padding: 3px 8px; border-radius: 3px; background: linear-gradient(180deg, rgba(58,64,74,.92), rgba(18,21,26,.92)); }
+.objectives .chk { border-radius: 1px; border-color: var(--amber); } .objectives .done .chk { background: var(--grn); border-color: var(--grn); }
+.objectives b { color: var(--amber); }
+
+#radar { border-radius: 50%; box-shadow: 0 0 0 3px var(--gm-mid), 0 0 0 4.5px #04060a, 0 0 0 5.5px rgba(255,154,31,.65), 0 6px 12px rgba(0,0,0,.6); background: #07120b; }
+.radar-wrap { gap: 12px; }
+.view-btn { height: 28px; padding: 0; gap: 0; border-radius: 3px; border: 1px solid #04060a; overflow: hidden; background: linear-gradient(180deg, var(--gm-hi), var(--gm-lo)); color: #aeb7c2; box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 3px 8px rgba(0,0,0,.6); }
+.view-btn .vseg { display: grid; place-items: center; height: 100%; padding: 0 9px; font-size: 10px; font-weight: 700; letter-spacing: .12em; white-space: nowrap; }
+.view-btn .vseg + .vseg { border-left: 1px solid #04060a; }
+.view-btn[data-view="chase"] .vseg[data-v="chase"], .view-btn[data-view="cockpit"] .vseg[data-v="cockpit"] { color: #1b1002; background: linear-gradient(180deg, #ffc25a, #e8800f); text-shadow: 0 1px 0 rgba(255,255,255,.4); }
+
+/* weapon camera: the 2nd circle under the radar */
+.wcam { position: relative; width: calc(var(--radar) * 0.78); aspect-ratio: 1; border-radius: 50%; margin-left: calc(var(--radar) * 0.11); }
+.wcam::before { display: none; }
+.wcam canvas { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; background: #031006; transition: opacity .12s; }
+.wcam-ring { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; box-shadow: 0 0 0 3px var(--gm-mid), 0 0 0 4.5px #04060a, 0 0 0 5.5px rgba(77,255,132,.55), inset 0 0 14px rgba(0,0,0,.8), 0 6px 12px rgba(0,0,0,.6); }
+
+.settings .tgl, .settings .gear { border-radius: 4px; border: 1px solid #04060a; color: #aeb7c2; background: linear-gradient(180deg, var(--gm-hi), var(--gm-lo)); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 3px 8px rgba(0,0,0,.6); width: 44px; height: 44px; }
+.settings .gear { clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%); border-radius: 0; width: 46px; height: 46px; color: #dfe6ee; }
+.settings .tgl span { color: #aeb7c2; font-size: 7px; font-weight: 700; letter-spacing: .1em; }
+.settings .tgl:not(.off):not(.gear) { color: var(--grn); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 0 10px rgba(77,255,132,.3), 0 3px 8px rgba(0,0,0,.6); }
+.settings .tgl:not(.off):not(.gear) span { color: var(--grn); }
+.settings.open .gear { box-shadow: none; filter: drop-shadow(0 0 4px rgba(255,154,31,.7)); }
+
+.wbtn { border: 2px solid #04060a; background: radial-gradient(circle at 35% 25%, #5b6471, #262c34 55%, #0e1115); color: #e4eaf1; box-shadow: 0 4px 10px rgba(0,0,0,.65), inset 0 1.5px 2px rgba(255,255,255,.35), inset 0 -4px 6px rgba(0,0,0,.5); }
+.wbtn { --rc: var(--grn); }
+.w-gun { --rc: var(--amber); } .w-bomb { --rc: var(--amber); }
+.wbtn.low { --rc: var(--amber); } .wbtn.empty, .wbtn.hot { --rc: #ff4040; }
+.wbtn .ring { background: conic-gradient(var(--rc) calc(var(--p) * 1%), rgba(255,255,255,.12) 0); -webkit-mask: radial-gradient(circle, transparent 66%, #000 68%); mask: radial-gradient(circle, transparent 66%, #000 68%); }
+.wbtn .cnt { border-radius: 3px; background: linear-gradient(180deg, #3a414b, #14171c); border: 1px solid #04060a; font-weight: 700; letter-spacing: .08em; font-size: 11px; box-shadow: inset 0 1px 0 rgba(255,255,255,.18); }
+.wbtn em { font-weight: 700; letter-spacing: .14em; }
+.bar { border-radius: 2px; border: 1px solid #04060a; background: #0a0c10; box-shadow: inset 0 1px 3px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.18); }
+.bar i { background: linear-gradient(90deg, #35d86a, var(--grn)); }
+.statrow.heat .bar i { background: linear-gradient(90deg, #ff8a1f, #ffc25a); }
+.statrow span { font-weight: 700; letter-spacing: .18em; color: #c4ccd6; }
+.alert { border-radius: 3px; background: rgba(150,20,14,.92); border: 1px solid #ff8a7a; letter-spacing: .16em; }
+.toast { border-radius: 3px; background: rgba(14,17,22,.82); border: 1px solid rgba(255,154,31,.7); letter-spacing: .08em; }
+
+/* opening screen buttons share the gunmetal look */
+.seg { border-radius: 4px; background: rgba(8,10,14,.7); border-color: rgba(255,255,255,.18); }
+.seg button { border-radius: 3px; border: 1px solid #04060a; color: #c4ccd6; font-family: var(--mil); letter-spacing: .1em; background: linear-gradient(180deg, var(--gm-hi), var(--gm-lo)); box-shadow: inset 0 1px 0 rgba(255,255,255,.2); }
+.seg button.on { color: #1b1002; background: linear-gradient(180deg, #ffc25a, #e8800f); box-shadow: 0 0 10px rgba(255,154,31,.6), inset 0 1px 0 rgba(255,255,255,.5); }
+.tp-label { font-family: var(--mil); }
+
+/* =====================================================================
+   NIGHT VISION: green phosphor overlay on dark nights
+   ===================================================================== */
+.nv { position: fixed; inset: 0; z-index: 8; pointer-events: none; display: none; }
+body.nv-on.in-game .nv { display: block; }
+body.nv-on.in-game canvas#game-canvas { filter: grayscale(1) brightness(2.3) contrast(1.25) sepia(1) hue-rotate(68deg) saturate(3.4); }
+.nv i { position: absolute; inset: 0; display: block; }
+.nv-vig { background: radial-gradient(ellipse at 50% 50%, rgba(0,40,10,0) 45%, rgba(0,18,4,.78) 100%); box-shadow: inset 0 0 90px rgba(0,30,8,.9); }
+.nv-scan { background: repeating-linear-gradient(180deg, rgba(0,0,0,0) 0 2px, rgba(0,20,6,.22) 2px 3px); mix-blend-mode: multiply; }
+.nv-noise { background: radial-gradient(circle at 50% 50%, rgba(90,255,120,.10), rgba(60,255,100,.05) 70%); animation: nvflick .18s steps(2) infinite; }
+@keyframes nvflick { 50% { opacity: .55; } }
+
+/* ---- v2 art: dark military opening screen ---- */
+.title { background: linear-gradient(180deg, rgba(4,6,10,.55) 0%, rgba(4,6,10,.15) 38%, rgba(4,6,10,.7) 100%), url("../img/art/v2_portrait.jpg") center/cover no-repeat, #05070b; }
+@media (orientation: landscape) { .title { background: linear-gradient(90deg, rgba(4,6,10,.2), rgba(4,6,10,.7)), url("../img/art/v2_landscape.jpg") center/cover no-repeat, #05070b; } }
+.hero-jet { display: none !important; }
+.title-hint { color: #aeb6c2; }
+@media (orientation: portrait) { .objectives { top: calc(var(--safe-t) + 88px); } }
+.lvl.world { max-width: 46vw; white-space: normal; line-height: 1.15; }
+.title .sky-fx { display: none; }

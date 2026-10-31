@@ -11,6 +11,7 @@ export const BIOMES = {
   valley: "Green valley",
   mountains: "Mountains",
 };
+import { rollRun } from "./variety.js?v=9";
 const P = {
   seward: { name: "Resurrection Bay, Alaska", lat: 60.05, lon: -149.4 },
   monument: { name: "Monument Valley", lat: 36.99, lon: -110.10 },
@@ -45,17 +46,22 @@ export function saveLevelNo(n) { try { localStorage.setItem(KEY, String(n)); } c
 const VERB = { jet: "Shoot down", tank: "Destroy", flak: "Destroy", sam: "Destroy", base: "Destroy" };
 const NOUN = { jet: "enemy planes", tank: "tanks", flak: "flak guns", sam: "SAM sites", base: "base buildings" };
 /** Build the engine level object for level number n (1-based). */
-export function buildLevel(n) {
-  const d = LEVELS[Math.max(0, Math.min(LEVELS.length - 1, n - 1))];
+export function buildLevel(n, run0) {
+  const d0 = LEVELS[Math.max(0, Math.min(LEVELS.length - 1, n - 1))];
+  // every launch gets a fresh random world; the level only sets difficulty and the mission size
+  const run = run0 || rollRun();
+  const m = run.mix, sc = (v, k) => (v ? Math.max(1, Math.round(v * k)) : 0);
+  const d = { ...d0, place: run.place, biome: run.place.biome, time: run.time, weather: run.weather, carrier: !!(d0.carrier && run.place.sea),
+    tank: sc(d0.tank, m[0]), base: sc(d0.base, m[1]), flak: m[2] ? Math.max(d0.flak ? 1 : 0, Math.round(d0.flak * m[2])) : 0, sam: m[3] ? Math.round(d0.sam * m[3]) : 0 };
   const objectives = [];
   for (const k of ["jet", "base", "tank", "flak", "sam"]) if (d[k]) objectives.push({ kind: k, need: d[k], label: `${VERB[k]} ${d[k]} ${NOUN[k]}` });
   if (d.carrier) objectives.push({ kind: "land", need: 1, label: "Land on the carrier" });
   return {
-    n, title: `${n}. ${d.title}`, biome: d.biome, place: d.place, time: d.time, weather: d.weather,
+    run, n, title: `${n}. ${d0.title}`, biome: d.biome, place: d.place, time: d.time, weather: d.weather,
     seconds: d.seconds, difficulty: d.diff, hostile: d.hostile, calm: false,
-    seed: (n * 2654435761) >>> 0, objectives,
+    seed: run.seed || ((n * 2654435761) >>> 0), objectives,
     ground: { tank: d.tank + 1, flak: d.flak, sam: d.sam, base: d.base, ship: 0 }, jets: d.jets,
-    allies: { jet: 2 + (n >= 5 ? 1 : 0) + (n >= 9 ? 1 : 0), tank: 2 + (d.diff > 0.5 ? 2 : 0), ship: d.carrier || d.biome === "snow" ? 2 : 1, ...(d.ally || {}) },
+    allies: { jet: 2 + (n >= 5 ? 1 : 0) + (n >= 9 ? 1 : 0), tank: 2 + (d.diff > 0.5 ? 2 : 0), ship: run.place.sea ? (d.carrier || d.biome === "snow" ? 2 : 1) : 0, ...(d.ally || {}) },
     carrier: !!d.carrier, balloons: 0, drones: 0, targets: 0, ring: null, weapons: ["gun", "rocket", "bomb"], view: "chase", lockView: false,
   };
 }
