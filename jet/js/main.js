@@ -1,19 +1,19 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=10";
-import { createHud } from "./hud.js?v=10";
-import { createControls } from "./controls.js?v=10";
-import { runLabel, PLANETS, JET_TYPES } from "./variety.js?v=10";
-import { createAudio, trackFor } from "./audio.js?v=10";
-import { createHaptics } from "./haptics.js?v=10";
-import { createLoading } from "./loading.js?v=10";
-import { setSurreal, tickStyle } from "./surreal.js?v=10";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=10";
+import { createGame } from "./game.js?v=11";
+import { createHud } from "./hud.js?v=11";
+import { createControls } from "./controls.js?v=11";
+import { runLabel, PLANETS, JET_TYPES } from "./variety.js?v=11";
+import { createAudio, trackFor } from "./audio.js?v=11";
+import { createHaptics } from "./haptics.js?v=11";
+import { createLoading } from "./loading.js?v=11";
+import { setSurreal, tickStyle } from "./surreal.js?v=11";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=11";
 
 const $ = (id) => document.getElementById(id);
 
 // ---------- build / version check ----------
-const BUILD = 10;
+const BUILD = 11;
 { const t = $("build-tag"); if (t) t.textContent = "JET-X b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;
@@ -60,6 +60,12 @@ const game = createGame({
     onCrash: () => $("crash").classList.remove("hidden"),
     onRespawn: () => { $("crash").classList.add("hidden"); hud.toast("Back in the sky!"); },
     onEmpty: (kind) => { const b = document.querySelector(kind === "bomb" ? ".w-bomb" : ".w-msl"); if (b) { b.classList.remove("shake"); void b.offsetWidth; b.classList.add("shake"); } },
+    onPop: (pts, combo, kind) => {
+      const box = $("popups"); if (!box) return;
+      const d = document.createElement("div"); d.className = "pop" + (combo >= 3 ? " big" : "");
+      d.innerHTML = `<b>+${pts}</b>${combo >= 2 ? `<i>COMBO x${combo}</i>` : ""}`;
+      box.appendChild(d); setTimeout(() => d.remove(), 1300); while (box.children.length > 4) box.firstChild.remove();
+    },
     onLoading: (t, p) => { if (typeof p === "number") lastProg = p; if (t) lastText = t; loading.set(p, t); },
   },
 });
@@ -195,6 +201,7 @@ async function launch(n, fromTap, sv) {
   $("screen-title").classList.add("hidden");
   audio.playTrack("techno", { seed: L.run?.seed, alien: L.run?.planetKey !== "earth" });
   controls.calibrate(); controls.resetLook(); controls.setEnabled(true);
+  window.__applyThrottle?.(parseFloat(document.getElementById('thr').style.getPropertyValue('--t')) || 0.35);
   game.setTime(sv ? (sv.endless ? 0 : sv.timeLeft) : timeSec);
   if (sv) game.setScore(sv.score);
   window.__settingsOpen?.(false);
@@ -226,7 +233,25 @@ function onLevelEnd(r) {
   const next = won ? (last ? 1 : n + 1) : n;
   $("res-btn-label").textContent = won ? (last ? "PLAY AGAIN" : "NEXT LEVEL") : "RETRY";
   $("res-btn").onclick = () => launch(next);
+  setTimeout(() => { if (state === "results" && !preload) startPreload(next); }, 1800);   // next world loads while you read the card: RETRY / NEXT start fast
   $("results").classList.remove("hidden");
+}
+
+// ---------- throttle lever (under the view toggle): drag up = faster ----------
+{
+  const track = $("thr-track"); let thr = 0.35;
+  try { const v = parseFloat(localStorage.getItem("jet-throttle")); if (v >= 0 && v <= 1) thr = v; } catch { /* ignore */ }
+  const apply = (v, save) => { thr = Math.max(0, Math.min(1, v)); game.setThrottle(thr); $("thr").style.setProperty("--t", thr.toFixed(3)); if (save) { try { localStorage.setItem("jet-throttle", thr.toFixed(2)); } catch { /* ignore */ } } };
+  const fromEvent = (e) => { const r = track.getBoundingClientRect(); return 1 - (e.clientY - r.top) / r.height; };
+  let drag = false;
+  const thrEl = $("thr");
+  thrEl.addEventListener("pointerdown", (e) => { e.stopPropagation(); drag = true; try { thrEl.setPointerCapture(e.pointerId); } catch { /* ignore */ } apply(fromEvent(e)); });
+  thrEl.addEventListener("pointermove", (e) => { if (drag) { e.stopPropagation(); apply(fromEvent(e)); } });
+  for (const t of ["pointerup", "pointercancel", "lostpointercapture"]) thrEl.addEventListener(t, () => { if (drag) { drag = false; apply(thr, true); } });
+  window.addEventListener("keydown", (e) => { if (e.key === "w" || e.key === "W") apply(thr + 0.08, true); if (e.key === "q" || e.key === "Q") apply(thr - 0.08, true); });
+  window.__applyThrottle = apply;
+  apply(thr);
+  game.onReady = () => game.setThrottle(thr);
 }
 
 // ---------- camera view toggle (under the radar) ----------

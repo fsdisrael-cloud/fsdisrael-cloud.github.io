@@ -1,6 +1,6 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=10";
+import { LABEL } from "./missions.js?v=11";
 
 const ALLY = "#3dff8b";
 const COL = { jet: "#ff3b3b", tank: "#ffa91f", flak: "#ff7a1f", sam: "#ff6a1a", base: "#ffa91f", ship: "#ffa91f", pad: "#3dff8b", ring: "#ffe14d" };
@@ -12,7 +12,7 @@ export function createHud() {
   const radar = document.getElementById("radar");
   const rctx = radar.getContext("2d");
   const el = (id) => document.getElementById(id);
-  const dom = { timer: el("hud-timer"), score: el("hud-score"), obj: el("hud-obj"), hp: el("hud-hp"), spd: el("hud-spd"), alt: el("hud-alt"), alert: el("alert"), toasts: el("toasts"), flash: el("hit-flash"), low: el("low-alt"), edge: el("low-edge"),
+  const dom = { timer: el("hud-timer"), score: el("hud-score"), obj: el("hud-obj"), hp: el("hud-hp"), spd: el("hud-spd"), thr: el("thr-spd"), alt: el("hud-alt"), alert: el("alert"), toasts: el("toasts"), flash: el("hit-flash"), low: el("low-alt"), edge: el("low-edge"),
     tlabel: el("hud-time-label"), heat: el("hud-heat"), heatRow: document.querySelector(".statrow.heat"),
     bGun: document.querySelector(".w-gun"), bMsl: document.querySelector(".w-msl"), bBomb: document.querySelector(".w-bomb") };
   let dpr = 1, W = 0, H = 0, domT = 0, radarT = 0, sweep = 0;
@@ -259,7 +259,7 @@ export function createHud() {
     const hp = Math.max(0, s.player.hp);
     dom.hp.style.width = hp + "%";
     dom.hp.style.background = hp > 60 ? "var(--mint)" : hp > 30 ? "var(--sun)" : "var(--red)";
-    dom.spd.textContent = Math.round(s.player.speed * 3.6);
+    dom.spd.textContent = Math.round(s.player.speed * 3.6); if (dom.thr) dom.thr.textContent = dom.spd.textContent;
     dom.alt.textContent = Math.round(s.player.pos.y);
     // weapons: the same ring (arc = how much is ready) on all three buttons
     const rack = s.rack || 10;

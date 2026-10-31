@@ -2,7 +2,7 @@
 // Player + enemy jets: PBR-lit (metal, glossy canopy, environment reflections) with a thin illustrated outline.
 // Ground units: toon + outline. Illustrated look, readable colours.
 import * as THREE from "three";
-import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=10";
+import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=11";
 
 const PI = Math.PI;
 
@@ -401,8 +401,8 @@ export function createTank(ally = false) {
   });
   const g = tm(geo, {}, ally);
   if (ally) { const m = glowSprite(0x3dff8b, 11, 0.8); m.position.set(0, 3.6, 0); g.add(m); }
-  g.scale.setScalar(2.4);
-  g.userData.radius = 9;
+  g.scale.setScalar(3.2);
+  g.userData.radius = 11;
   return g;
 }
 
@@ -420,8 +420,8 @@ export function createJeep() {
     return b.build();
   });
   const g = tm(geo, {}, false);
-  g.scale.setScalar(2.4);
-  g.userData.radius = 6;
+  g.scale.setScalar(3.0);
+  g.userData.radius = 8;
   return g;
 }
 
