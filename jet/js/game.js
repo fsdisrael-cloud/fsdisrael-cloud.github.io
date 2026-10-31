@@ -1,13 +1,13 @@
 // Ubu game world: flight model, camera, targets, AI, weapons, effects, objectives.
 import * as THREE from "three";
-import { buildTerrain } from "./terrain.js?v=13";
-import { createSky } from "./sky.js?v=13";
-import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createShip, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=13";
-import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=13";
-import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=13";
-import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=13";
-import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=13";
-import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=13";
+import { buildTerrain } from "./terrain.js?v=14";
+import { createSky } from "./sky.js?v=14";
+import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createAlienWalker, createAlienTurret, createAlienSpire, createHive, createShip, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=14";
+import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=14";
+import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=14";
+import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=14";
+import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=14";
+import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=14";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V();
@@ -42,7 +42,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   let timeLeft = 180, elapsed = 0, score = 0;
   const progress = {};
   const stats = { shots: 0, hits: 0, rockets: 0, bombs: 0, kills: {}, rings: 0, damage: 0, crashes: 0, loops: 0 };
-  let throttle = 0.35, combo = 0, lastKillT = -99, waveT = 0; const fires = [];
+  let alienT = false, throttle = 0.35, combo = 0, lastKillT = -99, waveT = 0; const fires = [];
   let lastDamage = -10, shake = 0, lockTarget = null, lockTime = 0, lockCand = null;
   let alertMsg = null, alertTimer = 0, warnTimer = 0, pullUpTimer = 0, lastYaw = 0, orbitAccum = 0;
   let hardIdx = 0; const hpReload = [0, 0, 0, 0]; let ccip = null, muzzleFlip = 0, gunCool = 0, rocketRegen = 0, bombRegen = 0, rocketSide = 1;
@@ -301,7 +301,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
         const p = new THREE.Vector3(c.x + Math.cos(a) * r, 0, c.z + Math.sin(a) * r);
         p.y = groundAt(p.x, p.z) + 0.1;
         const sub = subs[(placed + j) % subs.length];
-        const t = addTarget("base", createBaseBuilding(sub), p, { sub });
+        const t = addTarget("base", alienT ? createHive(sub) : createBaseBuilding(sub), p, { sub });
         t.obj.rotation.y = rng() * Math.PI * 2; t.pos.y = p.y; placed++;
       }
     }
@@ -324,7 +324,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
           const p = c.clone().add(new THREE.Vector3(Math.sin(hd) * j * 40, 0, Math.cos(hd) * j * 40));
           p.y = groundAt(p.x, p.z);
           const jp = rng() < 0.4;
-          const t = addTarget("tank", jp ? createJeep() : createTank(), p, { heading: hd });
+          const t = addTarget("tank", alienT ? createAlienWalker(jp) : jp ? createJeep() : createTank(), p, { heading: hd });
           t.speed = jp ? 6 + rng() * 4 : 3 + rng() * 3; placed++;
         }
       }
@@ -334,7 +334,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       for (let i = 0; i < count; i++) {
         const p = nearBase(50, 520) || landSpot(zoneC.x, zoneC.z, 500, 3800);
         if (!p) continue;
-        addTarget(kind, kind === "flak" ? createFlakGun() : createSamSite(), p); placed++;
+        addTarget(kind, alienT ? (kind === "flak" ? createAlienTurret() : createAlienSpire()) : kind === "flak" ? createFlakGun() : createSamSite(), p); placed++;
       }
       return placed;
     }
@@ -430,12 +430,23 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     tA.x += (Math.random() - 0.5) * spread * 2; tA.y += (Math.random() - 0.5) * spread * 2; tA.z += (Math.random() - 0.5) * spread * 2;
     bullets.push({ p: origin.clone(), v: tA.normalize().multiplyScalar(speed), life: 2.8, enemy: false, ally: true, dmg });
   }
+  // FRIENDLY FIRE: stray gun rounds, missiles and bomb splash hurt allies and cost points (never locked or aimed at)
+  function friendlyHit(a, n, pen) {
+    if (!a.alive) return;
+    if (elapsed - (a.ffT ?? -9) > 0.4) {
+      a.ffT = elapsed; const p = Math.min(score, pen);
+      score -= p; combo = 0; lastKillT = -99;
+      events.onPop?.(-pen, 0, "friendly"); audio.hit?.();
+    }
+    a.byPlayer = true; damageAlly(a, n);
+  }
   function damageAlly(a, n) {
     if (!a.alive) return;
     a.hp -= n;
     if (a.hp <= 0) killAlly(a);
   }
   function killAlly(a) {
+    if (a.byPlayer) { const p = Math.min(score, 400); score -= p; events.onPop?.(-400, 0, "friendly"); }
     a.alive = false; a.obj.visible = false;
     explode(a.pos.clone().add(tA.set(0, a.kind === "ship" ? 6 : 3, 0)), a.kind === "ship" ? 28 : 15, a.kind === "ship" ? 1.8 : 1.1);
     if (a.kind === "jet") { spawnDebris(a.pos, 4, 55, a.vel); a.respawnAt = elapsed + 14; }
@@ -591,6 +602,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
 
     for (const o of level.objectives) progress[o.kind] = 0;
     setTargetStyle(level.run?.tgt || "army");
+    alienT = !!level.run?.planet && level.run.planet !== "earth";
     applyWeaponStyle(level.run?.planet);
     makePlayer(level.run?.jet || "viper");
 
@@ -1092,6 +1104,11 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     audio.bomb();
   }
   function blast(p, radius, dmg) {
+    for (const a of allies) {
+      if (!a.alive) continue;
+      const d = a.pos.distanceTo(p) - a.radius;
+      if (d < radius) friendlyHit(a, dmg * (d < radius * 0.4 ? 1 : 0.55), dmg > 20 ? 300 : 150);
+    }
     for (const t of targets) {
       if (!t.alive) continue;
       const d = t.pos.distanceTo(p) - t.radius;
@@ -1470,6 +1487,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
           for (const t of targets) {
             if (t.alive && segSphere(p0, b.p, t.pos, t.radius * 1.3 + 2)) { damageTarget(t, 1, "gun"); audio.hit(); dead = true; break; }
           }
+          if (!dead) for (const a of allies) if (a.alive && segSphere(p0, b.p, a.pos, a.radius * 1.2 + 2)) { friendlyHit(a, 0.8, 60); dead = true; break; }
           if (!dead) {
             const gh = groundAt(b.p.x, b.p.z);
             if (b.p.y < gh) { dead = true; if (Math.random() < 0.3) puff(b.p.setY(gh + 1), tA.set(0, 6, 0), 1.5, 5, 0.7, terrain.isWater(b.p.x, b.p.z) ? 0xffffff : 0xc8b48a); }
@@ -1514,11 +1532,12 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       }
       let hit = null;
       for (const t of targets) if (t.alive && segSphere(p0, r.p, t.pos, t.radius + 6)) { hit = t; break; }
+      if (!hit) for (const a of allies) if (a.alive && segSphere(p0, r.p, a.pos, a.radius + 6)) { friendlyHit(a, 12, 250); r.life = Math.max(r.life, 0.01); r.p.copy(a.pos); hit = { fake: true }; break; }
       const gh = groundAt(r.p.x, r.p.z);
       if (hit || r.p.y < gh || r.life <= 0) {
         r.active = false; r.o.visible = false;
         r.result = r.life > 0 ? "hit" : "miss";
-        if (hit) { stats.hits++; damageTarget(hit, 12, "rocket"); }
+        if (hit && !hit.fake) { stats.hits++; damageTarget(hit, 12, "rocket"); }
         if (r.life > 0) { explode(r.p.clone(), 9, 0.6); blast(r.p, 30, 6); }
       }
     }
@@ -1724,6 +1743,6 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     loop: (d) => startLoop(d),
     roll: (d) => startRoll(d),
     stats: () => stats,
-    dbg: { killNear: (n) => targets.filter((t) => t.alive).sort((a, b) => a.pos.distanceTo(player.pos) - b.pos.distanceTo(player.pos)).slice(0, n).forEach((t) => kill(t)), hardState: () => ({ idx: hardIdx, rockets: player.rockets, live: rockets.filter((r) => r.active).map((r) => r.hp), wc: WC.state, world: L.run ? runLabel(L.run) : "" }), finish: (r) => finish(r), targets, allies, bullets, damageAlly: (a, n) => damageAlly(a, n), get player() { return player; }, get pad() { return pad; }, fxCount: () => fxs.length, openLanding() { landingOpen = true; }, explodeAt: (p, s, b) => explode(p, s, b), get landing() { return !!landing; }, get progress() { return progress; } },
+    dbg: { warpNear: (kinds) => { const c = targets.filter((t) => t.alive && kinds.includes(t.kind)).sort((a, b) => a.pos.distanceTo(player.pos) - b.pos.distanceTo(player.pos))[0]; if (!c) return false; player.pos.set(c.pos.x, c.pos.y + 340, c.pos.z + 700); player.q.setFromEuler(new THREE.Euler(-0.3, 0, 0, "YXZ")); return true; }, hurtAlly: () => { const a = allies.find((x) => x.alive); if (a) friendlyHit(a, 1, 250); return !!a; }, killNear: (n) => targets.filter((t) => t.alive).sort((a, b) => a.pos.distanceTo(player.pos) - b.pos.distanceTo(player.pos)).slice(0, n).forEach((t) => kill(t)), hardState: () => ({ idx: hardIdx, rockets: player.rockets, live: rockets.filter((r) => r.active).map((r) => r.hp), wc: WC.state, world: L.run ? runLabel(L.run) : "" }), finish: (r) => finish(r), targets, allies, bullets, damageAlly: (a, n) => damageAlly(a, n), get player() { return player; }, get pad() { return pad; }, fxCount: () => fxs.length, openLanding() { landingOpen = true; }, explodeAt: (p, s, b) => explode(p, s, b), get landing() { return !!landing; }, get progress() { return progress; } },
   };
 }

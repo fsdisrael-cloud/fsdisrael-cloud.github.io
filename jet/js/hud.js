@@ -1,9 +1,9 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=13";
+import { LABEL } from "./missions.js?v=14";
 
 const ALLY = "#3dff8b";
-const COL = { jet: "#ff3b3b", tank: "#ffa91f", flak: "#ff7a1f", sam: "#ff6a1a", base: "#ffa91f", ship: "#ffa91f", pad: "#3dff8b", ring: "#ffe14d" };
+const COL = { jet: "#ff3b3b", tank: "#ff5a48", flak: "#ff4636", sam: "#ff3a2a", base: "#ff6a58", ship: "#ff5a48", pad: "#3dff8b", ring: "#ffe14d" };
 const v = new THREE.Vector3();
 
 export function createHud() {
@@ -58,7 +58,7 @@ export function createHud() {
       const color = COL[t.kind] || "#fff";
       if (pr.on && d < 9000) {
         const r = Math.max(11, Math.min(40, 2200 / Math.max(d, 1) * (t.radius / 8)));
-        circle(pr.x, pr.y, r, color, t.objective ? 3 : 2);
+        brackets(pr.x, pr.y, r, color, t.objective ? 3.2 : 2.2);
         if (t === s.lockTarget) {
           ctx.save(); ctx.translate(pr.x, pr.y); ctx.rotate(s.elapsed * 3);
           ctx.setLineDash([8, 6]); circle(0, 0, r + 9, "#ff3b3b", 3); ctx.restore(); ctx.setLineDash([]);
@@ -76,10 +76,9 @@ export function createHud() {
       if (d > 7000) continue;
       const pr = project(a.pos, cam);
       if (!pr.on) continue;
-      const r = Math.max(7, Math.min(13, 1500 / Math.max(d, 1)));
-      ctx.save(); ctx.translate(pr.x, pr.y - r * 1.6); ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(r * 0.8, 0); ctx.lineTo(0, r); ctx.lineTo(-r * 0.8, 0); ctx.closePath();
-      ctx.fillStyle = "rgba(61,255,139,0.85)"; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "#04120a"; ctx.stroke(); ctx.restore();
-      if (d < 1800) label(pr.x, pr.y - r * 3.2 - 4, "ALLY", ALLY, 10);
+      const r = Math.max(10, Math.min(30, 1800 / Math.max(d, 1) * (a.radius / 8)));
+      brackets(pr.x, pr.y, r, "#3dff8b", 2.2);
+      if (d < 1800) label(pr.x, pr.y - r - 8, "FRIEND", ALLY, 10);
     }
     // carrier marker
     if (s.pad) {
@@ -105,6 +104,18 @@ export function createHud() {
     if (domT <= 0) { domT = 0.12; updateDom(s); }
     radarT -= dt; sweep += dt * 2.6;
     if (radarT <= 0) { radarT = 1 / 20; drawRadar(s); }
+  }
+
+  // corner brackets (red = enemy, green = friendly)
+  function brackets(x, y, r, color, w) {
+    const k = r * 0.45;
+    ctx.save(); ctx.lineCap = "round"; ctx.lineJoin = "round";
+    for (const [lw, st] of [[w + 2.2, "rgba(0,0,0,.65)"], [w, color]]) {
+      ctx.lineWidth = lw; ctx.strokeStyle = st; ctx.beginPath();
+      for (const sx of [-1, 1]) for (const sy of [-1, 1]) { ctx.moveTo(x + sx * r, y + sy * (r - k)); ctx.lineTo(x + sx * r, y + sy * r); ctx.lineTo(x + sx * (r - k), y + sy * r); }
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   function label(x, y, text, color, size = 13) {
@@ -194,15 +205,15 @@ export function createHud() {
       const q = toScope(bc);
       rctx.beginPath(); const r = 7 * u;
       for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.5236; rctx[i ? "lineTo" : "moveTo"](q.x + Math.cos(a) * r, q.y + Math.sin(a) * r); }
-      rctx.closePath(); rctx.strokeStyle = "#ff9a1f"; rctx.lineWidth = 2 * u; rctx.stroke();
-      rctx.beginPath(); rctx.moveTo(q.x - 3.4 * u, q.y + 2.4 * u); rctx.lineTo(q.x, q.y - 3.2 * u); rctx.lineTo(q.x + 3.4 * u, q.y + 2.4 * u); rctx.closePath(); rctx.fillStyle = "#ff9a1f"; rctx.fill();
+      rctx.closePath(); rctx.strokeStyle = "#ff5a48"; rctx.lineWidth = 2 * u; rctx.stroke();
+      rctx.beginPath(); rctx.moveTo(q.x - 3.4 * u, q.y + 2.4 * u); rctx.lineTo(q.x, q.y - 3.2 * u); rctx.lineTo(q.x + 3.4 * u, q.y + 2.4 * u); rctx.closePath(); rctx.fillStyle = "#ff5a48"; rctx.fill();
     }
     // ground targets: orange squares (flak / SAM slightly redder)
     for (const t of s.targets) {
       if (!t.alive || t.kind === "jet") continue;
       const q = toScope(t.pos), z = (t.kind === "base" ? 2.6 : 3.6) * u;
       rctx.beginPath(); rctx.rect(q.x - z, q.y - z, z * 2, z * 2);
-      rctx.fillStyle = t.kind === "sam" || t.kind === "flak" ? "#ff6a1a" : "#ffa91f"; rctx.fill(); outline(1.2);
+      rctx.fillStyle = t.kind === "sam" || t.kind === "flak" ? "#ff3a2a" : "#ff5a48"; rctx.fill(); outline(1.2);
     }
     for (const m of s.missiles) if (m.active) { const q = toScope(m.p); rctx.beginPath(); rctx.arc(q.x, q.y, 2.4 * u, 0, 7); rctx.fillStyle = "#ffffff"; rctx.fill(); outline(1); }
     // enemy planes: red triangles pointing along their heading

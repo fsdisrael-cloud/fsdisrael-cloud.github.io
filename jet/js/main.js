@@ -1,19 +1,19 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=13";
-import { createHud } from "./hud.js?v=13";
-import { createControls } from "./controls.js?v=13";
-import { runLabel, PLANETS, JET_TYPES } from "./variety.js?v=13";
-import { createAudio, trackFor } from "./audio.js?v=13";
-import { createHaptics } from "./haptics.js?v=13";
-import { createLoading } from "./loading.js?v=13";
-import { setSurreal, tickStyle } from "./surreal.js?v=13";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=13";
+import { createGame } from "./game.js?v=14";
+import { createHud } from "./hud.js?v=14";
+import { createControls } from "./controls.js?v=14";
+import { runLabel, PLANETS, JET_TYPES } from "./variety.js?v=14";
+import { createAudio, trackFor } from "./audio.js?v=14";
+import { createHaptics } from "./haptics.js?v=14";
+import { createLoading } from "./loading.js?v=14";
+import { setSurreal, tickStyle } from "./surreal.js?v=14";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=14";
 
 const $ = (id) => document.getElementById(id);
 
 // ---------- build / version check ----------
-const BUILD = 13;
+const BUILD = 14;
 { const t = $("build-tag"); if (t) t.textContent = "JET-X b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;
@@ -62,8 +62,8 @@ const game = createGame({
     onEmpty: (kind) => { const b = document.querySelector(kind === "bomb" ? ".w-bomb" : ".w-msl"); if (b) { b.classList.remove("shake"); void b.offsetWidth; b.classList.add("shake"); } },
     onPop: (pts, combo, kind) => {
       const box = $("popups"); if (!box) return;
-      const d = document.createElement("div"); d.className = "pop" + (combo >= 3 ? " big" : "");
-      d.innerHTML = `<b>+${pts}</b>${combo >= 2 ? `<i>COMBO x${combo}</i>` : ""}`;
+      const d = document.createElement("div"); d.className = "pop" + (pts < 0 ? " bad" : combo >= 3 ? " big" : "");
+      d.innerHTML = pts < 0 ? `<b>-${-pts}</b><i>FRIENDLY HIT</i>` : `<b>+${pts}</b>${combo >= 2 ? `<i>COMBO x${combo}</i>` : ""}`;
       box.appendChild(d); setTimeout(() => d.remove(), 1300); while (box.children.length > 4) box.firstChild.remove();
     },
     onLoading: (t, p) => { if (typeof p === "number") lastProg = p; if (t) lastText = t; loading.set(p, t); },
@@ -234,7 +234,59 @@ function onLevelEnd(r) {
   $("res-btn-label").textContent = won ? (last ? "PLAY AGAIN" : "NEXT LEVEL") : "RETRY";
   $("res-btn").onclick = () => launch(next);
   setTimeout(() => { if (state === "results" && !preload) startPreload(next); }, 1800);   // next world loads while you read the card: RETRY / NEXT start fast
-  $("results").classList.remove("hidden");
+  showHighScores(r.score, () => $("results").classList.remove("hidden"));
+}
+
+// ---------- arcade high scores: top 10, 5-letter name entry, saved in localStorage (jet-scores-v1) ----------
+function loadScores() { try { const v = JSON.parse(localStorage.getItem("jet-scores-v1")); if (v && Array.isArray(v.list)) return v; } catch { /* ignore */ } return { list: [], last: "ACE" }; }
+function showHighScores(score, done) {
+  const box = $("hs"), data = loadScores();
+  const qualifies = score > 0 && (data.list.length < 10 || score > data.list[data.list.length - 1].s);
+  if (!(score > 0)) { done(); return; }
+  let mine = null;
+  const letters = (data.last || "ACE").padEnd(5, " ").slice(0, 5).split("");
+  const CH = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .-";
+  let cur = 0;
+  const esc = (t) => String(t).replace(/[<>&]/g, "");
+  const renderList = () => {
+    $("hs-list").innerHTML = Array.from({ length: 10 }, (_, i) => { const e = data.list[i]; return `<li class="${e && e === mine ? "me" : ""}"><span>${i + 1}</span><em>${e ? esc(e.n.trim() || "-----") : "-----"}</em><b>${e ? e.s : "0"}</b></li>`; }).join("");
+  };
+  const finish = () => { box.classList.add("hidden"); window.removeEventListener("keydown", keyH, true); done(); };
+  const renderEntry = () => {
+    $("hs-entry").innerHTML = letters.map((c, i) => `<div class="hs-slot${i === cur ? " on" : ""}" data-i="${i}"><button type="button" data-d="1" aria-label="up">&#9650;</button><b>${c === " " ? "&nbsp;" : c}</b><button type="button" data-d="-1" aria-label="down">&#9660;</button></div>`).join("");
+  };
+  const commit = () => {
+    mine = { n: letters.join("").trim().toUpperCase() || "AAAAA", s: score, d: Date.now() };
+    data.list.push(mine); data.list.sort((a, b) => b.s - a.s); data.list = data.list.slice(0, 10); data.last = letters.join("").trim() || "ACE";
+    try { localStorage.setItem("jet-scores-v1", JSON.stringify(data)); } catch { /* ignore */ }
+    $("hs-new").classList.add("hidden"); renderList(); $("hs-btn").classList.remove("hidden");
+  };
+  const keyH = (e) => {
+    if (box.classList.contains("hidden")) return;
+    if ($("hs-new").classList.contains("hidden")) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); finish(); } return; }
+    const k = e.key;
+    if (k === "Enter") { commit(); }
+    else if (k === "Backspace") { letters[cur] = " "; cur = Math.max(0, cur - 1); renderEntry(); }
+    else if (k === "ArrowLeft") { cur = Math.max(0, cur - 1); renderEntry(); }
+    else if (k === "ArrowRight") { cur = Math.min(4, cur + 1); renderEntry(); }
+    else if (k === "ArrowUp" || k === "ArrowDown") { const i = CH.indexOf(letters[cur]); letters[cur] = CH[(i + (k === "ArrowUp" ? 1 : -1) + CH.length) % CH.length]; renderEntry(); }
+    else if (k.length === 1 && /[a-zA-Z0-9]/.test(k)) { letters[cur] = k.toUpperCase(); cur = Math.min(4, cur + 1); renderEntry(); }
+    else return;
+    e.preventDefault(); e.stopPropagation();
+  };
+  $("hs-score").textContent = score;
+  $("hs-new").classList.toggle("hidden", !qualifies);
+  $("hs-btn").classList.toggle("hidden", qualifies);
+  renderList(); if (qualifies) renderEntry();
+  $("hs-entry").onclick = (e) => {
+    const slot = e.target.closest(".hs-slot"); if (!slot) return;
+    cur = +slot.dataset.i; const btn = e.target.closest("button");
+    if (btn) { const i = CH.indexOf(letters[cur]); letters[cur] = CH[(i + +btn.dataset.d + CH.length) % CH.length]; }
+    renderEntry();
+  };
+  $("hs-ok").onclick = commit; $("hs-btn").onclick = finish;
+  window.addEventListener("keydown", keyH, true);
+  setTimeout(() => box.classList.remove("hidden"), 700);
 }
 
 // ---------- throttle lever (under the view toggle): drag up = faster ----------

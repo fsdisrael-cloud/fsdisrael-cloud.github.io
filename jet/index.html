@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="ubu-build" content="13" />
+  <meta name="ubu-build" content="14" />
   <meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -16,8 +16,8 @@
   <link rel="icon" type="image/png" sizes="192x192" href="img/icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png" />
   <link rel="preload" href="fonts/Fredoka.ttf" as="font" type="font/ttf" crossorigin />
-  <link rel="stylesheet" href="css/jet.css?v=13" />
-  <link rel="stylesheet" href="css/loading.css?v=13" />
+  <link rel="stylesheet" href="css/jet.css?v=14" />
+  <link rel="stylesheet" href="css/loading.css?v=14" />
   <script type="importmap">{ "imports": { "three": "./js/vendor/three.module.min.js" } }</script>
 </head>
 <body class="on-title tp-a">
@@ -48,7 +48,7 @@
     <div class="sky-fx" aria-hidden="true"><i class="aurora a1"></i><i class="aurora a2"></i><i class="aurora a3"></i><i class="stars"></i><i class="cloud c1"></i><i class="cloud c2"></i><i class="cloud c3"></i><i class="horizon"></i></div>
     <div class="title-inner">
       <div class="logo" aria-label="JET-X">
-        <img class="logo-img" src="img/wordmark.png?v=13" alt="JET-X" draggable="false">
+        <img class="logo-img" src="img/wordmark.png?v=14" alt="JET-X" draggable="false">
       </div>
       <div class="scene-label" id="scene-label"></div>
       <div id="menu-buttons" class="menu-buttons plates"></div>
@@ -119,11 +119,20 @@
     </div>
   </section>
 
+  <section id="hs" class="screen hs hidden" role="dialog" aria-label="High scores">
+    <div class="hs-card">
+      <div class="hs-title">HIGH SCORES</div>
+      <div id="hs-new" class="hs-new hidden"><div class="hs-sub">NEW HIGH SCORE <b id="hs-score">0</b></div><div class="hs-sub small">ENTER YOUR CALL SIGN</div><div id="hs-entry" class="hs-entry"></div><button type="button" class="metal-btn" id="hs-ok"><i class="led"></i><span>ENTER</span></button></div>
+      <ol id="hs-list" class="hs-list"></ol>
+      <button type="button" class="metal-btn hidden" id="hs-btn"><i class="led"></i><span>CONTINUE</span></button>
+    </div>
+  </section>
+
   <section id="pause" class="screen pause hidden"><div class="res-card"><div class="res-title">Paused</div><button type="button" class="metal-btn" id="pause-btn"><i class="led"></i><span>RESUME</span></button></div></section>
 
   <section id="resume" class="screen resume hidden" role="dialog" aria-label="Paused">
     <div class="resume-inner">
-      <img class="logo-img" src="img/wordmark.png?v=13" alt="JET-X" draggable="false">
+      <img class="logo-img" src="img/wordmark.png?v=14" alt="JET-X" draggable="false">
       <div class="plates menu-buttons">
         <button type="button" class="plate" id="rs-cont"><i class="led"></i><span class="pt">CONT</span><em class="ps">RESUME SORTIE</em></button>
         <button type="button" class="plate go" id="rs-new"><i class="led"></i><span class="pt">NEW</span><em class="ps">NEW SCENE</em></button>
@@ -131,6 +140,6 @@
     </div>
   </section>
   <div id="build-tag" class="build-tag"></div>
-  <script type="module" src="js/main.js?v=13"></script>
+  <script type="module" src="js/main.js?v=14"></script>
 </body>
 </html>
