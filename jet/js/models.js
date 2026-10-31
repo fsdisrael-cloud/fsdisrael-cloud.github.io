@@ -2,7 +2,7 @@
 // Player + enemy jets: PBR-lit (metal, glossy canopy, environment reflections) with a thin illustrated outline.
 // Ground units: toon + outline. Illustrated look, readable colours.
 import * as THREE from "three";
-import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=9";
+import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=10";
 
 const PI = Math.PI;
 
@@ -125,6 +125,8 @@ const WING_SHAPES = [
   [[1.2, -2.8], [5.7, 1.3], [5.7, 3.0], [2.6, 4.5], [1.2, 4.5]],
   [[1.2, -2.0], [5.0, 2.8], [5.0, 3.8], [2.4, 4.8], [1.2, 4.8]],
   [[1.2, -1.0], [6.2, 1.6], [6.2, 3.2], [2.6, 4.2], [1.2, 4.2]],
+  [[1.2, 2.2], [6.0, -0.8], [6.4, 0.6], [2.8, 4.7], [1.2, 4.7]],            // 3: forward-swept blade (sci-fi)
+  [[1.2, -3.8], [3.6, -0.6], [7.2, 3.4], [2.9, 4.7], [1.2, 4.7]],           // 4: manta arrowhead (sci-fi)
 ];
 function jetGeometry(kind, vk, pal) {
   const ck = kind + ":" + vk;
@@ -401,6 +403,25 @@ export function createTank(ally = false) {
   if (ally) { const m = glowSprite(0x3dff8b, 11, 0.8); m.position.set(0, 3.6, 0); g.add(m); }
   g.scale.setScalar(2.4);
   g.userData.radius = 9;
+  return g;
+}
+
+export function createJeep() {
+  const geo = cached("jeep", () => {
+    const olive = 0x6f7d43, dark = 0x24261f, tan = 0xa99b63;
+    const b = new PartBuilder();
+    b.add(G.box, olive, { pos: [0, 0.75, 0], scale: [1.5, 0.55, 3.3] });                 // hull
+    b.add(G.box, olive, { pos: [0, 1.25, 0.6], scale: [1.35, 0.5, 1.1] });               // cab
+    b.add(G.box, 0x1b2a30, { pos: [0, 1.45, -0.05], scale: [1.25, 0.28, 0.12] });        // windshield
+    b.add(G.box, tan, { pos: [0, 1.2, 1.5], scale: [1.4, 0.3, 0.9] });                   // tarp load
+    b.add(G.box, dark, { pos: [0, 1.7, 1.1], scale: [0.08, 0.5, 0.08] });                // gun post
+    b.add(G.capsule, dark, { pos: [0, 2.0, 0.7], rot: [PI / 2, 0, 0], scale: [0.1, 0.55, 0.1] });
+    for (const sx of [-1, 1]) for (const z of [-1.1, 1.2]) b.add(G.sphereLo, dark, { pos: [sx * 0.95, 0.42, z], scale: [0.22, 0.45, 0.45] });
+    return b.build();
+  });
+  const g = tm(geo, {}, false);
+  g.scale.setScalar(2.4);
+  g.userData.radius = 6;
   return g;
 }
 

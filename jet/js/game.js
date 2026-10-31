@@ -1,13 +1,13 @@
 // Ubu game world: flight model, camera, targets, AI, weapons, effects, objectives.
 import * as THREE from "three";
-import { buildTerrain } from "./terrain.js?v=9";
-import { createSky } from "./sky.js?v=9";
-import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createShip, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=9";
-import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=9";
-import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=9";
-import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=9";
-import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=9";
-import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=9";
+import { buildTerrain } from "./terrain.js?v=10";
+import { createSky } from "./sky.js?v=10";
+import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createShip, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=10";
+import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=10";
+import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=10";
+import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=10";
+import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=10";
+import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=10";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V();
@@ -322,8 +322,9 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
         for (let j = 0; j < 3 && i < count; j++, i++) {
           const p = c.clone().add(new THREE.Vector3(Math.sin(hd) * j * 40, 0, Math.cos(hd) * j * 40));
           p.y = groundAt(p.x, p.z);
-          const t = addTarget("tank", createTank(), p, { heading: hd });
-          t.speed = 3 + rng() * 3; placed++;
+          const jp = rng() < 0.4;
+          const t = addTarget("tank", jp ? createJeep() : createTank(), p, { heading: hd });
+          t.speed = jp ? 6 + rng() * 4 : 3 + rng() * 3; placed++;
         }
       }
       return placed;
@@ -1688,6 +1689,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     scene, camera, load, update, render, hudState, attachWeaponCam, runLabel,
     /** seconds > 0 = mission countdown; 0 / null = endless (timer counts up) */
     setTime(sec) { endless = !sec; timeLeft = sec || 0; },
+    setScore(v) { score = Math.max(0, v | 0); },
     start() { running = true; ended = false; controls.setEnabled(true); audio.startEngine(); },
     pause() { running = false; },
     resume() { if (!ended) running = true; },

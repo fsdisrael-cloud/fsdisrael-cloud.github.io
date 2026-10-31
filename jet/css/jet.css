@@ -274,3 +274,82 @@ body.nv-on.in-game canvas#game-canvas { filter: grayscale(1) brightness(2.3) con
 @media (orientation: portrait) { .objectives { top: calc(var(--safe-t) + 88px); } }
 .lvl.world { max-width: 46vw; white-space: normal; line-height: 1.15; }
 .title .sky-fx { display: none; }
+
+/* =====================================================================
+   Opening flow v10: logo only (tp-a) -> HUD powers on (tp-b) -> tap -> CONT / NEW plates (tp-c)
+   ===================================================================== */
+@font-face { font-family: "Stencil"; src: url("../fonts/BlackOpsOne.ttf") format("truetype"); font-display: swap; }
+body.on-title .screen.title { z-index: 9; }
+body.on-title .hud { display: block; }
+body.on-title .hud * { pointer-events: none !important; }
+body.on-title .hud .objectives, body.on-title .hud .stats, body.on-title .hud .lvl, body.on-title .hud .wcam, body.on-title .hud .alert, body.on-title .hud .low-alt, body.on-title .hud .toasts { display: none; }
+body.tp-a .hud, body.tp-a .settings, body.tp-a .build-tag { opacity: 0 !important; visibility: hidden; }
+body.tp-a .menu-buttons, body.tp-a .time-pick, body.tp-a .sec-links, body.tp-a .tap-prompt { visibility: hidden; opacity: 0; }
+.title-inner { display: flex !important; flex-direction: column !important; align-items: center; justify-content: flex-start; width: min(94vw, 760px) !important; gap: 14px !important; padding: calc(var(--safe-t) + 17vh) 0 calc(var(--safe-b) + 8px) !important; }
+.title-inner .logo-img { width: clamp(210px, 62vmin, 440px); }
+@media (orientation: landscape) { .title-inner { padding-top: calc(var(--safe-t) + 60px) !important; gap: 8px !important; } .title-inner .logo-img { width: clamp(150px, 34vmin, 300px); } }
+
+/* HUD power-on: flicker + slide */
+@keyframes pwr { 0% { opacity: 0; filter: brightness(3) } 6% { opacity: .9 } 10% { opacity: .05 } 17% { opacity: 1; filter: brightness(2.2) } 22% { opacity: .2 } 30% { opacity: 1; filter: brightness(1.6) } 36% { opacity: .5 } 46% { opacity: 1; filter: brightness(1.25) } 100% { opacity: 1; filter: none } }
+@keyframes inL { from { transform: translateX(-70px) } to { transform: none } }
+@keyframes inR { from { transform: translateX(70px) } to { transform: none } }
+@keyframes inT { from { transform: translateY(-60px) } to { transform: none } }
+@keyframes inB { from { transform: translateY(70px) } to { transform: none } }
+body.tp-b .radar-wrap, body.tp-c .radar-wrap { animation: pwr 1.1s .10s both, inL .7s .10s cubic-bezier(.2,.9,.2,1) both; }
+body.tp-b .top-center, body.tp-c .top-center { animation: pwr 1.1s .35s both, inT .7s .35s cubic-bezier(.2,.9,.2,1) both; }
+body.tp-b .settings, body.tp-c .settings { animation: pwr 1.1s .55s both, inT .7s .55s cubic-bezier(.2,.9,.2,1) both; }
+body.tp-b .weapons, body.tp-c .weapons { animation: pwr 1.2s .80s both, inB .7s .80s cubic-bezier(.2,.9,.2,1) both; }
+body.tp-b .stick, body.tp-c .stick { animation: pwr 1.2s 1.0s both, inR .7s 1.0s cubic-bezier(.2,.9,.2,1) both; }
+body.tp-b .tap-prompt { animation: pwr 1s 1.5s both; }
+.tap-prompt { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-b) + 11vh); display: flex; gap: 12px; align-items: center; padding: 8px 18px; font: 400 clamp(14px, 3.6vmin, 20px)/1 "Stencil", var(--mil), sans-serif; letter-spacing: .22em; color: #d7dde5; background: rgba(8,10,14,.72); border: 1px solid #3a4150; box-shadow: inset 0 0 0 1px #000, 0 2px 10px rgba(0,0,0,.7); white-space: nowrap; }
+.tap-prompt i { color: var(--amber); font-style: normal; animation: tapblink 1s steps(2) infinite; }
+@keyframes tapblink { 50% { opacity: .25 } }
+body.tp-c .tap-prompt { display: none; }
+@media (orientation: landscape) { .tap-prompt { bottom: calc(var(--safe-b) + 8vh); } }
+
+/* CONT / NEW: gunmetal plates, rivets, stencil text */
+.menu-buttons.plates { display: flex !important; flex-direction: row !important; gap: 16px !important; margin: 0 !important; width: auto; justify-content: center; }
+.plate { position: relative; width: clamp(138px, 40vw, 200px); height: clamp(52px, 11vh, 70px); border: 2px solid #050608; border-radius: 4px; color: #e4e9ef; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 0 14px;
+  background:
+    radial-gradient(circle at 9px 9px, #c9ced6 0 2px, #4a5058 3px, #101216 4.5px, transparent 5px),
+    radial-gradient(circle at calc(100% - 9px) 9px, #c9ced6 0 2px, #4a5058 3px, #101216 4.5px, transparent 5px),
+    radial-gradient(circle at 9px calc(100% - 9px), #c9ced6 0 2px, #4a5058 3px, #101216 4.5px, transparent 5px),
+    radial-gradient(circle at calc(100% - 9px) calc(100% - 9px), #c9ced6 0 2px, #4a5058 3px, #101216 4.5px, transparent 5px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .16 0'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>"),
+    linear-gradient(180deg, #5a626d 0%, #3a4048 14%, #262b32 55%, #14171c 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.28), inset 0 0 0 2px rgba(0,0,0,.45), inset 0 -8px 14px rgba(0,0,0,.35), 0 6px 14px rgba(0,0,0,.7), 0 0 0 1px rgba(150,160,175,.18); }
+.plate .pt { font: 400 clamp(22px, 5.4vmin, 30px)/1 "Stencil", var(--mil), sans-serif; letter-spacing: .14em; text-shadow: 0 -1px 0 #000, 0 1px 0 rgba(255,255,255,.18); padding-left: 14px; }
+.plate .ps { font: 600 clamp(8px, 1.9vmin, 10px)/1 var(--mil), sans-serif; font-style: normal; letter-spacing: .2em; color: #9aa4b1; }
+.plate .led { position: absolute; left: 20px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: #4dff84; box-shadow: 0 0 8px #4dff84; }
+.plate.go .led { background: #ff9a1f; box-shadow: 0 0 8px #ff9a1f; }
+.plate.go .pt { color: #ffd9a0; }
+.plate.off { filter: grayscale(.6) brightness(.6); cursor: default; } .plate.off .led { background: #444; box-shadow: none; }
+.plate:active:not(.off) { transform: translateY(2px); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), inset 0 0 0 2px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.7); }
+@keyframes plIn { 0% { opacity: 0; transform: translateY(-26px) scale(.96) } 40% { opacity: 1 } 55% { opacity: .3 } 70% { opacity: 1; transform: translateY(3px) } 100% { opacity: 1; transform: none } }
+body.tp-c .plate:nth-child(1) { animation: plIn .55s .02s both; } body.tp-c .plate:nth-child(2) { animation: plIn .55s .18s both; }
+body.tp-c .time-pick { animation: pwr .8s .35s both; } body.tp-c .sec-links { animation: pwr .8s .5s both; }
+.time-pick { margin-top: 4px; }
+.sec-links { display: flex; gap: 10px; }
+.slink { font: 400 11px/1 "Stencil", var(--mil), sans-serif; letter-spacing: .2em; color: #aeb7c2; background: rgba(10,12,16,.7); border: 1px solid #3a4150; border-radius: 2px; padding: 8px 12px; }
+@media (orientation: landscape) { .time-pick { margin-top: 0; } .time-pick .seg button { height: 28px; font-size: 12px; } .tp-label { display: none; } .title-inner { gap: 6px !important; } }
+
+/* v10b: live scene preview behind the logo + NEW SCENE button */
+body.preview .screen.title { background: linear-gradient(180deg, rgba(3,5,8,.55) 0%, rgba(3,5,8,.05) 30%, rgba(3,5,8,.05) 65%, rgba(3,5,8,.6) 100%) !important; }
+body.preview.rolling .screen.title { background: linear-gradient(180deg, rgba(4,6,10,.55) 0%, rgba(4,6,10,.15) 38%, rgba(4,6,10,.7) 100%), url("../img/art/v2_portrait.jpg") center/cover no-repeat, #05070b !important; }
+@media (orientation: landscape) { body.preview.rolling .screen.title { background: linear-gradient(90deg, rgba(4,6,10,.2), rgba(4,6,10,.7)), url("../img/art/v2_landscape.jpg") center/cover no-repeat, #05070b !important; } }
+body.rolling .plates, body.rolling .time-pick, body.rolling .sec-links, body.rolling .tap-prompt, body.rolling .scene-label { visibility: hidden; }
+.scene-label { font: 400 clamp(9px, 2.1vmin, 12px)/1.2 "Stencil", var(--mil), sans-serif; letter-spacing: .2em; color: #e9edf2; text-align: center; padding: 4px 10px; background: rgba(6,8,12,.62); border-left: 3px solid var(--amber); text-shadow: 0 1px 2px #000; max-width: 92vw; }
+body.tp-a .scene-label { visibility: hidden; }
+.plate.reroll { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-b) + 14vh); width: 124px; height: 44px; flex-direction: row; gap: 8px; padding: 0 8px; z-index: 12; color: #ffd9a0; }
+.plate.reroll .pt { font-size: 12px; padding-left: 0; letter-spacing: .1em; color: #e4e9ef; }
+.plate.reroll:active { transform: translateX(-50%) translateY(2px); }
+body.tp-a .plate.reroll { visibility: hidden; opacity: 0; }
+body.tp-b .plate.reroll, body.tp-c .plate.reroll { animation: pwr 1s 1.4s both; }
+.tap-prompt { bottom: calc(var(--safe-b) + 22vh); }
+@media (orientation: landscape) { .plate.reroll { bottom: calc(var(--safe-b) + 3vh); width: 150px; } .tap-prompt { bottom: calc(var(--safe-b) + 14vh); } }
+@media (orientation: portrait) { body.on-title .hud .top-center { display: none; } }
+
+/* resume screen (app returned from background) */
+.screen.resume { z-index: 70; background: radial-gradient(ellipse at center, rgba(6,8,12,.78), rgba(2,3,5,.94)); }
+.resume-inner { display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.resume-inner .logo-img { width: clamp(180px, 50vmin, 340px); }

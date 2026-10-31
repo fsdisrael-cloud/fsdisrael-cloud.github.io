@@ -2,8 +2,8 @@
 .loading { position: fixed; inset: 0; z-index: 60; background: #070516; color: #fff; transition: opacity .35s; overflow: hidden; font-family: "Fredoka", system-ui, sans-serif; }
 .loading.hidden { display: none; }
 .loading.ld-out { opacity: 0; pointer-events: none; }
-.ld-bg { position: absolute; inset: 0; background: #070516 url(../img/art/v2_portrait.jpg?v=9) center / cover no-repeat; }
-@media (orientation: landscape) { .ld-bg { background-image: url(../img/art/v2_landscape.jpg?v=9); } }
+.ld-bg { position: absolute; inset: 0; background: #070516 url(../img/art/v2_portrait.jpg?v=10) center / cover no-repeat; }
+@media (orientation: landscape) { .ld-bg { background-image: url(../img/art/v2_landscape.jpg?v=10); } }
 .ld-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5,3,20,.55) 0%, rgba(5,3,20,0) 26%, rgba(5,3,20,0) 62%, rgba(5,3,20,.72) 100%); }
 .ld-top { position: absolute; left: 0; right: 0; top: calc(env(safe-area-inset-top, 0px) + 5vh); text-align: center; }
 .ld-title { font: 700 clamp(54px, 15vmin, 104px)/1 "Fredoka", system-ui, sans-serif; letter-spacing: .04em; text-shadow: 0 4px 0 #0b0a1f, 0 0 34px rgba(150,120,255,.75); }

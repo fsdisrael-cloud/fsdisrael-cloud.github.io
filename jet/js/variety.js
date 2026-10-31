@@ -48,11 +48,17 @@ export const JET_TYPES = {
   raptor: { name: "R-22 Raptor", lo: 0x0c0e11, hi: 0x30353d, wing: 0x16191e, glow: 0xff6a2a, shape: 1 },
   falcon: { name: "F-16 Falcon", lo: 0x3e3628, hi: 0x8a7d5c, wing: 0x54492f, glow: 0xffb040, shape: 2 },
   tomcat: { name: "T-14 Tomcat", lo: 0x121c30, hi: 0x56688a, wing: 0x1e2c48, glow: 0x4ad0ff, shape: 1 },
+  // sci-fi craft for alien worlds
+  nova: { name: "NX-1 Nova", lo: 0x2a2f46, hi: 0xd9e6ff, wing: 0x4a5a8c, glow: 0x50e8ff, shape: 3 },
+  wraith: { name: "VX-7 Wraith", lo: 0x0a0a12, hi: 0x2e2a4a, wing: 0x15121f, glow: 0xb060ff, shape: 4 },
+  ion: { name: "IX-3 Ion", lo: 0x16261f, hi: 0x6fa890, wing: 0x1f3a30, glow: 0x60ff9a, shape: 3 },
   arctic: { name: "A-9 Arctic", lo: 0x7a8594, hi: 0xc8d0da, wing: 0x8c97a6, glow: 0x7ad8ff, shape: 0 },
 };
 export const FOE_TYPES = {
   red: { name: "MiG red", lo: 0x2a1418, hi: 0x7a3a40, wing: 0x4a2a30, glass: 0xff5a4a, glow: 0xff4030, shape: 1 },
   camo: { name: "Camo fighter", lo: 0x2c3a22, hi: 0x6c7c4c, wing: 0x44532f, glass: 0xffa040, glow: 0xff7a30, shape: 2 },
+  voidhawk: { name: "Void hawk", lo: 0x180a26, hi: 0x5a2f80, wing: 0x2c1646, glass: 0xff40ff, glow: 0xff40ff, shape: 4 },
+  drone: { name: "Hive blade", lo: 0x0c2418, hi: 0x2f7a4c, wing: 0x16402a, glass: 0xb0ff40, glow: 0xb0ff40, shape: 3 },
   black: { name: "Black bat", lo: 0x0a0a0e, hi: 0x30323c, wing: 0x1a1c22, glass: 0xff2a2a, glow: 0xff2a2a, shape: 0 },
   sand: { name: "Desert raider", lo: 0x5a4a30, hi: 0xa28c5c, wing: 0x7a6640, glass: 0xff5a30, glow: 0xff6a30, shape: 1 },
 };
@@ -67,7 +73,7 @@ function wpick(table, r) {
 
 /** Roll one run. `rng` defaults to Math.random (a new world every restart). */
 export function rollRun(rng = Math.random) {
-  const planetKey = rng() < 0.62 ? "earth" : pick(["mars", "ice", "toxic", "violet", "lava"], rng);
+  const planetKey = rng() < 0.75 ? "earth" : pick(["mars", "ice", "toxic", "violet", "lava"], rng);
   const planet = PLANETS[planetKey];
   const place = pick(EARTH_PLACES, rng);
   const time = wpick([["day", 34], ["dawn", 14], ["dusk", 20], ["night", 32]], rng);
@@ -76,8 +82,9 @@ export function rollRun(rng = Math.random) {
   if (planetKey !== "earth") weather = wpick([["clear", 60], ["cloudy", 24], ["fog", 16]], rng);
   else if (weather === "snow" && !SEASONS[season].snowOk && place.biome !== "snow") weather = "cloudy";
   else if (season === "winter" && weather === "clear" && rng() < 0.4) weather = "snow";
-  const jet = pick(Object.keys(JET_TYPES), rng);
-  const foe = pick(Object.keys(FOE_TYPES), rng);
+  const alien = planetKey !== "earth";
+  const jet = pick(alien ? ["nova", "wraith", "ion"] : ["viper", "raptor", "falcon", "tomcat", "arctic"], rng);   // modern fighters on Earth, sci-fi craft on alien worlds
+  const foe = pick(alien ? ["voidhawk", "drone"] : ["red", "camo", "black", "sand"], rng);
   const tgt = planetKey !== "earth" ? "alien" : (place.biome === "desert" ? pick(["desert", "army"], rng) : place.biome === "snow" || season === "winter" ? pick(["arctic", "army"], rng) : pick(["army", "navy", "desert"], rng));
   // test / share hook: ?time=night&planet=lava&season=winter&weather=clear&jet=raptor&place=3
   try {

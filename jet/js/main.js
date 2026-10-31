@@ -1,20 +1,20 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=9";
-import { createHud } from "./hud.js?v=9";
-import { createControls } from "./controls.js?v=9";
-import { runLabel } from "./variety.js?v=9";
-import { createAudio, trackFor } from "./audio.js?v=9";
-import { createHaptics } from "./haptics.js?v=9";
-import { createLoading } from "./loading.js?v=9";
-import { setSurreal, tickStyle } from "./surreal.js?v=9";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=9";
+import { createGame } from "./game.js?v=10";
+import { createHud } from "./hud.js?v=10";
+import { createControls } from "./controls.js?v=10";
+import { runLabel, PLANETS, JET_TYPES } from "./variety.js?v=10";
+import { createAudio, trackFor } from "./audio.js?v=10";
+import { createHaptics } from "./haptics.js?v=10";
+import { createLoading } from "./loading.js?v=10";
+import { setSurreal, tickStyle } from "./surreal.js?v=10";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=10";
 
 const $ = (id) => document.getElementById(id);
 
 // ---------- build / version check ----------
-const BUILD = 9;
-{ const t = $("build-tag"); if (t) t.textContent = "JET-𝕏 b" + BUILD; }
+const BUILD = 10;
+{ const t = $("build-tag"); if (t) t.textContent = "JET-X b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;
   try { if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, "1"); } catch { /* ignore */ }
@@ -68,9 +68,9 @@ let state = "title"; // title | loading | playing | paused | results
 let levelNo = loadLevelNo();
 let preload = null; // { n, promise }
 
-function startPreload(n) {
+function startPreload(n, run0) {
   lastProg = 0; lastText = "Loading…";
-  const level = buildLevel(n);
+  const level = buildLevel(n, run0);
   preload = { n, level, promise: game.load(level, { seconds: level.seconds }).then(() => true).catch((e) => { console.error(e); return false; }) };
   return preload;
 }
@@ -127,10 +127,26 @@ buildTimePick();
 // EASY TO RELABEL / REWIRE: each entry is { label, sub (optional small text), primary, run }.
 // Button 1 is PLAY. Buttons 2 and 3 are PLACEHOLDERS (final function pending): change label/run here.
 const HOW_HTML = `<p><b>Tilt</b> your phone like a wheel: top edge up = nose up, top edge down = nose down. Tilt sideways to bank and turn.</p><p>Or drag the <b>stick</b> (bottom right). Both work at once.</p><p><b>Weapons</b> are bottom left: hold GUN, tap MISSILE or BOMB. Racks of 10 reload over time; the gun cools down after it overheats.</p><p><b>Swipe</b> anywhere else to look around. It only turns your view, never the plane. Green forces are your friends.</p>`;
+// Opening flow: logo + live scene while terrain loads -> HUD powers on -> tap anywhere -> CONT / NEW plates.
+// CONT resumes the autosave (jet-save-v1); it is disabled when there is no save. LEVELS / HOW TO FLY are small placeholder links.
+const SAVE_KEY = "jet-save-v1";
+function readSave() { try { const v = JSON.parse(localStorage.getItem(SAVE_KEY) || "null"); return v && v.v === 1 && v.run && PLANETS[v.run.planetKey] ? v : null; } catch { return null; } }
+function writeSave() {
+  if (state !== "playing") return;
+  try {
+    const L = game.level(), hs = game.hudState(); if (!L?.run) return;
+    const { planet, ...run } = L.run;
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, n: levelNo, run, score: hs.score | 0, timeLeft: Math.max(5, Math.round(hs.timeLeft || 0)), endless: timeSec === 0, t: Date.now() }));
+  } catch { /* ignore */ }
+}
+function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ } }
 const MENU_BUTTONS = [
-  { label: "PLAY", sub: () => `Level ${levelNo}`, primary: true, run: () => play() },
-  { label: "LEVELS", sub: () => `${levelNo}/${levelCount()}`, run: () => showPanel("Levels", levelsHtml()) },   // PLACEHOLDER (function pending)
-  { label: "HOW TO FLY", run: () => showPanel("How to fly", HOW_HTML) },                                         // PLACEHOLDER (function pending)
+  { id: "cont", label: "CONT", sub: "RESUME SORTIE", run: () => { const sv = readSave(); if (sv) play(sv); } },
+  { id: "new", label: "NEW", sub: "NEW SORTIE", primary: true, run: () => { clearSave(); play(); } },
+];
+const SEC_LINKS = [
+  { label: "LEVELS", run: () => showPanel("Levels", levelsHtml()) },        // PLACEHOLDER (function pending)
+  { label: "HOW TO FLY", run: () => showPanel("How to fly", HOW_HTML) },    // PLACEHOLDER (function pending)
 ];
 function levelsHtml() {
   const d = LEVELS[levelNo - 1];
@@ -139,13 +155,17 @@ function levelsHtml() {
 }
 function buildMenu() {
   const box = $("menu-buttons"); box.innerHTML = "";
+  const sv = readSave();
   for (const b of MENU_BUTTONS) {
     const el = document.createElement("button");
-    el.type = "button"; el.className = "metal-btn" + (b.primary ? " go" : "");
-    el.innerHTML = `<i class="led"></i><span>${b.label}</span>${b.sub ? `<em class="sub">${b.sub()}</em>` : ""}`;
-    el.addEventListener("click", () => b.run());
+    const off = b.id === "cont" && !sv;
+    el.type = "button"; el.className = "plate" + (b.primary ? " go" : "") + (off ? " off" : ""); el.disabled = off;
+    el.innerHTML = `<i class="led"></i><span class="pt">${b.label}</span><em class="ps">${off ? "NO SAVE" : b.sub}</em>`;
+    el.addEventListener("click", (e) => { e.stopPropagation(); b.run(); });
     box.appendChild(el);
   }
+  const sl = $("sec-links"); sl.innerHTML = "";
+  for (const b of SEC_LINKS) { const el = document.createElement("button"); el.type = "button"; el.className = "slink"; el.textContent = b.label; el.addEventListener("click", (e) => { e.stopPropagation(); b.run(); }); sl.appendChild(el); }
 }
 function showPanel(title, html) { $("panel-title").textContent = title; $("panel-body").innerHTML = html; $("panel").classList.remove("hidden"); }
 $("panel-close").addEventListener("click", () => $("panel").classList.add("hidden"));
@@ -153,18 +173,19 @@ buildMenu();
 game.attachWeaponCam($("wcam-c"));
 
 // ---------- start / levels ----------
-async function launch(n, fromTap) {
+async function launch(n, fromTap, sv) {
   if (state === "loading") return;
   state = "loading";
   levelNo = n; saveLevelNo(n);
-  $("results").classList.add("hidden"); $("pause").classList.add("hidden"); $("crash").classList.add("hidden");
-  let p = preload && preload.n === n ? preload : null;
-  if (!p) { game.quit(); p = startPreload(n); } // every launch rolls a new random world
+  document.body.classList.remove("tp-a", "tp-b", "tp-c", "preview", "rolling"); previewOn = false;
+  $("results").classList.add("hidden"); $("pause").classList.add("hidden"); $("resume").classList.add("hidden"); $("crash").classList.add("hidden");
+  let p = !sv && preload && preload.n === n ? preload : null;
+  if (!p) { game.quit(); p = startPreload(n, sv ? { ...sv.run, planet: PLANETS[sv.run.planetKey] } : undefined); } // every launch rolls a new random world
   loading.show(`Level ${n} - ${runLabel(p.level.run)}`);
   loading.set(lastProg, lastText);
   const ok = await p.promise;
   preload = null;
-  if (!ok) { loading.set(1, "Could not load the map. Check your connection and tap PLAY again."); state = "title"; setTimeout(() => loading.hide(), 2200); preload = null; return; }
+  if (!ok) { loading.set(1, "Could not load the map. Check your connection and tap PLAY again."); state = "title"; document.body.classList.add("tp-c"); setTimeout(() => loading.hide(), 2200); preload = null; return; }
   const L = game.level();
   $("hud-level").textContent = `Level ${n}/${levelCount()}`;
   const nightOn = L.time === "night";
@@ -174,23 +195,25 @@ async function launch(n, fromTap) {
   $("screen-title").classList.add("hidden");
   audio.playTrack("techno", { seed: L.run?.seed, alien: L.run?.planetKey !== "earth" });
   controls.calibrate(); controls.resetLook(); controls.setEnabled(true);
-  game.setTime(timeSec);
+  game.setTime(sv ? (sv.endless ? 0 : sv.timeLeft) : timeSec);
+  if (sv) game.setScore(sv.score);
   window.__settingsOpen?.(false);
   game.start();
   state = "playing";
   loading.hide();
 }
-function play() {
+function play(sv) {
   // single first tap: unlock audio, ask for motion permission (iOS), calibrate neutral, start.
   audio.unlock();
   controls.requestGyro().then(() => controls.calibrate());
   haptics.pulse();
-  launch(levelNo, true);
+  launch(sv ? sv.n : levelNo, true, sv);
 }
 
 function onLevelEnd(r) {
   state = "results";
   audio.stopEngine(); controls.setEnabled(false);
+  clearSave();
   const n = levelNo, last = n >= levelCount();
   const won = r.reason === "complete";
   $("res-title").textContent = won ? (last ? "YOU WIN!" : `LEVEL ${n} CLEAR`) : r.reason === "down" ? "SHOT DOWN" : "TIME UP";
@@ -210,7 +233,11 @@ function onLevelEnd(r) {
 $("btn-view").addEventListener("pointerdown", (e) => { e.stopPropagation(); controls.requestView(); });
 
 // ---------- pause when the tab is hidden ----------
-document.addEventListener("visibilitychange", () => { if (document.hidden && state === "playing") { state = "paused"; game.pause(); $("pause").classList.remove("hidden"); } });
+function goBackground() { writeSave(); if (state === "playing") { state = "paused"; game.pause(); controls.setEnabled(false); $("resume").classList.remove("hidden"); } }
+document.addEventListener("visibilitychange", () => { if (document.hidden) goBackground(); });
+window.addEventListener("pagehide", goBackground);
+$("rs-cont").addEventListener("click", () => { $("resume").classList.add("hidden"); state = "playing"; game.resume(); controls.setEnabled(true); controls.calibrate(); });
+$("rs-new").addEventListener("click", () => { $("resume").classList.add("hidden"); clearSave(); state = "title"; play(); });
 $("pause-btn").addEventListener("click", () => { $("pause").classList.add("hidden"); state = "playing"; game.resume(); controls.calibrate(); });
 
 // ---------- resize ----------
@@ -219,7 +246,7 @@ window.addEventListener("resize", onResize);
 window.addEventListener("orientationchange", () => setTimeout(onResize, 250));
 
 // ---------- loop (adaptive resolution) ----------
-let last = performance.now(), fpsAcc = 0, fpsN = 0, slowT = 0;
+let previewOn = false, saveT = 0, last = performance.now(), fpsAcc = 0, fpsN = 0, slowT = 0;
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, (now - last) / 1000);
@@ -228,6 +255,7 @@ function frame(now) {
   if (state === "playing") {
     game.update(dt);
     game.render();
+    if ((saveT += dt) > 4) { saveT = 0; writeSave(); }
     { const vb = $("btn-view"), vv = game.view(); if (vb.dataset.view !== vv) vb.dataset.view = vv; }
     hud.draw(game.hudState(), dt);
     fpsAcc += dt; fpsN++;
@@ -236,14 +264,45 @@ function frame(now) {
       if (fps < 40 && pixelRatio > 1) { if (++slowT >= 2) { pixelRatio = Math.max(1, pixelRatio - 0.25); renderer.setPixelRatio(pixelRatio); renderer.setSize(innerWidth, innerHeight, false); slowT = 0; } }
       else slowT = 0;
     }
+  } else if (state === "title" && previewOn) {
+    game.render();
   } else if (state === "paused" || state === "results") {
     game.render();
   }
 }
 requestAnimationFrame(frame);
 
-// start loading the first level right away so PLAY is instant
-startPreload(levelNo);
+// start loading the first level right away; the opening screen shows only the logo until it is ready
+{
+  const body = document.body;
+  body.classList.add("tp-a");
+  const p0 = startPreload(levelNo);
+  const t0 = performance.now();
+  const setLabel = () => { const r = preload?.level?.run; $("scene-label").textContent = r ? `${runLabel(r)}  //  ${JET_TYPES[r.jet]?.name || ""}`.toUpperCase() : ""; };
+  async function reroll() {
+    if (state !== "title" || body.classList.contains("rolling")) return;
+    body.classList.add("rolling"); previewOn = false;
+    game.quit(); const p = startPreload(levelNo);
+    await Promise.all([p.promise, new Promise((r) => setTimeout(r, 700))]);
+    if (state !== "title") return;
+    setLabel(); body.classList.remove("rolling"); previewOn = true;
+  }
+  $("btn-reroll").addEventListener("pointerdown", (e) => e.stopPropagation());
+  $("btn-reroll").addEventListener("click", (e) => { e.stopPropagation(); reroll(); });
+  window.__ubuReroll = reroll;
+  p0.promise.then(async (ok) => {
+    const wait = Math.max(0, 1400 - (performance.now() - t0)); // let the logo breathe
+    await new Promise((r) => setTimeout(r, wait));
+    if (state !== "title") return;
+    try { $("hud-timer").textContent = timeSec ? `${Math.floor(timeSec / 60)}:00` : "0:00"; hud.draw(game.hudState(), 0); } catch { /* ignore */ }
+    setLabel(); previewOn = ok; body.classList.toggle("preview", !!ok);
+    body.classList.remove("tp-a"); body.classList.add("tp-b");
+  });
+  $("screen-title").addEventListener("pointerdown", () => {
+    if (state !== "title" || !body.classList.contains("tp-b")) return;
+    body.classList.remove("tp-b"); body.classList.add("tp-c"); buildMenu();
+  });
+}
 
 // test hook for the headless verification scripts
-window.__ubu = { game, controls, audio, hud, loading, state: () => state, play, launch, levelNo: () => levelNo };
+window.__ubu = { goBackground, readSave, writeSave, game, controls, audio, hud, loading, state: () => state, play, launch, levelNo: () => levelNo };
