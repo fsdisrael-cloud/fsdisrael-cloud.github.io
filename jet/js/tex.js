@@ -78,9 +78,32 @@ export function panelTex() {
   for (let i = 0; i < 70; i++) { g.fillStyle = `rgba(${r() < 0.5 ? "255,255,255" : "0,0,0"},${0.04 + r() * 0.1})`; g.fillRect(r() * S, r() * S, 2 + r() * 10, 1); }
   // G channel = roughness offset: seams/scuffs rougher; reuse luminance inverted
   const d = g.getImageData(0, 0, S, S), o = new Uint8Array(S * S * 4);
-  for (let i = 0; i < S * S; i++) { const l = d.data[i * 4]; o[i * 4] = l; o[i * 4 + 1] = Math.max(0, Math.min(255, 255 - l + 40)); o[i * 4 + 2] = 128; o[i * 4 + 3] = 255; }
+  for (let i = 0; i < S * S; i++) { const l = d.data[i * 4]; o[i * 4] = l; o[i * 4 + 1] = Math.max(0, Math.min(255, 255 - l + 40)); o[i * 4 + 2] = l; o[i * 4 + 3] = 255; }
   _panel = finish(new THREE.DataTexture(o, S, S, THREE.RGBAFormat));
   return _panel;
+}
+
+// derivative-based bump mapping (no tangents needed): perturbs a view-space normal by the gradient of height h
+export const BUMP_GLSL = `
+vec3 ubuBump(vec3 N, vec3 P, float h, float k) {
+  vec3 dpx = dFdx(P), dpy = dFdy(P);
+  float dhx = dFdx(h), dhy = dFdy(h);
+  vec3 r1 = cross(dpy, N), r2 = cross(N, dpx);
+  float det = dot(dpx, r1);
+  vec3 g = sign(det) * (dhx * r1 + dhy * r2);
+  return normalize(abs(det) * N - k * g);
+}`;
+
+// CC0 photo detail (Poly Haven aerial_grass_rock + rock_face, grayscale high-pass 512px): terrain micro detail
+let _ph = null;
+export function terrainPhotos() {
+  if (_ph) return _ph;
+  const gray = new THREE.DataTexture(new Uint8Array([128, 128, 128, 255]), 1, 1, THREE.RGBAFormat); gray.needsUpdate = true;
+  _ph = { g: { value: gray }, r: { value: gray } };
+  const L = new THREE.TextureLoader();
+  const go = (u, k) => L.load(u, (t) => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = 4; t.colorSpace = THREE.NoColorSpace; _ph[k].value = t; });
+  go("img/tx_ground.jpg", "g"); go("img/tx_rock.jpg", "r");
+  return _ph;
 }
 
 const PV = `#include <common>\nvarying vec3 vDOP; varying vec3 vDON;`;
@@ -98,13 +121,14 @@ export function patchDetail(mat, { kind = "panel", s = 0.17, k = 0.9 } = {}) {
     sh.uniforms.uDS = { value: s }; sh.uniforms.uDK = { value: k };
     sh.vertexShader = sh.vertexShader.replace("#include <common>", PV).replace("#include <begin_vertex>", PB);
     sh.fragmentShader = sh.fragmentShader
-      .replace("#include <common>", `#include <common>\nvarying vec3 vDOP; varying vec3 vDON; uniform sampler2D uDT; uniform float uDS, uDK;`)
+      .replace("#include <common>", `#include <common>\nvarying vec3 vDOP; varying vec3 vDON; uniform sampler2D uDT; uniform float uDS, uDK;\n${BUMP_GLSL}\nfloat ubuH;`)
       .replace("#include <color_fragment>", `#include <color_fragment>
         vec3 dW = pow(abs(normalize(vDON)), vec3(4.0)); dW /= (dW.x + dW.y + dW.z);
         vec3 dQ = vDOP * uDS;
         vec4 dA = texture2D(uDT, dQ.zy), dB = texture2D(uDT, dQ.xz), dC = texture2D(uDT, dQ.xy);
         vec4 dN = dA * dW.x + dB * dW.y + dC * dW.z;
         ${kind === "skin" ? "float dL = (dN.r - 0.5) * 0.9 + (dN.b - 0.5) * 0.7; diffuseColor.rgb *= 1.0 + dL * uDK;" : "diffuseColor.rgb *= mix(1.0, dN.r * 1.18, uDK);"}`);
+    if (std && kind !== "skin") sh.fragmentShader = sh.fragmentShader.replace("#include <normal_fragment_maps>", "#include <normal_fragment_maps>\n        normal = ubuBump(normal, -vViewPosition, dN.r * 1.0, 0.1 * uDK);");
     if (std) sh.fragmentShader = sh.fragmentShader.replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>\n        roughnessFactor = clamp(roughnessFactor + ${kind === "skin" ? "(dN.g - 0.5) * 0.4" : "(dN.g - 0.5) * 0.55"}, 0.08, 1.0);`);
   };
   const key = "ubu-detail-" + kind + "-" + s + "-" + k + (std ? "S" : "T");

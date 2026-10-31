@@ -1,6 +1,6 @@
 // Extra Ubu props for training levels: rings, balloons, practice targets, drones.
 import * as THREE from "three";
-import { PartBuilder, toonModel, G } from "./toon.js?v=15";
+import { PartBuilder, toonModel, G } from "./toon.js?v=16";
 
 const ringGeo = new THREE.TorusGeometry(1, 0.11, 10, 40);
 const cache = {};

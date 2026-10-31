@@ -2,8 +2,8 @@
 // Surreal = pastel hue-shifting palette, gently wavy/melting terrain, soft outlines,
 // floating dream shapes and a cheap CSS glow. All GPU-cheap: a few shader lines + 4 draw calls.
 import * as THREE from "three";
-import { noiseTex, FX } from "./tex.js?v=15";
-import { outlineUniforms, toonMaterial, PartBuilder, G, outlineMaterial } from "./toon.js?v=15";
+import { noiseTex, FX, terrainPhotos, BUMP_GLSL } from "./tex.js?v=16";
+import { outlineUniforms, toonMaterial, PartBuilder, G, outlineMaterial } from "./toon.js?v=16";
 
 const KEY = "jet-style";
 export const style = {
@@ -48,7 +48,7 @@ const HUE = /* glsl */ `
 export function patchTerrain(mat) {
   mat.onBeforeCompile = (sh) => {
     sh.uniforms.uTime = style.uTime; sh.uniforms.uSur = style.uSur; sh.uniforms.uCenter = style.uCenter;
-    sh.uniforms.uNoise = { value: noiseTex() }; sh.uniforms.uT2 = FX.time; sh.uniforms.uSunD = FX.sunDir; sh.uniforms.uSunC = FX.sunCol;
+    sh.uniforms.uNoise = { value: noiseTex() }; const ph = terrainPhotos(); sh.uniforms.uTxG = ph.g; sh.uniforms.uTxR = ph.r; sh.uniforms.uT2 = FX.time; sh.uniforms.uSunD = FX.sunDir; sh.uniforms.uSunC = FX.sunCol;
     const HI = (FX.hi ? "#define UBU_HI\n" : "") + (/[?&]nodet/.test(location.search) ? "#define UBU_OFF\n" : "");
     sh.vertexShader = sh.vertexShader
       .replace("#include <common>", "#include <common>\nuniform float uTime; uniform float uSur; uniform vec2 uCenter; varying vec2 vWorldXZ; varying vec3 vWP; varying vec3 vWN;")
@@ -58,7 +58,8 @@ export function patchTerrain(mat) {
         vWorldXZ = ubuW.xz; vWP = ubuW.xyz; vWN = normal;
         transformed.y += uSur * (sin(l.x * 0.0035 + uTime * 0.55) * 22.0 + cos(l.y * 0.0042 + uTime * 0.4) * 18.0 + sin((l.x + l.y) * 0.0011 - uTime * 0.3) * 14.0);`);
     sh.fragmentShader = sh.fragmentShader
-      .replace("#include <common>", HI + "#include <common>\nuniform float uTime; uniform float uSur; varying vec2 vWorldXZ; varying vec3 vWP; varying vec3 vWN; uniform sampler2D uNoise; uniform float uT2; uniform vec3 uSunD; uniform vec3 uSunC;" + HUE)
+      .replace("#include <common>", HI + "#include <common>\nuniform float uTime; uniform float uSur; varying vec2 vWorldXZ; varying vec3 vWP; varying vec3 vWN; uniform sampler2D uNoise; uniform float uT2; uniform vec3 uSunD; uniform vec3 uSunC; uniform sampler2D uTxG; uniform sampler2D uTxR; float ubuH = 0.0; float ubuBF = 0.0;" + BUMP_GLSL + HUE)
+      .replace("#include <normal_fragment_maps>", "#include <normal_fragment_maps>\n        #ifdef UBU_HI\n        if (ubuBF > 0.0) normal = ubuBump(normal, -vViewPosition, ubuH * 2.0, 0.045 * ubuBF);\n        #endif")
       .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
         totalEmissiveRadiance += ubuGlint;`)
       .replace("#include <map_fragment>", `#include <map_fragment>
@@ -75,12 +76,25 @@ export function patchTerrain(mat) {
             det += (n3.b - 0.5) * 0.55 * (1.0 - smoothstep(250.0, 2600.0, dd));
           #endif
           bool wat = vWP.y < 0.12 && uSur < 0.5;
+          float pg = 0.0, pr = 0.0;
+          #ifdef UBU_HI
+          {
+            float nearK = 1.0 - smoothstep(900.0, 5500.0, dd);
+            vec3 aw = pow(abs(normalize(vWN)), vec3(3.0)); aw /= (aw.x + aw.y + aw.z);
+            pg = (texture2D(uTxG, vWP.xz * 0.05).r - 0.5) * 0.85 + (texture2D(uTxG, vWP.xz * 0.0063 + 0.37).r - 0.5) * 0.7;
+            pr = (texture2D(uTxR, vWP.zy * 0.035).r - 0.5) * aw.x + (texture2D(uTxR, vWP.xz * 0.035).r - 0.5) * aw.y + (texture2D(uTxR, vWP.xy * 0.035).r - 0.5) * aw.z;
+            pg *= mix(0.55, 1.0, nearK); pr *= mix(0.55, 1.0, nearK);
+            ubuBF = nearK * (wat ? 0.0 : 1.0);
+          }
+          #endif
           float slope = 1.0 - clamp(normalize(vWN).y, 0.0, 1.0);
           float rock = smoothstep(0.22, 0.5, slope) * (wat ? 0.0 : 1.0);
           vec3 base = diffuseColor.rgb;
           float lum = dot(base, vec3(0.3, 0.59, 0.11));
           diffuseColor.rgb = mix(base, vec3(lum) * vec3(1.0, 0.95, 0.88) * 0.95, rock * 0.35);
-          diffuseColor.rgb *= 1.0 + (wat ? (n1.r - 0.5) * 0.08 : det * (1.0 + rock * 0.6));
+          float phd = mix(pg, pr, clamp(rock * 1.6, 0.0, 1.0));
+          ubuH = phd;
+          diffuseColor.rgb *= 1.0 + (wat ? (n1.r - 0.5) * 0.08 : det * 0.55 * (1.0 + rock * 0.6) + phd * 1.25);
           if (wat) {
             vec2 q1 = vWP.xz * 0.011 + vec2(uT2 * 0.012, uT2 * 0.006);
             vec2 q2 = vWP.xz * 0.037 - vec2(uT2 * 0.02, -uT2 * 0.01);

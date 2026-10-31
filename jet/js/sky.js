@@ -1,8 +1,8 @@
 // Time of day + weather: sky dome, sun/moon, stars, lights, fog, toon clouds, rain/snow, lightning.
-import { FX } from "./tex.js?v=15";
+import { FX } from "./tex.js?v=16";
 import * as THREE from "three";
-import { PartBuilder, G, getGradientMap, outlineMaterial } from "./toon.js?v=15";
-import { style, skyHueChunk } from "./surreal.js?v=15";
+import { PartBuilder, G, getGradientMap, outlineMaterial } from "./toon.js?v=16";
+import { style, skyHueChunk } from "./surreal.js?v=16";
 
 export const TIMES = ["dawn", "day", "dusk", "night"];
 export const WEATHERS = ["clear", "cloudy", "rain", "fog", "snow", "storm"];
@@ -29,6 +29,8 @@ function grey(c, amt, lum = null) {
 
 // Psychedelic signature: shared uniforms (time + strength) used by the sky dome and the clouds.
 export const psy = { uPsy: { value: 0 }, uPsyAmt: { value: 1 } };
+
+function hemiSkyColor(T, k) { return new THREE.Color(T.hs).multiplyScalar(0.7 * k); }
 
 export function createSky(scene, renderer) {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -57,6 +59,19 @@ export function createSky(scene, renderer) {
         vec3 d = normalize(vDir);
         float h = d.y;
         vec3 col = h > 0.0 ? mix(hor, top, pow(smoothstep(0.0, 0.75, h), 0.8)) : mix(hor, bot, smoothstep(0.0, -0.25, h));
+        float sdot = max(dot(d, normalize(sunDir)), 0.0);
+        if (uSur < 0.5) {
+          // realistic: Rayleigh-style gradient (pale near the horizon, deeper at the zenith), horizon haze, Mie forward glow
+          float hh = max(h, 0.0);
+          col = h > 0.0 ? mix(hor, top, pow(1.0 - exp(-hh * 3.6), 1.15)) : mix(hor, bot, smoothstep(0.0, -0.2, h));
+          col *= 1.0 - 0.16 * pow(hh, 0.7) * (1.0 - over);
+          float hz = exp(-abs(h) * 7.0);
+          col = mix(col, hor * 1.04, hz * 0.55);
+          float sunSide = pow(sdot, 3.0);
+          col += sunCol * sunSide * hz * 0.38 * (1.0 - over * 0.7);
+          float g = 0.78; float mie = (1.0 - g * g) / pow(1.0 + g * g - 2.0 * g * sdot, 1.5);
+          col += sunCol * mie * 0.018 * (1.0 - over * 0.85) * (0.35 + 0.65 * smoothstep(-0.05, 0.4, h));
+        }
         // ---- psychedelic signature: slowly shifting iridescent gradient + aurora ribbons (sky only) ----
         {
           float ang = atan(d.z, d.x);
@@ -68,14 +83,14 @@ export function createSky(scene, renderer) {
           float band = pow(w1 * w2, 1.6) * smoothstep(0.02, 0.22, h) * (1.0 - smoothstep(0.5, 0.95, h));
           col += rb * band * 0.55 * uPsyAmt * (1.0 - over * 0.7);
         }
-        float s = max(dot(d, normalize(sunDir)), 0.0);
+        float s = sdot;
         float disc = smoothstep(0.9975, 0.9985, s);   // round soft sun/moon disc
         float ring = smoothstep(0.9965, 0.9975, s) - disc; // Ubu outline ring
         vec3 glow = sunCol * (pow(s, 12.0) * 0.45 + pow(s, 200.0) * 0.6) * (1.0 - over * 0.8);
         col += glow;
         vec3 discCol = night > 0.5 ? vec3(0.92, 0.95, 1.0) : vec3(1.0, 0.97, 0.85);
         col = mix(col, discCol, disc * (1.0 - over));
-        col = mix(col, vec3(0.08), ring * 0.6 * (1.0 - over));
+        col = mix(col, vec3(0.08), ring * 0.6 * (1.0 - over) * step(0.5, uSur));
         if (stars > 0.0 && h > 0.0) {
           vec3 g = floor(d * 220.0);
           float r = hash(g);
@@ -88,6 +103,7 @@ export function createSky(scene, renderer) {
           float sw = sin(d.x * 9.0 + uTime * 0.4) * sin(d.z * 7.0 - uTime * 0.3) * smoothstep(0.0, 0.5, h);
           col += vec3(0.08, 0.05, 0.1) * sw;
         }
+        col += (hash(d * 913.7) - 0.5) / 120.0;   // dither against banding
         gl_FragColor = vec4(col, 1.0);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
@@ -107,6 +123,46 @@ export function createSky(scene, renderer) {
       .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\ntotalEmissiveRadiance += (0.5 + 0.5 * cos(6.2832 * (vec3(0.0, 0.33, 0.67) + vWp.x * 0.00035 + vWp.y * 0.0009 + vWp.z * 0.0003 + uPsy * 0.035))) * 0.30 * uPsyAmt;");
   };
   const cloudOutline = outlineMaterial(0x51627e, 0.8);
+  // build 16: realistic soft volumetric-looking clouds (fbm-eroded, sun-lit with silver lining) for the realistic style
+  const cloudReal = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, fog: true, vertexColors: true,
+    uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uCol: { value: new THREE.Color(1, 1, 1) }, uSunD: FX.sunDir, uSunC: FX.sunCol, uAmb: { value: new THREE.Color(0.55, 0.62, 0.75) }, uDark: { value: 0 } }]),
+    vertexShader: `
+      varying vec3 vWp; varying vec3 vN; varying vec3 vC;
+      #include <fog_pars_vertex>
+      void main(){
+        vec4 wp = modelMatrix * vec4(position, 1.0); vWp = wp.xyz; vN = normalize(mat3(modelMatrix) * normal); vC = color;
+        vec4 mvPosition = viewMatrix * wp; gl_Position = projectionMatrix * mvPosition;
+        #include <fog_vertex>
+      }`,
+    fragmentShader: `
+      varying vec3 vWp; varying vec3 vN; varying vec3 vC;
+      uniform vec3 uCol, uSunD, uSunC, uAmb; uniform float uDark;
+      #include <fog_pars_fragment>
+      float h3(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+      float n3(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(mix(h3(i), h3(i + vec3(1,0,0)), f.x), mix(h3(i + vec3(0,1,0)), h3(i + vec3(1,1,0)), f.x), f.y),
+                   mix(mix(h3(i + vec3(0,0,1)), h3(i + vec3(1,0,1)), f.x), mix(h3(i + vec3(0,1,1)), h3(i + vec3(1,1,1)), f.x), f.y), f.z); }
+      void main(){
+        vec3 N = normalize(vN), V = normalize(cameraPosition - vWp), L = normalize(uSunD);
+        float f = abs(dot(N, V));
+        vec3 q = vWp * 0.011;
+        float n = n3(q) * 0.55 + n3(q * 2.3 + 7.0) * 0.3 + n3(q * 5.1 + 3.0) * 0.15;
+        float dens = smoothstep(0.12, 0.62, f * 0.95 + n * 0.62 - 0.3);
+        float wrap = clamp(dot(N, L) * 0.5 + 0.5, 0.0, 1.0);
+        float lit = pow(wrap, 1.35) * (0.55 + 0.45 * n);
+        float under = smoothstep(-0.7, 0.5, N.y);
+        vec3 base = uCol * vC;
+        vec3 shade = mix(uAmb * 0.55, vec3(1.0), under) * mix(0.55, 1.0, uDark * 0.0 + 1.0 - uDark * 0.4);
+        vec3 col = base * (shade * 0.62 + uSunC * 0.55 * lit);
+        float silver = pow(1.0 - f, 3.0) * pow(max(dot(-V, L), 0.0), 3.0);
+        col += uSunC * silver * 0.5;
+        gl_FragColor = vec4(col, dens * 0.94);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+        #include <fog_fragment>
+      }`,
+  });
   let cloudGroup = null;
   function buildClouds(count, center, half, dark, seed) {
     if (cloudGroup) { scene.remove(cloudGroup); cloudGroup.children[0].geometry.dispose(); }
@@ -129,8 +185,11 @@ export function createSky(scene, renderer) {
     }
     const geo = b.build();
     cloudGroup = new THREE.Group();
-    const body = new THREE.Mesh(geo, cloudMat);
+    const real = !style.surreal;
+    const body = new THREE.Mesh(geo, real ? cloudReal : cloudMat);
     const ol = new THREE.Mesh(geo, cloudOutline);
+    ol.visible = !real;
+    body.renderOrder = real ? 2 : 0;
     cloudGroup.add(body, ol);
     scene.add(cloudGroup);
   }
@@ -228,7 +287,7 @@ export function createSky(scene, renderer) {
     skyMat.uniforms.stars.value = T.stars;
     skyMat.uniforms.night.value = time === "night" ? 1 : 0;
     skyMat.uniforms.over.value = over;
-    psy.uPsyAmt.value = (time === "night" ? 0.75 : 1) * (1 - over * 0.45);
+    psy.uPsyAmt.value = style.surreal ? (time === "night" ? 0.75 : 1) * (1 - over * 0.45) : 0;
     const el = THREE.MathUtils.degToRad(T.elev), az = THREE.MathUtils.degToRad(T.az);
     const dir = new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el));
     skyMat.uniforms.sunDir.value.copy(dir);
@@ -256,7 +315,7 @@ export function createSky(scene, renderer) {
     const ct = new THREE.Color(style.surreal ? 0xffd6f4 : T.cloud);
     if (over > 0.5) ct.multiplyScalar(1 - (over - 0.5) * 0.6);
     if (pl) ct.setHex(pl.cloud).multiplyScalar(nK);
-    cloudMat.color.copy(ct);
+    cloudMat.color.copy(ct); cloudReal.uniforms.uCol.value.copy(ct); cloudReal.uniforms.uDark.value = over > 0.5 ? 1 : 0; cloudReal.uniforms.uAmb.value.copy(hemiSkyColor(T, nK));
     cloudMat.emissive.copy(ct).multiplyScalar(time === "night" ? 0.12 : 0.28);
     buildClouds(W.clouds, center, half, over > 0.5, seed);
     rain.visible = W.rain > 0;

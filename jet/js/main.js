@@ -1,14 +1,14 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=15";
-import { createHud } from "./hud.js?v=15";
-import { createControls } from "./controls.js?v=15";
-import { runLabel, PLANETS, JET_TYPES } from "./variety.js?v=15";
-import { createAudio, trackFor } from "./audio.js?v=15";
-import { createHaptics } from "./haptics.js?v=15";
-import { createLoading } from "./loading.js?v=15";
-import { setSurreal, tickStyle } from "./surreal.js?v=15";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=15";
+import { createGame } from "./game.js?v=16";
+import { createHud } from "./hud.js?v=16";
+import { createControls } from "./controls.js?v=16";
+import { runLabel, PLANETS, JET_TYPES } from "./variety.js?v=16";
+import { createAudio, trackFor } from "./audio.js?v=16";
+import { createHaptics } from "./haptics.js?v=16";
+import { createLoading } from "./loading.js?v=16";
+import { setSurreal, tickStyle } from "./surreal.js?v=16";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=16";
 
 const $ = (id) => document.getElementById(id);
 
@@ -26,7 +26,7 @@ try {
   for (let i = 0; i < 500; i++) { w.fillStyle = `rgba(${rn() < 0.5 ? "255,255,255" : "0,0,0"},${0.03 + rn() * 0.08})`; w.fillRect(rn() * 256, rn() * 256, 1 + rn() * 2, 1 + rn() * 2); }
   document.documentElement.style.setProperty("--worn", `url(${wc.toDataURL("image/png")})`);
 } catch (e) { /* plain gradients if canvas is unavailable */ }
-const BUILD = 15;
+const BUILD = 16;
 { const t = $("build-tag"); if (t) t.textContent = "JET-X b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;

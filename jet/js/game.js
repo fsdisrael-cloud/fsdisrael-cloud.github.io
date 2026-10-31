@@ -1,14 +1,14 @@
 // Ubu game world: flight model, camera, targets, AI, weapons, effects, objectives.
 import * as THREE from "three";
-import { buildTerrain } from "./terrain.js?v=15";
-import { createSky } from "./sky.js?v=15";
-import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createAlienWalker, createAlienTurret, createAlienSpire, createHive, createShip, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=15";
-import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=15";
-import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=15";
-import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=15";
-import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=15";
-import { setQuality } from "./tex.js?v=15";
-import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=15";
+import { buildTerrain } from "./terrain.js?v=16";
+import { createSky } from "./sky.js?v=16";
+import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createAlienWalker, createAlienTurret, createAlienSpire, createHive, createShip, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=16";
+import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=16";
+import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=16";
+import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=16";
+import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=16";
+import { setQuality } from "./tex.js?v=16";
+import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=16";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V();

@@ -2,8 +2,8 @@
 // Player + enemy jets: PBR-lit (metal, glossy canopy, environment reflections) with a thin illustrated outline.
 // Ground units: toon + outline. Illustrated look, readable colours.
 import * as THREE from "three";
-import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=15";
-import { patchDetail, missileTex } from "./tex.js?v=15";
+import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=16";
+import { patchDetail, missileTex } from "./tex.js?v=16";
 
 const PI = Math.PI;
 
@@ -149,9 +149,9 @@ function jetGeometry(kind, vk, pal) {
 function buildJet(kind, vk = "", variant = null) {
   const pal = { ...PAL[kind], ...(variant || {}) }, g = jetGeometry(kind, vk, pal), lean = kind === "enemy";
   const root = new THREE.Group();
-  const eK = kind === "ally" ? 0.75 : 0.3;
-  const body = pbr({ vertexColors: true, metalness: 0.4, roughness: 0.45, emissive: 0x05080c, emissiveIntensity: 0.4, envMapIntensity: eK }, { kind: "panel", s: 0.2, k: 0.9 });
-  const wingM = pbr({ color: pal.wing, metalness: 0.4, roughness: 0.45, emissive: 0x05080c, emissiveIntensity: 0.4, envMapIntensity: eK }, { kind: "panel", s: 0.26, k: 0.9 });
+  const eK = kind === "ally" ? 0.9 : 0.6;
+  const body = pbr({ vertexColors: true, metalness: 0.3, roughness: 0.5, emissive: 0x05080c, emissiveIntensity: 0.4, envMapIntensity: eK }, { kind: "panel", s: 0.2, k: 0.7 });
+  const wingM = pbr({ color: pal.wing, metalness: 0.3, roughness: 0.5, emissive: 0x05080c, emissiveIntensity: 0.4, envMapIntensity: eK }, { kind: "panel", s: 0.26, k: 0.7 });
   const darkM = pbr({ color: pal.dark, metalness: 0.8, roughness: 0.4 });
   const glassM = pbr({ color: pal.glass, metalness: 1, roughness: 0.04, envMapIntensity: 1.8 });
   const glowM = new THREE.MeshBasicMaterial({ color: pal.glow, toneMapped: false, fog: false });
@@ -234,7 +234,7 @@ export const HARDPOINTS = [[-4.3, -0.62, 1.2], [-2.5, -0.72, 0.8], [2.5, -0.72, 
 export function createPlayerJet(vk = "viper", variant = null) {
   const j = buildJet("player", vk, variant);
   // four underwing pylons, each carrying a visible missile that disappears when it is launched
-  const pyl = pbr({ color: 0x15181d, metalness: 0.7, roughness: 0.5 }), mis = pbr({ color: 0xffffff, map: missileTex(), metalness: 0.3, roughness: 0.42, envMapIntensity: 0.9 });
+  const pyl = pbr({ color: 0x15181d, metalness: 0.7, roughness: 0.5 }), mis = pbr({ color: 0xffffff, map: missileTex(), bumpMap: missileTex(), bumpScale: 1.2, metalness: 0.3, roughness: 0.42, envMapIntensity: 0.9 });
   const missGeo = new THREE.CapsuleGeometry(0.13, 1.5, 3, 8).rotateX(PI / 2);
   const noseGeo = new THREE.ConeGeometry(0.13, 0.4, 8).rotateX(-PI / 2);
   const loaded = [];
