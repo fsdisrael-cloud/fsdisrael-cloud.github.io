@@ -1,6 +1,6 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=23";
+import { LABEL } from "./missions.js?v=24";
 
 const ALLY = "#3dff8b";
 const COL = { jet: "#ff3b3b", tank: "#ff5a48", flak: "#ff4636", sam: "#ff3a2a", base: "#ff6a58", ship: "#ff5a48", pad: "#3dff8b", ring: "#ffe14d" };
@@ -12,7 +12,7 @@ export function createHud() {
   const radar = document.getElementById("radar");
   const rctx = radar.getContext("2d");
   const el = (id) => document.getElementById(id);
-  const dom = { timer: el("hud-timer"), score: el("hud-score"), obj: el("hud-obj"), hp: el("hud-hp"), spd: el("hud-spd"), thr: el("thr-spd"), alt: el("hud-alt"), fl: el("hud-fl"), trk: el("hud-track"), alert: el("alert"), toasts: el("toasts"), flash: el("hit-flash"), low: el("low-alt"), edge: el("low-edge"),
+  const dom = { timer: el("hud-timer"), score: el("hud-score"), obj: el("hud-obj"), hp: el("hud-lives"), spd: el("hud-spd"), thr: el("thr-spd"), alt: el("hud-alt"), fl: el("hud-fl"), trk: el("hud-track"), alert: el("alert"), toasts: el("toasts"), flash: el("hit-flash"), low: el("low-alt"), edge: el("low-edge"),
     tlabel: el("hud-time-label"), heat: el("hud-heat"), heatRow: document.querySelector(".statrow.heat"),
     bGun: document.querySelector(".w-gun"), bMsl: document.querySelector(".w-msl"), bBomb: document.querySelector(".w-bomb") };
   let dpr = 1, W = 0, H = 0, domT = 0, radarT = 0, sweep = 0;
@@ -112,11 +112,11 @@ export function createHud() {
         ctx.save(); ctx.strokeStyle = "#ffa040"; ctx.fillStyle = "#ffa040"; ctx.shadowColor = "rgba(0,0,0,.8)"; ctx.shadowBlur = 3;
         // b23: always a clear line from the aim point (or the jet) to the selected ground target
         { const fx = pc && pc.on ? pc.x : W / 2, fy = pc && pc.on ? pc.y : H * 0.62;
-          ctx.lineWidth = 2.5; ctx.setLineDash(s.bombSel ? [] : [9, 6]); ctx.globalAlpha = 0.95; ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(pa.x, pa.y); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
+          ctx.lineWidth = 2.5; ctx.setLineDash([]); ctx.globalAlpha = 0.95; ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(pa.x, pa.y); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
         if (s.tgtFlash > 0) { ctx.lineWidth = 3; ctx.globalAlpha = Math.min(1, s.tgtFlash); ctx.beginPath(); ctx.arc(pa.x, pa.y, 24 + (1.2 - s.tgtFlash) * 40, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
         if (s.bombName) { ctx.font = "700 12px 'Black Ops One', Fredoka, sans-serif"; ctx.textAlign = "left"; ctx.fillText(`TGT ${s.bombName} ${s.bombDist > 1000 ? (s.bombDist / 1000).toFixed(1) + " km" : Math.round(s.bombDist) + " m"}`, pa.x + 22, pa.y - 14); }
         const r = s.bombLocked ? 15 : 10; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(pa.x - r, pa.y - r); ctx.lineTo(pa.x + r, pa.y + r); ctx.moveTo(pa.x + r, pa.y - r); ctx.lineTo(pa.x - r, pa.y + r); ctx.stroke();
-        ctx.beginPath(); ctx.arc(pa.x, pa.y, r + 5, 0, 7); ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
+        ctx.beginPath(); ctx.arc(pa.x, pa.y, r + 5, 0, 7); ctx.lineWidth = s.bombLocked ? 3 : 2; ctx.stroke(); if (s.bombLocked) { ctx.beginPath(); ctx.arc(pa.x, pa.y, r + 12, 0, 7); ctx.lineWidth = 1.5; ctx.stroke(); } ctx.restore();
       }
     }
 
@@ -340,15 +340,17 @@ export function createHud() {
     dom.timer.textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
     dom.timer.classList.toggle("urgent", !s.endless && t <= 20);
     dom.score.textContent = s.score;
-    dom.obj.innerHTML = s.objectives.map((o) => {
-      const got = Math.min(o.need, s.progress[o.kind] || 0);
-      const done = got >= o.need;
-      const lab = o.label.replace(/ \d+ /, " ");
-      return `<div class="${done ? "done" : ""}"><i class="chk"></i>${lab}${o.need > 1 ? ` <b>${got}/${o.need}</b>` : ""}</div>`;
-    }).join("");
-    const hp = Math.max(0, s.player.hp);
-    dom.hp.style.width = hp + "%";
-    dom.hp.style.background = hp > 60 ? "var(--mint)" : hp > 30 ? "var(--sun)" : "var(--red)";
+    {   // b24: target counter = what is still alive in the air / on the ground / at sea, plus mission progress
+      const cn = s.counts || { air: 0, gnd: 0, sea: 0 };
+      const need = s.objectives.reduce((a, o) => a + (o.kind === "land" ? 0 : o.need), 0), got = s.objectives.reduce((a, o) => a + (o.kind === "land" ? 0 : Math.min(o.need, s.progress[o.kind] || 0)), 0);
+      const html = `<div class="tally"><span class="air${cn.air ? "" : " zero"}">AIR<b>${cn.air}</b></span><span class="gnd${cn.gnd ? "" : " zero"}">GND<b>${cn.gnd}</b></span><span class="sea${cn.sea ? "" : " zero"}">SEA<b>${cn.sea}</b></span></div><div class="tally"><span>MISSION<b>${got}/${need}</b></span></div>`;
+      if (html !== dom._tally) { dom._tally = html; dom.obj.innerHTML = html; }
+    }
+    {   // b24: 7 life squares
+      const lv = Math.max(0, Math.min(7, s.lives ?? 7)), sq = dom.hp.children;
+      for (let i = 0; i < sq.length; i++) sq[i].classList.toggle("off", i >= lv);
+      dom.hp.classList.toggle("low", lv <= 2);
+    }
     dom.spd.textContent = Math.round(s.player.speed * 3.6); if (dom.thr) dom.thr.textContent = dom.spd.textContent;
     dom.alt.textContent = Math.round(s.player.pos.y); if (dom.fl) dom.fl.textContent = s.player.flares ?? 0; if (dom.trk) dom.trk.classList.toggle("on", !!s.track);
     // weapons: the same ring (arc = how much is ready) on all three buttons

@@ -228,11 +228,34 @@ export async function buildTerrain(lat, lon, { quality = "high", onProgress } = 
   }
   const heightAt = (x, z) => { const h = bil(grid, x, z); return h == null ? Math.max(0, rawAt(x, z)) : h; };
   const rawHeight = (x, z) => { const h = bil(rawGrid, x, z); return h == null ? rawAt(x, z) : h; };
-  const isWater = (x, z) => rawHeight(x, z) < 0.15;   // b23: same test as the water shader (sea level), so seas without bathymetry still count
+  // b24: lakes = blue, perfectly flat water in the imagery above sea level (ships sail on them, the shader shades them like sea)
+  const LS = 256, lakeArr = new Uint8Array(LS * LS);
+  let lakeTex = null, lakeCells = 0;
+  if (imageryOk) {
+    try {
+      const sc = document.createElement("canvas"); sc.width = sc.height = LS;
+      const sctx = sc.getContext("2d", { willReadFrequently: true }); sctx.drawImage(detailCanvas, 0, 0, LS, LS);
+      const dd = sctx.getImageData(0, 0, LS, LS).data, raw = new Uint8Array(LS * LS);
+      for (let j = 0; j < LS; j++) for (let i = 0; i < LS; i++) {
+        const k = (j * LS + i) * 4, r = dd[k], g2 = dd[k + 1], b2 = dd[k + 2], l = 0.3 * r + 0.59 * g2 + 0.11 * b2;
+        if (b2 > r * 1.22 && b2 > g2 * 1.04 && b2 > 55 && l < 135) {
+          const x = x0 + (i + 0.5) / LS * W, z = z0 + (j + 0.5) / LS * W, h = rawHeight(x, z);
+          if (h > 0.15 && Math.abs(rawHeight(x + 60, z) - h) < 2 && Math.abs(rawHeight(x, z + 60) - h) < 2 && Math.abs(rawHeight(x - 60, z) - h) < 2 && Math.abs(rawHeight(x, z - 60) - h) < 2) raw[j * LS + i] = 1;
+        }
+      }
+      for (let j = 1; j < LS - 1; j++) for (let i = 1; i < LS - 1; i++) {
+        let n = 0; for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) n += raw[(j + dj) * LS + i + di];
+        if (raw[j * LS + i] && n >= 5) { lakeArr[j * LS + i] = 255; lakeCells++; }
+      }
+      if (lakeCells > 12) { lakeTex = new THREE.DataTexture(lakeArr, LS, LS, THREE.RedFormat); lakeTex.magFilter = lakeTex.minFilter = THREE.LinearFilter; lakeTex.needsUpdate = true; }
+    } catch (e) { lakeTex = null; }
+  }
+  const isLake = (x, z) => { if (!lakeCells) return false; const i = Math.floor((x - x0) / W * LS), j = Math.floor((z - z0) / W * LS); return i >= 0 && j >= 0 && i < LS && j < LS && lakeArr[j * LS + i] > 127; };
+  const isWater = (x, z) => rawHeight(x, z) < 0.15 || isLake(x, z);   // b23: same test as the water shader (sea level), so seas without bathymetry still count
 
   onProgress?.(1);
   return {
-    detail, far, heightAt, rawHeight, isWater, maxH,
+    detail, far, heightAt, rawHeight, isWater, isLake, maxH, lake: lakeTex ? { tex: lakeTex, x0, z0, W, cells: lakeCells } : null,
     half: W / 2 - 300, center: new THREE.Vector3(cx, 0, cz),
     imageryOk, hasElevation: !!elev,
     materials: [mat, fmat],

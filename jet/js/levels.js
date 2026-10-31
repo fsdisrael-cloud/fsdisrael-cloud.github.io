@@ -11,7 +11,7 @@ export const BIOMES = {
   valley: "Green valley",
   mountains: "Mountains",
 };
-import { rollRun } from "./variety.js?v=23";
+import { rollRun } from "./variety.js?v=24";
 const P = {
   seward: { name: "Resurrection Bay, Alaska", lat: 60.05, lon: -149.4 },
   monument: { name: "Monument Valley", lat: 36.99, lon: -110.10 },
@@ -39,7 +39,7 @@ export const LEVELS = [
 export const levelCount = () => LEVELS.length;
 const KEY = "jet-level-v1";
 export function loadLevelNo() {
-  try { const n = parseInt(localStorage.getItem(KEY) || "1", 10); return n >= 1 && n <= LEVELS.length ? n : 1; } catch { return 1; }
+  try { const n = parseInt(localStorage.getItem(KEY) || "1", 10); return n >= 1 && n <= 99 ? n : 1; } catch { return 1; }
 }
 export function saveLevelNo(n) { try { localStorage.setItem(KEY, String(n)); } catch { /* ignore */ } }
 
@@ -53,13 +53,16 @@ export function buildLevel(n, run0) {
   const m = run.mix, sc = (v, k) => (v ? Math.max(1, Math.round(v * k)) : 0);
   const d = { ...d0, place: run.place, biome: run.place.biome, time: run.time, weather: run.weather, carrier: !!(d0.carrier && run.place.sea),
     tank: sc(d0.tank, m[0] * 1.6), base: sc(d0.base, m[1] * 1.15), flak: m[2] ? Math.max(d0.flak ? 1 : 0, Math.round(d0.flak * m[2] * 1.3)) : 0, sam: m[3] ? Math.round(d0.sam * m[3] * 1.4) : 0 };
-  { const ramp = Math.min(1, 0.42 + 0.085 * n); for (const k of ["jet", "tank", "base", "flak", "sam"]) if (d[k]) d[k] = Math.max(1, Math.round(d[k] * ramp)); if (d.jets) d.jets = Math.max(2, Math.round(d.jets * ramp)); }
+  // b24: every level is 3 minutes and has MANY more targets (ground ones are also bigger and more spread out)
+  { const ramp = Math.min(1, 0.55 + 0.07 * n), more = { jet: 1.45, tank: 2.2, base: 1.5, flak: 1.5, sam: 1.35 };
+    for (const k of ["jet", "tank", "base", "flak", "sam"]) if (d[k]) d[k] = Math.max(1, Math.round(d[k] * ramp * more[k]));
+    if (d.jets) d.jets = Math.max(3, Math.round(d.jets * ramp * more.jet) + Math.min(8, Math.max(0, n - 10))); }
   const objectives = [];
   for (const k of ["jet", "base", "tank", "flak", "sam"]) if (d[k]) objectives.push({ kind: k, need: d[k], label: `${VERB[k]} ${d[k]} ${NOUN[k]}` });
   if (d.carrier) objectives.push({ kind: "land", need: 1, label: "Land on the carrier" });
   return {
     run, n, title: `${n}. ${d0.title}`, biome: d.biome, place: d.place, time: d.time, weather: d.weather,
-    seconds: d.seconds, difficulty: d.diff, hostile: d.hostile, calm: false,
+    seconds: 180, difficulty: d.diff, hostile: d.hostile, calm: false,
     seed: run.seed || ((n * 2654435761) >>> 0), objectives,
     ground: { tank: d.tank + 1, flak: d.flak, sam: d.sam, base: d.base, ship: 0 }, jets: d.jets,
     allies: { jet: 2 + (n >= 5 ? 1 : 0) + (n >= 9 ? 1 : 0), tank: 2 + (d.diff > 0.5 ? 2 : 0), ship: run.place.sea ? (d.carrier || d.biome === "snow" ? 2 : 1) : 0, ...(d.ally || {}) },

@@ -26,25 +26,12 @@ export function createHaptics() {
       try { navigator.vibrate?.([120, 60, 220, 80, 120]); } catch { /* ignore */ }
       if (label && input) { [0, 140, 320].forEach((d) => setTimeout(() => { try { label.click(); } catch { /* ignore */ } }, d)); }
     },
-    /** b23: missile lock, bomb release, near explosion (navigator.vibrate only; silently skipped on iOS) */
-    lock() { if (!on) return; try { navigator.vibrate?.([18, 40, 18]); } catch { /* ignore */ } },
-    bomb() { if (!on) return; try { navigator.vibrate?.([50, 30, 90]); } catch { /* ignore */ } },
-    boom(k = 1) { if (!on) return; try { navigator.vibrate?.([Math.round(40 + 90 * k), 35, Math.round(20 + 40 * k)]); } catch { /* ignore */ } },
-    tick() {
+    /** b24: no haptics for your own weapons or hits on targets; only crash() and hit() (YOU are hit) vibrate */
+    lock() {}, bomb() {}, boom() {}, tick() {}, pulse() {},
+    hit() {
       if (!on) return;
-      try { navigator.vibrate?.(8); } catch { /* ignore */ }
+      try { navigator.vibrate?.([30, 36, 70]); } catch { /* unsupported */ }
       if (label && input) { try { label.click(); } catch { /* ignore */ } }
-    },
-    /** Call on missile or bullet damage. Does not replace the visual fallback. */
-    pulse() {
-      if (!on) return;
-      if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-        try { navigator.vibrate([30, 36, 70]); } catch { /* unsupported */ }
-      }
-      // iOS 18+ only, and only sometimes. Clicking the label toggles the switch.
-      if (label && input) {
-        try { label.click(); } catch { /* ignore */ }
-      }
     },
   };
 }

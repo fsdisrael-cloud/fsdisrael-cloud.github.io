@@ -13,7 +13,7 @@ export function trackFor(time, weather) {
 const GAME_TRACKS = ["afterburn", "vector", "redline", "skyline", "nightfall", "zenith"];
 
 export function createAudio() {
-  let ctx = null, master, musicGain, sfxGain, noiseBuf = null;
+  let ctx = null, master, musicGain, musicLP = null, sfxGain, noiseBuf = null, rwrN = null, intensity = 0;
   let musicOn = true, sfxOn = true;
   try {
     const s = JSON.parse(localStorage.getItem("jet-audio") || "{}");
@@ -54,7 +54,9 @@ export function createAudio() {
     master = ctx.createGain(); master.gain.value = 0.9; master.connect(ctx.destination);
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -14; comp.ratio.value = 4; comp.connect(master);
-    musicGain = ctx.createGain(); musicGain.gain.value = musicOn ? 0.55 : 0; musicGain.connect(master);
+    rwrN = null; intensity = 0;
+    musicLP = ctx.createBiquadFilter(); musicLP.type = "lowpass"; musicLP.frequency.value = 2600; musicLP.Q.value = 0.7; musicLP.connect(master);   // b24: music opens up in fights
+    musicGain = ctx.createGain(); musicGain.gain.value = musicOn ? 0.55 : 0; musicGain.connect(musicLP);
     sfxGain = ctx.createGain(); sfxGain.gain.value = sfxOn ? 0.9 : 0; sfxGain.connect(comp);
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0);
@@ -84,6 +86,8 @@ export function createAudio() {
   }
   function hold() {
     held = true;
+    try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+    rwrN = null;
     keepAlive(false);
     for (const el of document.querySelectorAll("audio,video")) { try { el.pause(); el.muted = true; } catch { /* ignore */ } }
     if (!ctx) return;
@@ -452,7 +456,7 @@ export function createAudio() {
       const bg = ctx.createGain(); bg.gain.value = 0; const lfo = ctx.createOscillator(); lfo.frequency.value = 9; const lg = ctx.createGain(); lg.gain.value = 0;
       lfo.connect(lg); lg.connect(bg.gain); b.connect(bf); bf.connect(bg); bg.connect(sfxGain);
       w.start(); b.start(0, 0.7); lfo.start();
-      engine = { o, of, n, nf, g, w, wf, wg, b, bg, lfo, lg };
+      engine = { o, of, n, nf, g, w, wf, wg, b, bg, lfo, lg, ab: null };
       } catch { engine = null; }
     },
     updateEngine(throttle, cockpit, speed = 150, load = 0) {
@@ -478,7 +482,7 @@ export function createAudio() {
       if (!engine) return;
       const e = engine; engine = null;
       try { e.g.gain.cancelScheduledValues(ctx.currentTime); e.g.gain.setTargetAtTime(0, ctx.currentTime, 0.1); } catch { /* ignore */ }
-      setTimeout(() => { try { e.o.stop(); e.n.stop(); e.w.stop(); e.b.stop(); e.lfo.stop(); e.g.disconnect(); e.wg.disconnect(); e.bg.disconnect(); } catch { /* ignore */ } }, 400);
+      setTimeout(() => { try { e.o.stop(); e.n.stop(); e.w.stop(); e.b.stop(); e.lfo.stop(); e.g.disconnect(); e.wg.disconnect(); e.bg.disconnect(); if (e.ab) { e.ab.n.stop(); e.ab.g.disconnect(); } } catch { /* ignore */ } }, 400);
     },
     gun() {
       if (!ctx || !sfxOn || ctx.state !== "running") return; const now = ctx.currentTime; gunT = now;
@@ -506,8 +510,43 @@ export function createAudio() {
     hit() { if (!gate("hit", 140)) return; play("hit", { gain: 0.3, rate: 0.85 + Math.random() * 0.4, prio: 0 }); },
     hurt() { if (!gate("hurt", 450)) return; noise({ dur: 0.28, peak: 0.28, type: "lowpass", f0: 600, f1: 250, a: 0.012 }); tone({ f0: 120, f1: 70, dur: 0.22, peak: 0.12, a: 0.015 }); },
     lock() { if (!gate("lock", 900)) return; tone({ f0: 880, dur: 0.2, peak: 0.045, a: 0.03 }); },
-    rwr(v = 0.05, f = 900) { tone({ f0: f, dur: 0.1, peak: Math.min(0.08, v * 0.5), a: 0.02, prio: 2 }); },
-    warn() { if (!gate("warn", 2500)) return; tone({ f0: 660, dur: 0.3, peak: 0.05, a: 0.04 }); },
+    rwr(v = 0.05, f = 900) { tone({ f0: f, dur: 0.07, peak: Math.min(0.1, v * 0.9), type: "square", a: 0.004, prio: 2 }); },
+    /** b24: steady radar-lock growl (enemy radar has you); off when nothing locks you */
+    rwrLock(on) {
+      if (!ctx || held || ctx.state !== "running") return;
+      try {
+        if (!rwrN) {
+          const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = 520;
+          const lf = ctx.createOscillator(); lf.frequency.value = 34; const lg = ctx.createGain(); lg.gain.value = 0.5;
+          const g = ctx.createGain(); g.gain.value = 0; const f = ctx.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 900; f.Q.value = 1.4;
+          const am = ctx.createGain(); am.gain.value = 0.5; lf.connect(lg); lg.connect(am.gain);
+          o.connect(f); f.connect(am); am.connect(g); g.connect(sfxGain); o.start(); lf.start(); rwrN = { o, lf, g };
+        }
+        rwrN.g.gain.setTargetAtTime(on && sfxOn ? 0.075 : 0, ctx.currentTime, 0.05);
+      } catch { /* ignore */ }
+    },
+    /** b24: music intensity 0..1 (rises in dogfights): filter opens, tempo creeps up */
+    setIntensity(x) {
+      if (!ctx || !musicLP) return; const t = ctx.currentTime;
+      if (Math.abs(x - intensity) < 0.02) return; intensity = x;
+      try { musicLP.frequency.setTargetAtTime(2400 + x * x * 17000, t, 0.4); if (current && !current.dead) current.src.playbackRate.setTargetAtTime(1 + 0.04 * x, t, 0.8); musicGain.gain.setTargetAtTime((musicOn ? 0.5 + 0.2 * x : 0), t, 0.3); } catch { /* ignore */ }
+    },
+    /** b24: afterburner roar layer */
+    setBurner(on) {
+      if (!engine || !ctx) return;
+      try {
+        if (!engine.ab) { const n = ctx.createBufferSource(); n.buffer = noiseBuf; n.loop = true; n.playbackRate.value = 0.6; const f = ctx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 520; const g = ctx.createGain(); g.gain.value = 0; n.connect(f); f.connect(g); g.connect(sfxGain); n.start(); engine.ab = { n, g }; }
+        engine.ab.g.gain.setTargetAtTime(on ? 0.2 : 0, ctx.currentTime, 0.25);
+      } catch { /* ignore */ }
+    },
+    /** b24: cockpit voice: "MISSILE" and wingman callouts (speech synthesis; cancelled when you leave the app) */
+    say(text) {
+      if (!sfxOn || held || document.hidden || !("speechSynthesis" in window)) return;
+      const key = /^missile/i.test(text) ? "say-msl" : "say";
+      if (!gate(key, key === "say-msl" ? 2200 : 6000)) return;
+      try { const u = new SpeechSynthesisUtterance(text); u.rate = key === "say-msl" ? 1.25 : 1.05; u.pitch = 0.55; u.volume = 1; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch { /* ignore */ }
+    },
+    warn() { if (!gate("warn", 2500)) return; tone({ f0: 660, dur: 0.16, peak: 0.07, type: "square", a: 0.01 }); tone({ f0: 990, dur: 0.16, peak: 0.07, type: "square", a: 0.01, delay: 0.2 }); },
     pullUp() { if (!gate("pu", 2500)) return; tone({ f0: 520, dur: 0.25, peak: 0.045, a: 0.04 }); },
     thunder() { noise({ dur: 3.2, peak: 0.7, type: "lowpass", f0: 400, f1: 60, a: 0.08, rate: 0.5 }); tone({ f0: 55, f1: 30, dur: 2.4, peak: 0.35, type: "sine", a: 0.1 }); },
     crash() {

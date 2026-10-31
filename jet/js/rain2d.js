@@ -13,17 +13,17 @@ export function createRain2D(canvas) {
     const sp = Math.min(1.6, (speed || 150) / 200);
     if (view === "cockpit") {
       spawnT -= dt * (14 + 30 * level);
-      while (spawnT <= 0 && drops.length < 90) { spawnT += 1; drops.push({ x: Math.random() * w, y: Math.random() * h, r: (2 + Math.random() * 5) * dpr * 0.6, life: 2.5 + Math.random() * 4, vy: 0, t: 0 }); }
+      while (spawnT <= 0 && drops.length < 120) { spawnT += 1; drops.push({ x: Math.random() * w, y: Math.random() * h, r: (4 + Math.random() * 8) * dpr * 0.6, life: 3 + Math.random() * 5, vy: 0, t: 0 }); }
       for (let i = drops.length - 1; i >= 0; i--) {
         const d = drops[i]; d.t += dt;
         if (d.t > d.life) { drops.splice(i, 1); continue; }
         if (d.r > 4.2 * dpr * 0.6) d.vy += dt * 30 * sp; d.y -= (d.vy * 0.4 - sp * 18) * dt * 0.0 + (sp * 26 * (d.r / (6 * dpr))) * dt; d.x += Math.sin(d.t * 3 + d.life) * dt * 3;
         const a = Math.min(1, d.t * 3, (d.life - d.t) * 1.2) * level;
         if (d.y < -10 || d.y > h + 10) { drops.splice(i, 1); continue; }
-        ctx.globalAlpha = a * 0.85;
-        ctx.strokeStyle = "rgba(210,230,255,0.35)"; ctx.lineWidth = Math.max(1, d.r * 0.55); ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x + 1, d.y + d.r * 3.2 * sp); ctx.stroke();   // tail
+        ctx.globalAlpha = Math.min(1, a * 1.15);
+        ctx.strokeStyle = "rgba(215,235,255,0.6)"; ctx.lineWidth = Math.max(1, d.r * 0.55); ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x + 1, d.y + d.r * 3.2 * sp); ctx.stroke();   // tail
         const g = ctx.createRadialGradient(d.x - d.r * 0.3, d.y - d.r * 0.3, d.r * 0.1, d.x, d.y, d.r);
-        g.addColorStop(0, "rgba(255,255,255,0.95)"); g.addColorStop(0.45, "rgba(170,200,230,0.28)"); g.addColorStop(1, "rgba(30,50,80,0.45)");
+        g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(0.4, "rgba(190,215,240,0.55)"); g.addColorStop(1, "rgba(20,40,70,0.75)");
         ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(d.x, d.y, d.r * 0.85, d.r, 0, 0, 7); ctx.fill();
       }
       streaks.length = 0;

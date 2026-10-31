@@ -2,8 +2,8 @@
 // Surreal = pastel hue-shifting palette, gently wavy/melting terrain, soft outlines,
 // floating dream shapes and a cheap CSS glow. All GPU-cheap: a few shader lines + 4 draw calls.
 import * as THREE from "three";
-import { noiseTex, FX, terrainPhotos, BUMP_GLSL } from "./tex.js?v=23";
-import { outlineUniforms, toonMaterial, PartBuilder, G, outlineMaterial } from "./toon.js?v=23";
+import { noiseTex, FX, terrainPhotos, BUMP_GLSL } from "./tex.js?v=24";
+import { outlineUniforms, toonMaterial, PartBuilder, G, outlineMaterial } from "./toon.js?v=24";
 
 const KEY = "jet-style";
 export const style = {
@@ -45,10 +45,14 @@ const HUE = /* glsl */ `
     return c * ca + cross(k, c) * sin(a) + k * dot(k, c) * (1.0 - ca);
   }`;
 
+const LAKE = { tex: { value: null }, box: { value: new THREE.Vector3(0, 0, 1) }, on: { value: 0 } };
+export function setLake(info) {
+  if (info && info.tex) { LAKE.tex.value = info.tex; LAKE.box.value.set(info.x0, info.z0, info.W); LAKE.on.value = 1; } else { LAKE.on.value = 0; }
+}
 export function patchTerrain(mat) {
   mat.onBeforeCompile = (sh) => {
     sh.uniforms.uTime = style.uTime; sh.uniforms.uSur = style.uSur; sh.uniforms.uCenter = style.uCenter;
-    sh.uniforms.uNoise = { value: noiseTex() }; const ph = terrainPhotos(); sh.uniforms.uTxG = ph.g; sh.uniforms.uTxR = ph.r; sh.uniforms.uT2 = FX.time; sh.uniforms.uSunD = FX.sunDir; sh.uniforms.uSunC = FX.sunCol;
+    sh.uniforms.uLake = LAKE.tex; sh.uniforms.uLakeB = LAKE.box; sh.uniforms.uLakeOn = LAKE.on; sh.uniforms.uNoise = { value: noiseTex() }; const ph = terrainPhotos(); sh.uniforms.uTxG = ph.g; sh.uniforms.uTxR = ph.r; sh.uniforms.uT2 = FX.time; sh.uniforms.uSunD = FX.sunDir; sh.uniforms.uSunC = FX.sunCol;
     const HI = (FX.hi ? "#define UBU_HI\n" : "") + (/[?&]nodet/.test(location.search) ? "#define UBU_OFF\n" : "");
     sh.vertexShader = sh.vertexShader
       .replace("#include <common>", "#include <common>\nuniform float uTime; uniform float uSur; uniform vec2 uCenter; varying vec2 vWorldXZ; varying vec3 vWP; varying vec3 vWN;")
@@ -60,6 +64,7 @@ export function patchTerrain(mat) {
     sh.fragmentShader = sh.fragmentShader
       .replace("#include <common>", HI + "#include <common>\nuniform float uTime; uniform float uSur; varying vec2 vWorldXZ; varying vec3 vWP; varying vec3 vWN; uniform sampler2D uNoise; uniform float uT2; uniform vec3 uSunD; uniform vec3 uSunC; uniform sampler2D uTxG; uniform sampler2D uTxR; float ubuH = 0.0; float ubuBF = 0.0;" + BUMP_GLSL + HUE)
       .replace("#include <normal_fragment_maps>", "#include <normal_fragment_maps>\n        #ifdef UBU_HI\n        if (ubuBF > 0.0) normal = ubuBump(normal, -vViewPosition, ubuH * 2.0, 0.045 * ubuBF);\n        #endif")
+      .replace("uniform sampler2D uTxR;", "uniform sampler2D uTxR; uniform sampler2D uLake; uniform vec3 uLakeB; uniform float uLakeOn;")
       .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
         totalEmissiveRadiance += ubuGlint;`)
       .replace("#include <map_fragment>", `#include <map_fragment>
@@ -75,7 +80,9 @@ export function patchTerrain(mat) {
             vec4 n3 = texture2D(uNoise, vWP.xz * 0.09);
             det += (n3.b - 0.5) * 0.55 * (1.0 - smoothstep(250.0, 2600.0, dd));
           #endif
-          bool wat = vWP.y < 0.12 && uSur < 0.5;
+          float lakeM = 0.0;
+          if (uLakeOn > 0.5) { vec2 lu = (vWP.xz - uLakeB.xy) / uLakeB.z; if (lu.x > 0.0 && lu.y > 0.0 && lu.x < 1.0 && lu.y < 1.0) lakeM = texture2D(uLake, lu).r; }
+          bool wat = (vWP.y < 0.12 || lakeM > 0.5) && uSur < 0.5;
           float pg = 0.0, pr = 0.0;
           #ifdef UBU_HI
           {

@@ -33,7 +33,9 @@ export function createControls() {
   let invertPitch = false; try { invertPitch = localStorage.getItem("jet-invert-v3") === "1"; } catch { /* ignore */ }
   let rawPitch = 0, rawRoll = 0, smPitch = 0, smRoll = 0;
   let zeroPitch = 35, zeroRoll = 0, wantCal = true, calAt = 0;
-  let tgtEdge = 0, mslHeld = false, bombHeld = false, gunHeld = false, rocketEdge = false, bombEdge = false, viewEdge = false, boostKey = false;
+  let tgtEdge = 0, mslHeld = false, bombHeld = false, gunHeld = false, rocketEdge = false, bombEdge = false, viewEdge = false, boostKey = false, flareEdge = false, brakeHeld = false, brakeKey = false;
+  // b24 one-finger mode: double-tap the stick = missile, triple-tap = bomb (short taps with almost no deflection, so they never move the jet)
+  let tapN = 0, tapLast = 0, tapTO = 0;
   const joy = { x: 0, y: 0, active: false, id: null, sx: 0, sy: 0 };
   const lk = { active: false, id: null, x: 0, y: 0 };
   let lookMode = "chase";
@@ -77,6 +79,8 @@ export function createControls() {
     if (k === "b" || k === "g") bombEdge = true;
     if (k === "v" || k === "c") viewEdge = true;
     if (k === "shift") boostKey = true;
+    if (k === "x" || k === "e") flareEdge = true;
+    if (k === "z" || k === "control") brakeKey = true;
     if (k.startsWith("arrow")) e.preventDefault();
   });
   window.addEventListener("keyup", (e) => {
@@ -84,6 +88,7 @@ export function createControls() {
     keys.delete(k);
     if (k === " ") gunHeld = false;
     if (k === "shift") boostKey = false;
+    if (k === "z" || k === "control") brakeKey = false;
   });
   window.addEventListener("blur", () => { keys.clear(); gunHeld = false; });
 
@@ -142,7 +147,7 @@ export function createControls() {
     bindTP(root, {
       down(e, id, x, y) {
         if (!enabled || joy.active) return;
-        joy.active = true; joy.id = id; joy.sx = x; joy.sy = y;
+        joy.active = true; joy.id = id; joy.sx = x; joy.sy = y; joy.t0 = e.timeStamp || performance.now(); joy.maxd = 0;
         say("stick");
       },
       move(e, id, x, y) {
@@ -152,11 +157,33 @@ export function createControls() {
         if (m > 1) { dx /= m; dy /= m; }
         const dist = Math.hypot(x - joy.sx, y - joy.sy), over = dist - C.stickRadiusPx * 1.6;
         if (over > 0) { const k = over / dist; joy.sx += (x - joy.sx) * k; joy.sy += (y - joy.sy) * k; }
-        joy.x = dx; joy.y = dy;
+        joy.x = dx; joy.y = dy; joy.maxd = Math.max(joy.maxd || 0, m);
       },
-      up(e, id) { if (joy.active && id === joy.id) { joy.active = false; joy.id = null; } },
+      up(e, id) {
+        if (!(joy.active && id === joy.id)) return;
+        joy.active = false; joy.id = null;
+        const now = e.timeStamp || performance.now();   // input time, not handler time: robust when a frame is slow
+        if (enabled && now - (joy.t0 || 0) < 230 && (joy.maxd || 0) < 0.32) {
+          if (now - tapLast > 340) tapN = 0;
+          tapLast = now; tapN++;
+          clearTimeout(tapTO);
+          if (tapN >= 3) { tapN = 0; bombEdge = true; say("bomb"); joy.x = joy.y = 0; }
+          else if (tapN === 2) { tapTO = setTimeout(() => { tapN = 0; if (enabled) { rocketEdge = true; say("missile"); } }, 300); }
+        } else tapN = 0;
+      },
     });
     root.addEventListener("contextmenu", (e) => e.preventDefault());
+  }
+
+  /** b24: flare + airbrake buttons just above the stick */
+  function bindAux(root) {
+    if (!root) return;
+    const press = (b, on) => b.classList.toggle("pressed", on);
+    const bF = root.querySelector('[data-w="flare"]'), bB = root.querySelector('[data-w="brake"]');
+    let idB = null;
+    bF && bindTP(bF, { down(e, id) { if (enabled) flareEdge = true; press(bF, true); say("flare"); }, up(e, id) { press(bF, false); } });
+    bB && bindTP(bB, { down(e, id) { idB = id; brakeHeld = true; press(bB, true); say("brake"); }, up(e, id) { if (id === idB) { idB = null; brakeHeld = false; press(bB, false); } } });
+    for (const b of [bF, bB]) b && b.addEventListener("contextmenu", (e) => e.preventDefault());
   }
 
   /** Weapon buttons (bottom left): `root` holds .wbtn[data-w=gun|missile|bomb]. Gun = hold (push-to-fire), missile / bomb = tap. Each button tracks its own touch. */
@@ -166,7 +193,7 @@ export function createControls() {
     const own = { gun: null, msl: null, bomb: null, up: null, dn: null };
     bindTP(bGun, { down(e, id) { own.gun = id; gunHeld = true; press(bGun, true); say("gun"); }, up(e, id) { if (id === own.gun) { own.gun = null; gunHeld = false; press(bGun, false); } } });
     bindTP(bMsl, { down(e, id) { own.msl = id; if (enabled) { rocketEdge = true; mslHeld = true; } press(bMsl, true); say("missile"); }, up(e, id) { if (id === own.msl) { own.msl = null; mslHeld = false; press(bMsl, false); } } });
-    bindTP(bBomb, { down(e, id) { own.bomb = id; if (enabled) { bombEdge = true; bombHeld = true; } press(bBomb, true); say("bomb"); }, up(e, id) { if (id === own.bomb) { own.bomb = null; bombHeld = false; press(bBomb, false); } } });
+    bindTP(bBomb, { down(e, id) { own.bomb = id; bombEdge = true; bombHeld = true; press(bBomb, true); say("bomb"); }, up(e, id) { if (id === own.bomb) { own.bomb = null; bombHeld = false; press(bBomb, false); } } });
     const bUp = root.querySelector('[data-w="tgt-up"]'), bDn = root.querySelector('[data-w="tgt-dn"]');
     if (bUp) bindTP(bUp, { down(e, id) { tgtEdge = -1; press(bUp, true); say("tgt"); }, up(e, id) { press(bUp, false); } });
     if (bDn) bindTP(bDn, { down(e, id) { tgtEdge = 1; press(bDn, true); say("tgt"); }, up(e, id) { press(bDn, false); } });
@@ -240,13 +267,15 @@ export function createControls() {
   }
 
   return {
-    stick, look, update, mountStick, bindWeapons, bindLookSurface, bindLoops() {},
-    setEnabled(v) { enabled = v; if (!v) { gunHeld = false; joy.active = false; lk.active = false; joy.x = joy.y = 0; } },
+    stick, look, update, mountStick, bindWeapons, bindAux, bindLookSurface, bindLoops() {},
+    setEnabled(v) { enabled = v; if (!v) { gunHeld = false; brakeHeld = false; joy.active = false; lk.active = false; joy.x = joy.y = 0; } },
     setLookMode(m) { lookMode = m; }, resetLook() { look.yaw = 0; look.pitch = 0; },
     gunHeld: () => gunHeld,
     consumeRocket() { const v = rocketEdge || mslHeld; rocketEdge = false; return v; },
     consumeBomb() { const v = bombEdge || bombHeld; bombEdge = false; return v; },
     consumeLoop() { return 0; },
+    consumeFlare() { const v = flareEdge; flareEdge = false; return v; },
+    brake: () => brakeHeld || brakeKey,
     consumeTgt() { const v = tgtEdge; tgtEdge = 0; return v; },
     consumeView() { const v = viewEdge; viewEdge = false; return v; },
     requestView() { viewEdge = true; },

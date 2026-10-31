@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="ubu-build" content="23" />
+  <meta name="ubu-build" content="24" />
   <meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -16,8 +16,8 @@
   <link rel="icon" type="image/png" sizes="192x192" href="img/icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png" />
   <link rel="preload" href="fonts/Fredoka.ttf" as="font" type="font/ttf" crossorigin />
-  <link rel="stylesheet" href="css/jet.css?v=23" />
-  <link rel="stylesheet" href="css/loading.css?v=23" />
+  <link rel="stylesheet" href="css/jet.css?v=24" />
+  <link rel="stylesheet" href="css/loading.css?v=24" />
   <script type="importmap">{ "imports": { "three": "./js/vendor/three.module.min.js" } }</script>
 </head>
 <body class="on-title tp-a">
@@ -96,7 +96,7 @@
     <div id="hud-track" class="hud-track">TRACK</div>
     <div id="hud-obj" class="objectives"></div>
     <div class="stats" id="stats">
-      <div class="statrow"><span>HP</span><div class="bar"><i id="hud-hp"></i></div></div>
+      <div class="statrow"><span>LIFE</span><div class="lives" id="hud-lives"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
       <div class="statrow heat"><span id="hud-heat-label">GUN</span><div class="bar"><i id="hud-heat"></i></div></div>
       <div class="nums"><span><b id="hud-spd">0</b> km/h</span><span><b id="hud-alt">0</b> m</span><span class="fl-c"><b id="hud-fl">12</b> flares</span><span class="kl-c"><b id="hud-kl">0</b> kills</span></div>
     </div>
@@ -112,6 +112,8 @@
       <div class="thr" id="thr" aria-label="Throttle"><div class="thr-track" id="thr-track"><i class="thr-ticks"></i><i class="thr-fill"></i><b class="thr-knob" id="thr-knob"></b></div><div class="thr-info"><small>THR</small><b id="thr-spd">0</b><small>km/h</small></div></div>
     </div>
     <div id="stick" class="stick"></div>
+    <div id="aux" class="aux"><button type="button" class="abtn a-brake" data-w="brake" aria-label="Airbrake"><em>BRAKE</em></button><button type="button" class="abtn a-flare" data-w="flare" aria-label="Flares"><span class="fe">&#127775;</span><em>FLARES</em></button></div>
+    <div id="lvl-title" class="lvl-title"><small>MISSION</small><b></b><em></em></div>
     <div id="alert" class="alert hidden"></div>
     <div id="toasts" class="toasts"></div>
     <div id="low-alt" class="low-alt">PULL UP</div>
@@ -165,6 +167,6 @@
     </div>
   </section>
   <div id="build-tag" class="build-tag"></div>
-  <script type="module" src="js/main.js?v=23"></script>
+  <script type="module" src="js/main.js?v=24"></script>
 </body>
 </html>

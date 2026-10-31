@@ -1,16 +1,16 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=23";
-import { createHud } from "./hud.js?v=23";
-import { createControls } from "./controls.js?v=23";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene } from "./variety.js?v=23";
-import { createAudio, trackFor } from "./audio.js?v=23";
-import { createHaptics } from "./haptics.js?v=23";
-import { createRain2D } from "./rain2d.js?v=23";
-import { createLoading } from "./loading.js?v=23";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=23";
-import { setSurreal, tickStyle } from "./surreal.js?v=23";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=23";
+import { createGame } from "./game.js?v=24";
+import { createHud } from "./hud.js?v=24";
+import { createControls } from "./controls.js?v=24";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene } from "./variety.js?v=24";
+import { createAudio, trackFor } from "./audio.js?v=24";
+import { createHaptics } from "./haptics.js?v=24";
+import { createRain2D } from "./rain2d.js?v=24";
+import { createLoading } from "./loading.js?v=24";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=24";
+import { setSurreal, tickStyle } from "./surreal.js?v=24";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=24";
 
 const $ = (id) => document.getElementById(id);
 
@@ -28,7 +28,7 @@ try {
   for (let i = 0; i < 500; i++) { w.fillStyle = `rgba(${rn() < 0.5 ? "255,255,255" : "0,0,0"},${0.03 + rn() * 0.08})`; w.fillRect(rn() * 256, rn() * 256, 1 + rn() * 2, 1 + rn() * 2); }
   document.documentElement.style.setProperty("--worn", `url(${wc.toDataURL("image/png")})`);
 } catch (e) { /* plain gradients if canvas is unavailable */ }
-const BUILD = 23;
+const BUILD = 24;
 { const t = $("build-tag"); if (t) t.textContent = "JET-X b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;
@@ -62,6 +62,7 @@ const audio = createAudio();
 const controls = createControls();
 controls.mountStick($("stick"));
 controls.bindWeapons($("weapons"));
+controls.bindAux($("aux"));
 controls.bindLookSurface(canvas); // head-look: swipe the bare screen = turn the view only
 const haptics = createHaptics();
 const hud = createHud();
@@ -80,7 +81,7 @@ const game = createGame({
     onCrash: () => $("crash").classList.remove("hidden"),
     onRespawn: () => { $("crash").classList.add("hidden"); hud.toast("Back in the sky!"); },
     onEmpty: (kind) => { const b = document.querySelector(kind === "bomb" ? ".w-bomb" : ".w-msl"); if (b) { b.classList.remove("shake"); void b.offsetWidth; b.classList.add("shake"); } },
-    onHit: (kill) => { const h = $("hitmark"); if (!h) return; h.classList.toggle("kill", !!kill); h.classList.remove("on"); void h.offsetWidth; h.classList.add("on"); if (kill) haptics.tick?.(); },
+    onHit: (kill) => { const h = $("hitmark"); if (!h) return; h.classList.toggle("kill", !!kill); h.classList.remove("on"); void h.offsetWidth; h.classList.add("on"); },
     onPop: (pts, combo, kind) => {
       if (pts >= 0) { const sp = $("splash"); if (sp) { sp.textContent = "SPLASH " + game.killCount(); sp.classList.remove("on"); void sp.offsetWidth; sp.classList.add("on"); } }
       const box = $("popups"); if (!box) return;
@@ -117,7 +118,7 @@ document.addEventListener("dblclick", (e) => e.preventDefault());
 document.addEventListener("pointerdown", (e) => {
   const b = e.target.closest?.("button");
   if (!b || b.disabled) return;
-  if (!b.classList.contains("wbtn")) { audio.click(); haptics.tick(); }
+  if (!b.classList.contains("wbtn")) { audio.click(); }
   if (b.classList.contains("metal-btn")) { b.classList.add("pressed"); setTimeout(() => b.classList.remove("pressed"), 140); }
 }, { capture: true });
 
@@ -153,7 +154,8 @@ syncInvert();
 }
 
 // ---------- mission time choice (opening screen): 3 / 5 / 10 minutes / Endless, remembered ----------
-const timeSec = 300; // Build 17: the round is always 5:00 (no picker)
+const timeSec = 180; // Build 24: every level is 3:00
+let carryScore = 0;   // score carried from level to level within one run
 
 // ---------- opening screen: 3 buttons ----------
 // EASY TO RELABEL / REWIRE: each entry is { label, sub (optional small text), primary, run }.
@@ -181,9 +183,9 @@ const SEC_LINKS = [
   { label: "HOW TO FLY", run: () => showPanel("How to fly", HOW_HTML) },    // PLACEHOLDER (function pending)
 ];
 function levelsHtml() {
-  const d = LEVELS[levelNo - 1];
+  const d = LEVELS[Math.min(levelNo, LEVELS.length) - 1];
   const dots = LEVELS.map((_, i) => `<div class="dot ${i + 1 < levelNo ? "done" : i + 1 === levelNo ? "now" : ""}">${i + 1}</div>`).join("");
-  return `<div>Level <b>${levelNo}</b> of ${levelCount()}: ${d.title}<br><small>${BIOMES[d.biome]}</small></div><div class="dots">${dots}</div>`;
+  return `<div>Level <b>${levelNo}</b>: ${d.title}<br><small>${BIOMES[d.biome]}</small></div><div class="dots">${dots}</div>`;
 }
 function buildMenu() {
   const box = $("menu-buttons"); box.innerHTML = "";
@@ -222,7 +224,7 @@ async function launch(n, fromTap, sv) {
   preload = null;
   if (!ok) { loading.set(1, "Could not load the map. Check your connection and tap PLAY again."); state = "title"; document.body.classList.add("tp-c"); setTimeout(() => loading.hide(), 2200); preload = null; return; }
   const L = game.level();
-  $("hud-level").textContent = `Level ${n}/${levelCount()}`;
+  $("hud-level").textContent = `LEVEL ${n}`;
   const nightOn = L.time === "night";
   document.body.classList.toggle("nv-on", nightOn);
   $("hud-world").textContent = runLabel(L.run);
@@ -233,10 +235,11 @@ async function launch(n, fromTap, sv) {
   try { const sv0 = localStorage.getItem("jet-view"); if ((sv0 === "cockpit" || sv0 === "chase") && sv0 !== game.view() && !L.lockView) game.setView(sv0); } catch { /* ignore */ }
   window.__applyThrottle?.(parseFloat(document.getElementById('thr').style.getPropertyValue('--t')) || 0.35);
   game.setTime(sv ? sv.timeLeft : timeSec);
-  if (sv) game.setScore(sv.score);
+  game.setScore(sv ? sv.score : carryScore);
   if (sv?.snap) { try { game.restoreSnap(sv.snap); } catch { /* ignore */ } }
   window.__settingsOpen?.(false);
   game.start();
+  { const lt = $("lvl-title"); lt.querySelector("b").textContent = `LEVEL ${n}`; lt.querySelector("em").textContent = (game.level().title || "").replace(/^\d+\.\s*/, "").toUpperCase(); lt.classList.remove("show"); void lt.offsetWidth; lt.classList.add("show"); }
   state = "playing";
   liveLoad = false; $("loading").classList.remove("live");
   loading.hide();
@@ -245,7 +248,7 @@ function play(sv) {
   // single first tap: unlock audio, ask for motion permission (iOS), calibrate neutral, start.
   audio.unlock();
   controls.startTiltIfAllowed();   // never asks for motion permission here: only the TILT toggle does
-  haptics.pulse();
+  if (!sv) { carryScore = 0; }
   launch(sv ? sv.n : levelNo, true, sv);
 }
 
@@ -253,20 +256,22 @@ function onLevelEnd(r) {
   state = "results";
   audio.stopEngine(); controls.setEnabled(false);
   clearSave();
-  const n = levelNo, last = n >= levelCount();
-  const won = r.reason === "complete";
-  $("res-title").textContent = won ? (last ? "YOU WIN!" : `LEVEL ${n} CLEAR`) : r.reason === "down" ? "SHOT DOWN" : "TIME UP";
+  const n = levelNo;
+  const won = r.reason === "complete";   // survived the 3 minutes
+  $("res-title").textContent = won ? `LEVEL ${n} CLEAR` : "GAME OVER";
   $("res-stars").textContent = won ? "★".repeat(r.stars) + "☆".repeat(3 - r.stars) : "";
-  $("res-sub").textContent = `Score ${r.score}`;
+  $("res-sub").textContent = won ? `Score ${r.score} · next: level ${n + 1}` : `Score ${r.score} · reached level ${n}`;
   const k = r.stats.kills || {};
   const rows = Object.entries(k).map(([a, c]) => `${c} ${a === "jet" ? "planes" : a === "base" ? "base buildings" : a + "s"}`);
   $("res-list").textContent = rows.length ? rows.join(" · ") : "";
-  if (won) { audio.win(); saveLevelNo(last ? 1 : n + 1); } else { audio.lose(); }
-  const next = won ? (last ? 1 : n + 1) : n;
-  $("res-btn-label").textContent = won ? (last ? "PLAY AGAIN" : "NEXT LEVEL") : "RETRY";
+  let next;
+  if (won) { audio.win(); next = n + 1; saveLevelNo(next); carryScore = r.score; }
+  else { audio.lose(); next = 1; saveLevelNo(1); carryScore = 0; }
+  $("res-btn-label").textContent = won ? "NEXT LEVEL" : "NEW GAME";
   $("res-btn").onclick = () => launch(next);
-  setTimeout(() => { if (state === "results" && !preload) startPreload(next); }, 1800);   // next world loads while you read the card: RETRY / NEXT start fast
-  showHighScores(r.score, () => $("results").classList.remove("hidden"));
+  setTimeout(() => { if (state === "results" && !preload) startPreload(next); }, 1800);
+  if (won) $("results").classList.remove("hidden");
+  else showHighScores(r.score, () => $("results").classList.remove("hidden"), n);
 }
 
 // ---------- arcade high scores: top 10, 5-letter name entry, saved in localStorage (jet-scores-v1) ----------
@@ -274,7 +279,7 @@ const SCORE_KEY = "jet-scores-v1";
 function loadScores() { try { const v = JSON.parse(localStorage.getItem(SCORE_KEY)); if (v && Array.isArray(v.list)) return v; } catch { /* ignore */ } return { list: [], last: "ACE" }; }
 // Build 15: endless leaderboard (every score kept). Entry is prefilled with the last name; CLEAR NAME wipes it; OK saves,
 // then the list scrolls to your rank and highlights it. TOP jumps to #1, HOME returns to the starting page.
-function showHighScores(score, done) {
+function showHighScores(score, done, lv = 1) {
   const box = $("hs"), card = box.querySelector(".hs-card"), data = loadScores(), wrap = $("hs-wrap");
   const entering = score > 0;
   if (!entering && !data.list.length) { done(); return; }
@@ -287,7 +292,7 @@ function showHighScores(score, done) {
   const dstr = (t) => { if (!t) return ""; const d = new Date(t); return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getFullYear()).slice(2)}`; };
   const renderList = () => {
     if (!data.list.length) { $("hs-list").innerHTML = `<li class="empty">NO RECORDS ON FILE</li>`; return; }
-    $("hs-list").innerHTML = data.list.map((e, i) => `<li class="${e === mine ? "me" : ""}${i < 3 ? " top" + (i + 1) : ""}"><span>${i + 1}</span><em>${esc(e.n.trim() || "-----")}</em><b>${fmt(e.s)}</b><u>${dstr(e.d)}</u></li>`).join("");
+    $("hs-list").innerHTML = data.list.map((e, i) => `<li class="${e === mine ? "me" : ""}${i < 3 ? " top" + (i + 1) : ""}"><span>${i + 1}</span><em>${esc(e.n.trim() || "-----")}</em><i>L${e.lv || 1}</i><b>${fmt(e.s)}</b><u>${dstr(e.d)}</u></li>`).join("");
   };
   const renderEntry = () => {
     $("hs-entry").innerHTML = letters.map((c, i) => `<div class="hs-slot${i === cur ? " on" : ""}" data-i="${i}"><button type="button" data-d="1" aria-label="up">&#9650;</button><b>${c === " " ? "&nbsp;" : c}</b><button type="button" data-d="-1" aria-label="down">&#9660;</button></div>`).join("");
@@ -302,7 +307,7 @@ function showHighScores(score, done) {
   const commit = () => {
     if (!entering || mine) return;
     const name = letters.join("").trim().toUpperCase() || "-----";
-    mine = { n: name, s: score, d: Date.now() };
+    mine = { n: name, s: score, d: Date.now(), lv };
     data.list.push(mine); data.list.sort((a, b) => b.s - a.s); if (data.list.length > 20000) data.list.length = 20000;
     if (name !== "-----") data.last = name;
     try { localStorage.setItem(SCORE_KEY, JSON.stringify(data)); } catch { /* storage full or blocked: keep playing */ }
