@@ -2,7 +2,7 @@
 // Player + enemy jets: PBR-lit (metal, glossy canopy, environment reflections) with a thin illustrated outline.
 // Ground units: toon + outline. Illustrated look, readable colours.
 import * as THREE from "three";
-import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=11";
+import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=12";
 
 const PI = Math.PI;
 

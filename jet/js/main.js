@@ -1,19 +1,19 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=11";
-import { createHud } from "./hud.js?v=11";
-import { createControls } from "./controls.js?v=11";
-import { runLabel, PLANETS, JET_TYPES } from "./variety.js?v=11";
-import { createAudio, trackFor } from "./audio.js?v=11";
-import { createHaptics } from "./haptics.js?v=11";
-import { createLoading } from "./loading.js?v=11";
-import { setSurreal, tickStyle } from "./surreal.js?v=11";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=11";
+import { createGame } from "./game.js?v=12";
+import { createHud } from "./hud.js?v=12";
+import { createControls } from "./controls.js?v=12";
+import { runLabel, PLANETS, JET_TYPES } from "./variety.js?v=12";
+import { createAudio, trackFor } from "./audio.js?v=12";
+import { createHaptics } from "./haptics.js?v=12";
+import { createLoading } from "./loading.js?v=12";
+import { setSurreal, tickStyle } from "./surreal.js?v=12";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=12";
 
 const $ = (id) => document.getElementById(id);
 
 // ---------- build / version check ----------
-const BUILD = 11;
+const BUILD = 12;
 { const t = $("build-tag"); if (t) t.textContent = "JET-X b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;

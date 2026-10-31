@@ -1,13 +1,13 @@
 // Ubu game world: flight model, camera, targets, AI, weapons, effects, objectives.
 import * as THREE from "three";
-import { buildTerrain } from "./terrain.js?v=11";
-import { createSky } from "./sky.js?v=11";
-import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createShip, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=11";
-import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=11";
-import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=11";
-import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=11";
-import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=11";
-import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=11";
+import { buildTerrain } from "./terrain.js?v=12";
+import { createSky } from "./sky.js?v=12";
+import { createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createShip, createSamSite, createRocket, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=12";
+import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=12";
+import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=12";
+import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=12";
+import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=12";
+import { style, patchTerrain, waveAt, createDreamShapes, onStyle } from "./surreal.js?v=12";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V();

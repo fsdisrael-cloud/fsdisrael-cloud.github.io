@@ -104,15 +104,23 @@ export function createControls() {
     <path d="M62 222 Q64 188 84 168 L116 168 Q136 188 138 222 Q100 236 62 222Z" fill="url(#sg-boot)" stroke="#07080a" stroke-width="2"/>
     <path d="M68 212 Q100 224 132 212 M71 200 Q100 211 129 200 M76 188 Q100 197 124 188" stroke="#4b5360" stroke-width="2" fill="none" opacity=".8"/>
     <rect x="90" y="120" width="20" height="56" rx="6" fill="url(#sg-metal)" stroke="#0a0c0f" stroke-width="2"/>
-    <g class="stick-grip" transform="translate(100 0) scale(1.4 1) translate(-100 0)">
-      <path d="M62 128 Q58 70 76 34 Q86 10 104 10 Q126 12 130 40 Q142 82 138 128 Q132 140 100 142 Q68 140 62 128Z" fill="url(#sg-grip)" stroke="#05060a" stroke-width="2.5"/>
-      <path d="M76 38 Q82 24 98 20" stroke="#aab6c4" stroke-width="3" fill="none" opacity=".55" stroke-linecap="round"/>
-      <path d="M68 122 Q64 82 78 52" stroke="#7d8896" stroke-width="2" fill="none" opacity=".4"/>
-      <path d="M70 112 Q100 122 132 112" stroke="#d63b2f" stroke-width="5" fill="none" stroke-linecap="round"/>
-      <path d="M72 96 Q100 104 130 96 M73 84 Q100 91 129 84" stroke="#0a0c10" stroke-width="2" fill="none" opacity=".7"/>
-      <ellipse cx="100" cy="26" rx="20" ry="9" fill="#1a1f26" stroke="#07080a" stroke-width="2"/>
-      <circle cx="100" cy="25" r="7" fill="url(#sg-ring)" stroke="#07080a" stroke-width="1.5"/>
-      <path d="M100 17 v-3 M100 33 v3 M92 25 h-3 M108 25 h3" stroke="#aab6c4" stroke-width="1.5"/>
+    <g class="stick-grip" transform="rotate(7 100 142)">
+      <path d="M86 146 L82 104 Q70 78 66 50 Q63 22 84 14 Q106 7 128 16 Q144 26 141 50 Q139 74 126 104 L118 146Z" fill="url(#sg-grip)" stroke="#040507" stroke-width="2.5"/>
+      <path d="M72 50 Q70 26 86 20" stroke="#8d99a8" stroke-width="2.5" fill="none" opacity=".45" stroke-linecap="round"/>
+      <path d="M84 100 Q96 108 84 118 M84 122 Q96 130 84 140" stroke="#06070a" stroke-width="2.2" fill="none" opacity=".8"/>
+      <path d="M121 84 q9 7 0 14 M121 102 q9 7 0 14 M120 120 q8 7 0 13" stroke="#05060a" stroke-width="2.4" fill="none" opacity=".85"/>
+      <path d="M121 88 q6 4 0 9 M121 106 q6 4 0 9" stroke="#6d7886" stroke-width="1" fill="none" opacity=".35"/>
+      <path d="M124 48 Q150 52 146 78 Q144 88 132 84 Q134 70 123 64Z" fill="#14181e" stroke="#030405" stroke-width="2"/>
+      <path d="M128 52 Q142 56 140 70" stroke="#7d8896" stroke-width="1.4" fill="none" opacity=".5"/>
+      <rect x="82" y="62" width="30" height="9" rx="4" fill="#0d1014" stroke="#030405" stroke-width="1.5"/><rect x="86" y="64" width="9" height="5" rx="2" fill="#39414c"/>
+      <circle cx="98" cy="36" r="15" fill="#0c0f13" stroke="#030405" stroke-width="2"/>
+      <circle cx="98" cy="36" r="10.5" fill="#1d2229" stroke="#4a5360" stroke-width="1"/>
+      <path d="M98 27 v18 M89 36 h18" stroke="#080a0d" stroke-width="3.2"/>
+      <circle cx="98" cy="36" r="4.2" fill="#3b4450" stroke="#06070a" stroke-width="1"/>
+      <path d="M98 24.5 l2.5 3 h-5Z M98 47.5 l2.5 -3 h-5Z M86.5 36 l3 -2.5 v5Z M109.5 36 l-3 -2.5 v5Z" fill="#8d99a8" opacity=".6"/>
+      <circle cx="120" cy="42" r="6.5" fill="#0c0f13" stroke="#030405" stroke-width="1.6"/><circle cx="120" cy="42" r="3.6" fill="#2d343d"/>
+      <circle cx="76" cy="46" r="7.5" fill="#16100f" stroke="#030405" stroke-width="1.6"/><circle cx="76" cy="46" r="4.8" fill="#c8322a" stroke="#4a0f0b" stroke-width="1"/><circle cx="74.5" cy="44.5" r="1.4" fill="#ff9a8f" opacity=".7"/>
+      <path d="M76 80 Q98 88 122 80" stroke="#d63b2f" stroke-width="2.5" fill="none" opacity=".85" stroke-linecap="round"/>
     </g>
   </g>
   </g>
@@ -168,12 +176,13 @@ export function createControls() {
     el.addEventListener("pointermove", (e) => {
       if (!lk.active || e.pointerId !== lk.id) return;
       const dx = e.clientX - lk.x, dy = e.clientY - lk.y; lk.x = e.clientX; lk.y = e.clientY;
+      const tnow = performance.now(); lk.v = (lk.v || 0) * 0.6 + 0.4 * Math.hypot(dx / innerWidth, dy / innerHeight) / Math.max(0.008, (tnow - (lk.t || tnow - 16)) / 1000); lk.t = tnow;
       const cock = lookMode === "cockpit", my = cock ? 2.4 : 3.1, mp = cock ? 1.1 : 0.95;
       look.yaw = Math.max(-my, Math.min(my, look.yaw - dx / innerWidth * C.lookYawPerScreen));
       look.pitch = Math.max(-mp, Math.min(mp, look.pitch - dy / innerHeight * C.lookPitchPerScreen));
       e.preventDefault();
     });
-    const end = (e) => { if (lk.active && e.pointerId === lk.id) { lk.active = false; lk.id = null; } };
+    const end = (e) => { if (lk.active && e.pointerId === lk.id) { lk.active = false; lk.id = null; lk.rel = Math.min(1.6, (lk.v || 0) * 0.35); lk.v = 0; lk.t = 0; } };
     for (const t of ["pointerup", "pointercancel", "lostpointercapture"]) el.addEventListener(t, end);
   }
 
@@ -209,7 +218,7 @@ export function createControls() {
     stick.pitch += (p - stick.pitch) * k;
     stick.roll += (r - stick.roll) * k;
     // head-look eases back to forward when released
-    if (!lk.active) { const kk = Math.exp(-dt * C.lookReturn); look.yaw *= kk; look.pitch *= kk; if (Math.abs(look.yaw) < 1e-3) look.yaw = 0; if (Math.abs(look.pitch) < 1e-3) look.pitch = 0; }
+    if (!lk.active) { const far = Math.min(1.5, Math.hypot(look.yaw, look.pitch) / 1.2); const kk = Math.exp(-dt * C.lookReturn * (0.7 + far + (lk.rel || 0))); look.yaw *= kk; look.pitch *= kk; if (Math.abs(look.yaw) < 1e-3) look.yaw = 0; if (Math.abs(look.pitch) < 1e-3) look.pitch = 0; }
     paintStick();
   }
 

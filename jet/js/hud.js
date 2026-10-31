@@ -1,6 +1,6 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=11";
+import { LABEL } from "./missions.js?v=12";
 
 const ALLY = "#3dff8b";
 const COL = { jet: "#ff3b3b", tank: "#ffa91f", flak: "#ff7a1f", sam: "#ff6a1a", base: "#ffa91f", ship: "#ffa91f", pad: "#3dff8b", ring: "#ffe14d" };

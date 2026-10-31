@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="ubu-build" content="11" />
+  <meta name="ubu-build" content="12" />
   <meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -16,8 +16,8 @@
   <link rel="icon" type="image/png" sizes="192x192" href="img/icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png" />
   <link rel="preload" href="fonts/Fredoka.ttf" as="font" type="font/ttf" crossorigin />
-  <link rel="stylesheet" href="css/jet.css?v=11" />
-  <link rel="stylesheet" href="css/loading.css?v=11" />
+  <link rel="stylesheet" href="css/jet.css?v=12" />
+  <link rel="stylesheet" href="css/loading.css?v=12" />
   <script type="importmap">{ "imports": { "three": "./js/vendor/three.module.min.js" } }</script>
 </head>
 <body class="on-title tp-a">
@@ -48,7 +48,7 @@
     <div class="sky-fx" aria-hidden="true"><i class="aurora a1"></i><i class="aurora a2"></i><i class="aurora a3"></i><i class="stars"></i><i class="cloud c1"></i><i class="cloud c2"></i><i class="cloud c3"></i><i class="horizon"></i></div>
     <div class="title-inner">
       <div class="logo" aria-label="JET-X">
-        <img class="logo-img" src="img/wordmark.png?v=11" alt="JET-X" draggable="false">
+        <img class="logo-img" src="img/wordmark.png?v=12" alt="JET-X" draggable="false">
       </div>
       <div class="scene-label" id="scene-label"></div>
       <div id="menu-buttons" class="menu-buttons plates"></div>
@@ -68,12 +68,8 @@
     <div class="radar-wrap">
       <canvas id="radar" aria-label="Radar"></canvas>
       <button type="button" class="view-btn" id="btn-view" aria-label="Camera view: cockpit or chase"><span class="vseg" data-v="cockpit">COCKPIT</span><span class="vseg" data-v="chase">CHASE</span></button>
-      <div class="wc-row">
-        <div class="wcam" id="wcam" aria-label="Weapon camera"><canvas id="wcam-c" width="160" height="160"></canvas><i class="wcam-ring"></i></div>
-        <div class="thr" id="thr" aria-label="Throttle"><small>THR</small><div class="thr-track" id="thr-track"><i class="thr-ticks"></i><i class="thr-fill" id="thr-fill"></i><b class="thr-knob" id="thr-knob"></b></div><div class="thr-spd"><b id="thr-spd">0</b><small>km/h</small></div></div>
-      </div>
+      <div class="wcam" id="wcam" aria-label="Weapon camera"><canvas id="wcam-c" width="160" height="160"></canvas><i class="wcam-ring"></i></div>
     </div>
-    <img class="hud-logo" src="img/wordmark.png?v=11" alt="JET-X" draggable="false">
     <div id="popups" class="popups"></div>
     <div class="top-center">
       <div class="top-row">
@@ -91,12 +87,13 @@
     </div>
     <!-- weapons: bottom left. One consistent ring cooldown on every button. -->
     <div id="weapons" class="weapons">
-      <button type="button" class="wbtn w-gun" data-w="gun" aria-label="Guns"><i class="ring"></i>
-        <svg viewBox="0 0 24 24"><path d="M5 5v14M10 7v12M15 5v14M20 8v10" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg><em>GUN</em><b class="cnt">READY</b></button>
       <button type="button" class="wbtn w-msl" data-w="missile" aria-label="Missile"><i class="ring"></i>
         <svg viewBox="0 0 24 24"><path d="M3 21 8 16m0 0 8-8c2-2 4-3 5-3 0 1-1 3-3 5l-8 8m-2-2 2 2m-6 2 3-1M7 14l-3 1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="16.5" cy="7.5" r="1.4" fill="currentColor"/></svg><em>MISSILE</em><b class="cnt">10/10</b></button>
+      <button type="button" class="wbtn w-gun" data-w="gun" aria-label="Guns"><i class="ring"></i>
+        <svg viewBox="0 0 24 24"><path d="M5 5v14M10 7v12M15 5v14M20 8v10" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg><em>GUN</em><b class="cnt">READY</b></button>
       <button type="button" class="wbtn w-bomb" data-w="bomb" aria-label="Bomb"><i class="ring"></i>
         <svg viewBox="0 0 24 24"><path d="M12 3v5M9 4h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><ellipse cx="12" cy="15" rx="5" ry="6.5" fill="currentColor"/><path d="M10 20.5 8.5 23M14 20.5 15.5 23" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><em>BOMB</em><b class="cnt">10/10</b></button>
+      <div class="thr" id="thr" aria-label="Throttle"><div class="thr-track" id="thr-track"><i class="thr-ticks"></i><i class="thr-fill"></i><b class="thr-knob" id="thr-knob"></b></div><div class="thr-info"><small>THR</small><b id="thr-spd">0</b><small>km/h</small></div></div>
     </div>
     <div id="stick" class="stick"></div>
     <div id="alert" class="alert hidden"></div>
@@ -126,7 +123,7 @@
 
   <section id="resume" class="screen resume hidden" role="dialog" aria-label="Paused">
     <div class="resume-inner">
-      <img class="logo-img" src="img/wordmark.png?v=11" alt="JET-X" draggable="false">
+      <img class="logo-img" src="img/wordmark.png?v=12" alt="JET-X" draggable="false">
       <div class="plates menu-buttons">
         <button type="button" class="plate" id="rs-cont"><i class="led"></i><span class="pt">CONT</span><em class="ps">RESUME SORTIE</em></button>
         <button type="button" class="plate go" id="rs-new"><i class="led"></i><span class="pt">NEW</span><em class="ps">NEW SCENE</em></button>
@@ -134,6 +131,6 @@
     </div>
   </section>
   <div id="build-tag" class="build-tag"></div>
-  <script type="module" src="js/main.js?v=11"></script>
+  <script type="module" src="js/main.js?v=12"></script>
 </body>
 </html>
