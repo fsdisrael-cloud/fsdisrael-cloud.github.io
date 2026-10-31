@@ -279,6 +279,94 @@ export function createAudio() {
     } catch (e) { /* never let audio break the game loop */ }
   }
 
+  // ---- build 17: layered synthesized SFX (pre-rendered once into AudioBuffers; no samples to license) ----
+  let SFX = null;
+  function buildSfx() {
+    const sr = ctx.sampleRate, rnd = Math.random, TAU = Math.PI * 2;
+    const mk = (sec, fn) => { const b = ctx.createBuffer(1, Math.floor(sr * sec), sr); const d = b.getChannelData(0); fn(d, sr); let pk = 0; for (let i = 0; i < d.length; i++) pk = Math.max(pk, Math.abs(d[i])); const k = 0.95 / (pk || 1); for (let i = 0; i < d.length; i++) d[i] *= k; return b; };
+    const boom = (sec, seed) => mk(sec, (d) => {
+      let y = 0, y2 = 0, ph = 0, cr = 0;
+      for (let i = 0; i < d.length; i++) {
+        const t = i / sr, n = rnd() * 2 - 1;
+        const crack = n * Math.exp(-t / 0.012) * 1.1;
+        const k = 0.22 * Math.exp(-t / 0.45) + 0.014; y += k * (n - y);
+        const body = y * 5.5 * (1 - Math.exp(-t / 0.005)) * Math.exp(-t / (0.85 + seed * 0.3));
+        y2 += 0.006 * (n - y2); const rum = y2 * 14 * Math.exp(-t / 1.7) * (1 - Math.exp(-t / 0.08));
+        ph += TAU * (24 + 52 * Math.exp(-t / 0.9)) / sr; const sub = Math.sin(ph) * Math.exp(-t / 1.15) * (1 - Math.exp(-t / 0.004)) * 1.1;
+        if (rnd() < (110 * Math.exp(-t / 1.3) + 6) / sr) cr = 0.55 + rnd() * 0.45; const crk = cr * (rnd() * 2 - 1) * 0.5; cr *= 0.9;
+        const deb = (t > 0.35 && rnd() < 26 * Math.exp(-(t - 0.35) / 1.1) / sr) ? 0.5 : 0;
+        d[i] = crack + body + rum + sub + crk * Math.min(1, t * 8) + deb * (rnd() * 2 - 1);
+      }
+    });
+    const shot = (d, at, amp) => {
+      const L = Math.floor(sr * 0.016); let ring = 0;
+      for (let j = 0; j < L; j++) {
+        const t = j / sr, n = rnd() * 2 - 1;
+        const v = (n * Math.exp(-t / 0.0016) * 0.9 + Math.sin(TAU * (130 - 3000 * t) * t) * Math.exp(-t / 0.0045) * 0.9 + Math.sin(TAU * 720 * t) * Math.exp(-t / 0.004) * 0.35 + Math.sin(TAU * 1540 * t) * Math.exp(-t / 0.0025) * 0.2) * amp;
+        d[(at + j) % d.length] += v;
+      }
+    };
+    SFX = {
+      boomA: boom(3.8, 0), boomB: boom(3.4, 1),
+      gun: mk(0.5, (d) => {
+        const per = Math.floor(sr / 50); let bed = 0;
+        for (let p = 0; p * per < d.length; p++) shot(d, p * per, 0.8 + rnd() * 0.3);
+        for (let i = 0; i < d.length; i++) { bed += 0.12 * ((rnd() * 2 - 1) - bed); d[i] += bed * 0.7; }
+      }),
+      rocket: mk(2.6, (d) => {
+        let a = 0, b = 0, c = 0, m = 0;
+        for (let i = 0; i < d.length; i++) {
+          const t = i / sr, n = rnd() * 2 - 1;
+          a += 0.09 * (n - a); b += 0.012 * (n - b); c += 0.5 * (n - c); m += 0.002 * (n - m);
+          const env = (1 - Math.exp(-t / 0.05)) * Math.exp(-Math.max(0, t - 0.5) / 1.5);
+          const crk = 0.75 + 0.5 * Math.abs(m) * 90;
+          const roar = (a - b) * 3.6 * crk + b * 4.0;
+          const hiss = (n - c) * 0.35;
+          const ign = (t < 0.12 ? (n * 0.7 + Math.sin(TAU * 150 * t) * 1.0) * Math.exp(-t / 0.035) : 0);
+          d[i] = roar * env + hiss * env * 0.8 + ign * 1.2;
+        }
+      }),
+      bomb: mk(1.9, (d) => {
+        let ph = 0;
+        for (let i = 0; i < d.length; i++) {
+          const t = i / sr, n = rnd() * 2 - 1;
+          const f = 2100 * Math.exp(-t / 1.1) + 520 + 30 * Math.sin(t * 22); ph += TAU * f / sr;
+          const wh = Math.sin(ph) * Math.min(1, t * 6) * (0.6 + 0.4 * t / 1.9) * 0.55 + n * 0.05 * t;
+          const th = t < 0.2 ? (Math.sin(TAU * 85 * t) + n * 0.4) * Math.exp(-t / 0.05) * 1.2 : 0;
+          d[i] = wh + th;
+        }
+      }),
+      hit: mk(0.14, (d) => { for (let i = 0; i < d.length; i++) { const t = i / sr, n = rnd() * 2 - 1; d[i] = n * Math.exp(-t / 0.004) * 0.8 + (Math.sin(TAU * 1850 * t) * 0.5 + Math.sin(TAU * 2740 * t) * 0.3 + Math.sin(TAU * 4100 * t) * 0.2) * Math.exp(-t / 0.03); } }),
+    };
+  }
+  /** play a pre-rendered buffer: rate = pitch (end rate gives a doppler glide), lp = lowpass (Hz, optional glide), delay = seconds */
+  function play(name, { gain = 0.8, rate = 1, rate2 = null, lp = 18000, lp2 = null, delay = 0, dur = null, prio = 1, loop = false } = {}) {
+    if (!ctx || !sfxOn || ctx.state !== "running") return null;
+    if (active >= MAX_VOICES || (prio < 1 && active >= MAX_VOICES * 0.6)) return null;
+    try {
+      if (!SFX) buildSfx();
+      const t = ctx.currentTime + delay, b = SFX[name]; if (!b) return null;
+      const src = ctx.createBufferSource(); src.buffer = b; src.loop = loop;
+      src.playbackRate.setValueAtTime(rate, t); if (rate2 != null) src.playbackRate.linearRampToValueAtTime(rate2, t + (dur || b.duration));
+      const f = ctx.createBiquadFilter(); f.type = "lowpass"; f.frequency.setValueAtTime(lp, t); if (lp2 != null) f.frequency.exponentialRampToValueAtTime(Math.max(200, lp2), t + (dur || b.duration));
+      const g = ctx.createGain(); g.gain.setValueAtTime(gain, t);
+      src.connect(f); f.connect(g); g.connect(sfxGain);
+      src.start(t); if (dur && !loop) src.stop(t + dur + 0.05);
+      active++;
+      src.onended = () => { active--; try { src.disconnect(); f.disconnect(); g.disconnect(); } catch { /* ignore */ } };
+      return { src, g, f };
+    } catch (e) { return null; }
+  }
+  function duck(depth = 0.45, rel = 0.5) {
+    if (!ctx || !musicGain || !musicOn) return;
+    try { const n = ctx.currentTime, base = 0.55; musicGain.gain.cancelScheduledValues(n); musicGain.gain.setTargetAtTime(base * depth, n, 0.015); musicGain.gain.setTargetAtTime(base, n + 0.25, rel * 0.5); } catch { /* ignore */ }
+  }
+  let gunV = null, gunT = 0, gunTimer = 0;
+  function gunStop() {
+    gunTimer = 0; const v = gunV; gunV = null; if (!v || !ctx) return;
+    try { const n = ctx.currentTime; v.g.gain.cancelScheduledValues(n); v.g.gain.setTargetAtTime(0, n, 0.03); v.src.stop(n + 0.2); } catch { /* ignore */ }
+  }
+
   return {
     hold, release, isHeld: () => held,
     async unlock() {
@@ -338,29 +426,33 @@ export function createAudio() {
       setTimeout(() => { try { e.o.stop(); e.n.stop(); e.g.disconnect(); } catch { /* ignore */ } }, 400);
     },
     gun() {
-      if (!ctx) return; const now = ctx.currentTime; if (now - lastGun < 0.07) return; lastGun = now;
-      noise({ dur: 0.07, peak: 0.35, type: "bandpass", f0: 1800, q: 0.8, prio: 0 });
-      tone({ f0: 160, f1: 70, dur: 0.06, peak: 0.25, type: "square", prio: 0 });
+      if (!ctx || !sfxOn || ctx.state !== "running") return; const now = ctx.currentTime; gunT = now;
+      if (!gunV) {
+        gunV = play("gun", { gain: 0.0001, loop: true, prio: 2, lp: 9000 });
+        if (gunV) { gunV.g.gain.setValueAtTime(0.0001, now); gunV.g.gain.linearRampToValueAtTime(0.62, now + 0.012); }
+      }
+      if (!gunTimer) { const chk = () => { if (!ctx || ctx.currentTime - gunT > 0.14) gunStop(); else gunTimer = setTimeout(chk, 50); }; gunTimer = setTimeout(chk, 90); }
     },
-    rocket() { noise({ dur: 0.9, peak: 0.4, type: "bandpass", f0: 600, f1: 2600, q: 1.2, a: 0.02 }); tone({ f0: 320, f1: 900, dur: 0.5, peak: 0.08, type: "sawtooth" }); },
-    bomb() { tone({ f0: 1400, f1: 380, dur: 1.2, peak: 0.07, type: "sine", a: 0.05 }); tone({ f0: 90, dur: 0.12, peak: 0.25, type: "triangle" }); },
+    rocket() { play("rocket", { gain: 0.75, rate: 1.08, rate2: 0.8, lp: 9000, lp2: 1800, dur: 2.6, prio: 2 }); tone({ f0: 90, f1: 55, dur: 0.35, peak: 0.3, type: "sine", a: 0.004 }); },
+    bomb() { play("bomb", { gain: 0.6, rate: 1.0, rate2: 0.9, lp: 12000, lp2: 2500, prio: 2 }); },
     explosion(big = 1, dist = 0) {
-      const v = Math.max(0.15, 1 - dist / 4000) * big;
-      noise({ dur: 1.4 * big, peak: 0.8 * v, type: "lowpass", f0: 1600, f1: 120, a: 0.004 });
-      tone({ f0: 110, f1: 32, dur: 0.9, peak: 0.6 * v, type: "sine" });
-      noise({ dur: 0.25, peak: 0.4 * v, type: "highpass", f0: 2500, q: 0.5 });
+      if (dist < 1800 && big >= 0.9) duck(big >= 1.5 ? 0.3 : 0.55, big >= 1.5 ? 1.2 : 0.7);
+      const d = Math.max(0, dist), v = Math.max(0.12, 1 - d / 3500), lpf = Math.max(900, 17000 * Math.exp(-d / 1100));
+      const rate = Math.max(0.62, 1.12 - 0.22 * Math.min(2.5, big));
+      play(Math.random() < 0.5 ? "boomA" : "boomB", { gain: Math.min(1.0, (0.3 + 0.45 * Math.min(2, big)) * v * 1.4), rate: rate * (0.94 + Math.random() * 0.12), lp: lpf, lp2: lpf * 0.4, delay: Math.min(1.4, d / 2600), prio: 2 });
+      if (big >= 1.2 && d < 2500) play(Math.random() < 0.5 ? "boomB" : "boomA", { gain: 0.5 * v, rate: rate * 0.7, lp: lpf * 0.6, delay: 0.05 + Math.min(1.4, d / 2600), prio: 2 });
     },
-    hit() { const n = ctx ? ctx.currentTime : 0; if (n - (this._lh || 0) < 0.06) return; this._lh = n; tone({ f0: 900, f1: 300, dur: 0.12, peak: 0.12, type: "square", prio: 0 }); noise({ dur: 0.1, peak: 0.25, type: "highpass", f0: 3000, prio: 0 }); },
+    hit() { const n = ctx ? ctx.currentTime : 0; if (n - (this._lh || 0) < 0.05) return; this._lh = n; play("hit", { gain: 0.45, rate: 0.85 + Math.random() * 0.4, prio: 0 }); },
     hurt() { tone({ f0: 220, f1: 90, dur: 0.25, peak: 0.25, type: "sawtooth" }); noise({ dur: 0.2, peak: 0.35, type: "lowpass", f0: 900 }); },
     lock() { tone({ f0: 1320, dur: 0.07, peak: 0.08, type: "square" }); tone({ f0: 1760, dur: 0.07, peak: 0.08, type: "square", delay: 0.08 }); },
     warn() { tone({ f0: 980, dur: 0.12, peak: 0.12, type: "square" }); tone({ f0: 740, dur: 0.12, peak: 0.12, type: "square", delay: 0.14 }); },
     pullUp() { tone({ f0: 520, dur: 0.18, peak: 0.1, type: "triangle" }); },
     thunder() { noise({ dur: 3.2, peak: 0.7, type: "lowpass", f0: 400, f1: 60, a: 0.08, rate: 0.5 }); tone({ f0: 55, f1: 30, dur: 2.4, peak: 0.35, type: "sine", a: 0.1 }); },
     crash() {
-      noise({ dur: 2.8, peak: 0.95, type: "lowpass", f0: 2200, f1: 70, a: 0.004, rate: 0.6 });
-      noise({ dur: 0.45, peak: 0.55, type: "highpass", f0: 2500, a: 0.002 });
-      tone({ f0: 75, f1: 26, dur: 2.0, peak: 0.55, type: "sine", a: 0.01 });
-      tone({ f0: 140, f1: 40, dur: 0.6, peak: 0.25, type: "triangle", delay: 0.05 });
+      duck(0.15, 2.2);
+      play("boomA", { gain: 1.0, rate: 0.62, lp: 16000, lp2: 700, prio: 2 }); play("boomB", { gain: 0.9, rate: 0.85, delay: 0.12, prio: 2 });
+      play("boomA", { gain: 0.8, rate: 0.75, delay: 0.45, lp: 5000, prio: 2 }); play("boomB", { gain: 0.6, rate: 0.7, delay: 0.9, lp: 3000, prio: 2 });
+      tone({ f0: 70, f1: 24, dur: 2.2, peak: 0.5, type: "sine", a: 0.01 });
     },
     hiss() { noise({ dur: 1.1, peak: 0.32, type: "highpass", f0: 5000, f1: 2200, a: 0.02 }); tone({ f0: 340, f1: 170, dur: 0.22, peak: 0.07, type: "square" }); },
     /** subtle rack-reload tick (missile / bomb back in the rack) and empty-rack click; both respect the Effects toggle */

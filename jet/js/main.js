@@ -1,14 +1,14 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=16";
-import { createHud } from "./hud.js?v=16";
-import { createControls } from "./controls.js?v=16";
-import { runLabel, PLANETS, JET_TYPES } from "./variety.js?v=16";
-import { createAudio, trackFor } from "./audio.js?v=16";
-import { createHaptics } from "./haptics.js?v=16";
-import { createLoading } from "./loading.js?v=16";
-import { setSurreal, tickStyle } from "./surreal.js?v=16";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=16";
+import { createGame } from "./game.js?v=17";
+import { createHud } from "./hud.js?v=17";
+import { createControls } from "./controls.js?v=17";
+import { runLabel, PLANETS, JET_TYPES } from "./variety.js?v=17";
+import { createAudio, trackFor } from "./audio.js?v=17";
+import { createHaptics } from "./haptics.js?v=17";
+import { createLoading } from "./loading.js?v=17";
+import { setSurreal, tickStyle } from "./surreal.js?v=17";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=17";
 
 const $ = (id) => document.getElementById(id);
 
@@ -26,7 +26,7 @@ try {
   for (let i = 0; i < 500; i++) { w.fillStyle = `rgba(${rn() < 0.5 ? "255,255,255" : "0,0,0"},${0.03 + rn() * 0.08})`; w.fillRect(rn() * 256, rn() * 256, 1 + rn() * 2, 1 + rn() * 2); }
   document.documentElement.style.setProperty("--worn", `url(${wc.toDataURL("image/png")})`);
 } catch (e) { /* plain gradients if canvas is unavailable */ }
-const BUILD = 16;
+const BUILD = 17;
 { const t = $("build-tag"); if (t) t.textContent = "JET-X b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;
@@ -73,10 +73,12 @@ const game = createGame({
     onCrash: () => $("crash").classList.remove("hidden"),
     onRespawn: () => { $("crash").classList.add("hidden"); hud.toast("Back in the sky!"); },
     onEmpty: (kind) => { const b = document.querySelector(kind === "bomb" ? ".w-bomb" : ".w-msl"); if (b) { b.classList.remove("shake"); void b.offsetWidth; b.classList.add("shake"); } },
+    onHit: (kill) => { const h = $("hitmark"); if (!h) return; h.classList.toggle("kill", !!kill); h.classList.remove("on"); void h.offsetWidth; h.classList.add("on"); if (kill) haptics.tick?.(); },
     onPop: (pts, combo, kind) => {
       const box = $("popups"); if (!box) return;
-      const d = document.createElement("div"); d.className = "pop" + (pts < 0 ? " bad" : combo >= 3 ? " big" : "");
-      d.innerHTML = pts < 0 ? `<b>-${-pts}</b><i>FRIENDLY HIT</i>` : `<b>+${pts}</b>${combo >= 2 ? `<i>COMBO x${combo}</i>` : ""}`;
+      const d = document.createElement("div"); d.className = "pop" + (pts < 0 ? " bad" : combo >= 3 ? " big" : "") + (combo >= 2 && pts >= 0 ? " streak" : "");
+      const SK = ["", "", "DOUBLE KILL", "TRIPLE KILL", "QUAD KILL", "RAMPAGE", "RAMPAGE", "UNSTOPPABLE", "UNSTOPPABLE", "UNSTOPPABLE", "GODLIKE"];
+      d.innerHTML = pts < 0 ? `<b>-${-pts}</b><i>FRIENDLY HIT</i>` : `<b>+${pts}</b>${combo >= 2 ? `<i>${SK[Math.min(combo, 10)]} - COMBO x${combo}</i>` : ""}`;
       box.appendChild(d); setTimeout(() => d.remove(), 1300); while (box.children.length > 4) box.firstChild.remove();
     },
     onLoading: (t, p) => { if (typeof p === "number") lastProg = p; if (t) lastText = t; loading.set(p, t); },
@@ -118,29 +120,20 @@ function syncAudioButtons() {
 $("btn-music").addEventListener("click", () => { audio.setMusic(!audio.musicOn()); syncAudioButtons(); });
 $("btn-sfx").addEventListener("click", () => { audio.setSfx(!audio.sfxOn()); syncAudioButtons(); if (audio.sfxOn()) audio.click(); });
 syncAudioButtons();
+function syncAssist() { $("btn-assist").classList.toggle("off", !game.assistOn()); }
+$("btn-assist").addEventListener("click", () => { game.setAssist(!game.assistOn()); syncAssist(); });
+syncAssist();
 // settings gear (top right): open on the opening screen, collapsed in play, tap the gear to open / close
 {
   const st = $("settings"); let tm = 0;
   const setOpen = (v) => { st.classList.toggle("open", v); clearTimeout(tm); if (v && document.body.classList.contains("in-game")) tm = setTimeout(() => st.classList.remove("open"), 6000); };
   $("btn-settings").addEventListener("click", () => setOpen(!st.classList.contains("open")));
-  for (const id of ["btn-music", "btn-sfx"]) $(id).addEventListener("click", () => setOpen(true));
+  for (const id of ["btn-music", "btn-sfx", "btn-assist"]) $(id).addEventListener("click", () => setOpen(true));
   window.__settingsOpen = setOpen;
 }
 
 // ---------- mission time choice (opening screen): 3 / 5 / 10 minutes / Endless, remembered ----------
-const TIME_CHOICES = [{ label: "3 min", sec: 180 }, { label: "5 min", sec: 300 }, { label: "10 min", sec: 600 }, { label: "Endless", sec: 0 }];
-function loadTime() { try { const v = localStorage.getItem("jet-time"); if (v !== null && TIME_CHOICES.some((c) => String(c.sec) === v)) return +v; } catch { /* ignore */ } return 300; }
-let timeSec = loadTime();
-function buildTimePick() {
-  const seg = $("time-seg"); seg.innerHTML = "";
-  for (const c of TIME_CHOICES) {
-    const b = document.createElement("button");
-    b.type = "button"; b.textContent = c.label; b.className = c.sec === timeSec ? "on" : ""; b.setAttribute("aria-pressed", String(c.sec === timeSec));
-    b.addEventListener("click", () => { timeSec = c.sec; try { localStorage.setItem("jet-time", String(c.sec)); } catch { /* ignore */ } buildTimePick(); });
-    seg.appendChild(b);
-  }
-}
-buildTimePick();
+const timeSec = 300; // Build 17: the round is always 5:00 (no picker)
 
 // ---------- opening screen: 3 buttons ----------
 // EASY TO RELABEL / REWIRE: each entry is { label, sub (optional small text), primary, run }.
@@ -155,7 +148,7 @@ function writeSave() {
   try {
     const L = game.level(), hs = game.hudState(); if (!L?.run) return;
     const { planet, ...run } = L.run;
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, n: levelNo, run, score: hs.score | 0, timeLeft: Math.max(5, Math.round(hs.timeLeft || 0)), endless: timeSec === 0, t: Date.now() }));
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, n: levelNo, run, score: hs.score | 0, timeLeft: Math.max(5, Math.round(hs.timeLeft || 0)), endless: false, snap: game.snapshot(), t: Date.now() }));
   } catch { /* ignore */ }
 }
 function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ } }
@@ -215,8 +208,9 @@ async function launch(n, fromTap, sv) {
   audio.playTrack("techno", { seed: L.run?.seed, alien: L.run?.planetKey !== "earth" });
   controls.calibrate(); controls.resetLook(); controls.setEnabled(true);
   window.__applyThrottle?.(parseFloat(document.getElementById('thr').style.getPropertyValue('--t')) || 0.35);
-  game.setTime(sv ? (sv.endless ? 0 : sv.timeLeft) : timeSec);
+  game.setTime(sv ? sv.timeLeft : timeSec);
   if (sv) game.setScore(sv.score);
+  if (sv?.snap) { try { game.restoreSnap(sv.snap); } catch { /* ignore */ } }
   window.__settingsOpen?.(false);
   game.start();
   state = "playing";
@@ -416,4 +410,5 @@ requestAnimationFrame(frame);
 }
 
 // test hook for the headless verification scripts
+setInterval(() => { if (state === "playing" && !document.hidden) writeSave(); }, 4000);
 window.__ubu = { goBackground, readSave, writeSave, game, controls, audio, hud, loading, state: () => state, play, launch, levelNo: () => levelNo };

@@ -2,8 +2,8 @@
 // Player + enemy jets: PBR-lit (metal, glossy canopy, environment reflections) with a thin illustrated outline.
 // Ground units: toon + outline. Illustrated look, readable colours.
 import * as THREE from "three";
-import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=16";
-import { patchDetail, missileTex } from "./tex.js?v=16";
+import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=17";
+import { patchDetail, missileTex } from "./tex.js?v=17";
 
 const PI = Math.PI;
 
@@ -117,87 +117,145 @@ const flameGeo = (() => { const g = new THREE.ConeGeometry(0.5, 1, 14, 1, true);
 const addMat = (color, op) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
 
 const PAL = {
-  player: { lo: 0x2f3b50, hi: 0x9aaac4, wing: 0x66768f, dark: 0x1a2029, glass: 0xffc15a, glow: 0x35e6ff, burn: [0xff7a2e, 0xffd27a, 0xcfeaff] },
-  ally: { lo: 0x1d4a44, hi: 0xcdeee2, wing: 0x2f8f78, dark: 0x0f2a26, glass: 0x7affc0, glow: 0x3dff8b, burn: [0x3dffb0, 0xb8ffe0, 0xeafff6] },
-  enemy: { lo: 0x2a1418, hi: 0x7a3a40, wing: 0x4a2a30, dark: 0x120a0c, glass: 0xff5a4a, glow: 0xff4030, burn: [0xff3a1a, 0xff9a40, 0xffe0b0] },
+  player: { lo: 0x2c333c, hi: 0x8d97a3, wing: 0x66707c, dark: 0x12161b, glass: 0xc99a46, glow: 0x35c8e0, burn: [0xff7a2e, 0xffd27a, 0xcfeaff] },
+  ally: { lo: 0x22302b, hi: 0x93a89c, wing: 0x56695f, dark: 0x0e1613, glass: 0x7acfa0, glow: 0x3dd98b, burn: [0x3dffb0, 0xb8ffe0, 0xeafff6] },
+  enemy: { lo: 0x1c1f23, hi: 0x5a5148, wing: 0x3a3836, dark: 0x0d0f11, glass: 0xd8503c, glow: 0xff4030, burn: [0xff3a1a, 0xff9a40, 0xffe0b0] },
 };
 const jetGeo = {};
+// planforms (right wing, x outwards): [rootX, rootLE, rootTE, tipX, tipLE, tipTE, thickRoot, thickTip, dropTip]
 const WING_SHAPES = [
-  [[1.2, -2.8], [5.7, 1.3], [5.7, 3.0], [2.6, 4.5], [1.2, 4.5]],
-  [[1.2, -2.0], [5.0, 2.8], [5.0, 3.8], [2.4, 4.8], [1.2, 4.8]],
-  [[1.2, -1.0], [6.2, 1.6], [6.2, 3.2], [2.6, 4.2], [1.2, 4.2]],
-  [[1.2, 2.2], [6.0, -0.8], [6.4, 0.6], [2.8, 4.7], [1.2, 4.7]],            // 3: forward-swept blade (sci-fi)
-  [[1.2, -3.8], [3.6, -0.6], [7.2, 3.4], [2.9, 4.7], [1.2, 4.7]],           // 4: manta arrowhead (sci-fi)
+  [1.3, -1.9, 3.1, 5.8, 1.5, 3.3, 0.36, 0.07, -0.12],   // 0: trapezoid air-superiority wing
+  [1.3, -2.4, 3.7, 5.5, 2.2, 3.5, 0.34, 0.06, -0.08],   // 1: diamond / delta-ish
+  [1.3, -1.2, 3.1, 6.2, 2.4, 3.8, 0.32, 0.06, -0.1],    // 2: swept multirole
+  [1.3, 0.7, 3.7, 5.8, -1.7, 1.3, 0.34, 0.06, -0.05],   // 3: forward-swept blade (sci-fi)
+  [1.1, -3.5, 3.5, 7.0, 2.9, 4.7, 0.30, 0.05, -0.2],    // 4: manta arrowhead (sci-fi)
 ];
+// tapered, lens-section lifting surface. spans along +x from x0; chord points (z) LE/TE per station; thickness tapers
+function surfGeo(x0, le0, te0, x1, le1, te1, t0, t1, drop = 0, NS = 5, NC = 8) {
+  const pos = [], idx = [], col = [];
+  const prof = (u) => Math.pow(Math.max(0, 1 - Math.pow(2 * u - 1, 2)), 0.72);
+  for (let i = 0; i <= NS; i++) {
+    const k = i / NS, x = x0 + (x1 - x0) * k, le = le0 + (le1 - le0) * k, te = te0 + (te1 - te0) * k, th = t0 + (t1 - t0) * k, y0 = drop * k * k;
+    for (let j = 0; j <= NC; j++) { const u = j / NC; pos.push(x, y0 + th * 0.58 * prof(u), le + (te - le) * u); }
+    for (let j = NC - 1; j >= 1; j--) { const u = j / NC; pos.push(x, y0 - th * 0.42 * prof(u), le + (te - le) * u); }
+  }
+  const R = NC + NC - 1;
+  for (let i = 0; i < NS; i++) for (let j = 0; j < R; j++) {
+    const a = i * R + j, b = i * R + (j + 1) % R, c = (i + 1) * R + j, d = (i + 1) * R + (j + 1) % R;
+    idx.push(a, b, c, b, d, c);
+  }
+  // tip cap
+  const base = NS * R, ci = pos.length / 3;
+  pos.push(x1, drop, (le1 + te1) / 2);
+  for (let j = 0; j < R; j++) idx.push(ci, base + (j + 1) % R, base + j);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
+function wingFor(sh) { const w = WING_SHAPES[sh] || WING_SHAPES[0]; return surfGeo(w[0], w[1], w[2], w[3], w[4], w[5], w[6], w[7], w[8]); }
 function jetGeometry(kind, vk, pal) {
   const ck = kind + ":" + vk;
   if (jetGeo[ck]) return jetGeo[ck];
   const G2 = {};
+  // main fuselage: long pointed radome, shouldered cockpit, flat blended centre-body, tapering to the engine bay
   G2.fus = loft([
-    [-8.2, 0.02, 0.02, 0.02, 0.05], [-7.4, 0.22, 0.22, 0.17, 0.02], [-6.2, 0.55, 0.45, 0.34, 0.0], [-4.6, 0.92, 0.66, 0.46, 0.02],
-    [-3.0, 1.18, 0.78, 0.56, 0.08], [-1.2, 1.55, 0.74, 0.6, 0.06], [0.8, 1.85, 0.7, 0.58, 0.04], [2.8, 1.8, 0.66, 0.56, 0.02],
-    [4.6, 1.5, 0.58, 0.5, 0.0], [6.0, 1.2, 0.52, 0.48, 0.0], [6.5, 1.1, 0.5, 0.46, 0.0],
-  ], 20, 2.7, pal.lo, pal.hi);
-  const wingPts = WING_SHAPES[pal.shape || 0];
-  G2.wing = plate(wingPts, 0.12);
-  G2.stab = plate([[1.3, 3.9], [3.9, 5.7], [3.9, 6.6], [1.3, 6.6]], 0.1, 0.04);
-  G2.fin = fin([[3.2, 0], [4.9, 2.7], [6.2, 2.7], [6.5, 0]], 0.1);
-  G2.canard = plate([[1.1, -4.6], [2.7, -3.6], [2.7, -3.0], [1.1, -3.0]], 0.08, 0.03);
+    [-8.6, 0.02, 0.02, 0.02, 0.0], [-8.0, 0.14, 0.15, 0.13, 0.0], [-7.2, 0.34, 0.3, 0.26, 0.0], [-6.2, 0.58, 0.46, 0.38, 0.02],
+    [-5.0, 0.84, 0.62, 0.46, 0.05], [-3.8, 1.06, 0.78, 0.52, 0.1], [-2.4, 1.38, 0.74, 0.56, 0.06], [-0.6, 1.74, 0.66, 0.56, 0.0],
+    [1.4, 1.9, 0.6, 0.55, -0.02], [3.2, 1.86, 0.56, 0.52, -0.02], [4.6, 1.74, 0.5, 0.48, -0.02], [5.5, 1.64, 0.46, 0.45, -0.02],
+  ], 26, 3.1, pal.lo, pal.hi);
+  // intake trunks (caret scoops) on each side, swept body-side
+  G2.intake = loft([
+    [-3.5, 0.46, 0.5, 0.5, -0.12], [-2.8, 0.52, 0.56, 0.52, -0.14], [-1.4, 0.56, 0.56, 0.5, -0.1], [0.6, 0.54, 0.5, 0.46, -0.06],
+  ], 16, 4.2, pal.lo, pal.hi);
+  G2.wing = wingFor(pal.shape || 0);
+  G2.stab = surfGeo(1.5, 3.4, 5.7, 4.7, 5.1, 6.4, 0.16, 0.05, 0, 3, 6);
+  G2.strake = surfGeo(0.9, -5.2, 0.6, 2.4, -1.4, 0.6, 0.22, 0.04, 0, 3, 6);
+  G2.canard = surfGeo(0.9, -5.0, -3.3, 2.8, -3.9, -3.2, 0.1, 0.03, 0.05, 2, 5);
+  // vertical tails, built along +x then rotated up and outwards (cant)
+  G2.fin = surfGeo(0, 2.1, 5.8, 2.7, 4.5, 6.0, 0.22, 0.05, 0, 4, 7).rotateZ(PI / 2 - 0.42);
+  G2.finTip = new THREE.BoxGeometry(0.07, 0.34, 0.6);
+  // engine nozzle: shroud + converging flaps
+  G2.shroud = new THREE.CylinderGeometry(0.66, 0.64, 1.4, 18, 1, true).rotateX(PI / 2);
+  G2.petals = new THREE.CylinderGeometry(0.46, 0.64, 0.7, 12, 1, true).rotateX(PI / 2);
+  // canopy bubble + frame
+  G2.canopy = loft([
+    [-4.7, 0.02, 0.02, 0.0, 0.5], [-4.2, 0.34, 0.26, 0.0, 0.5], [-3.4, 0.56, 0.54, 0.0, 0.5], [-2.3, 0.62, 0.52, 0.0, 0.5], [-1.1, 0.5, 0.3, 0.0, 0.5], [0.0, 0.18, 0.08, 0.0, 0.5],
+  ], 18, 2.3, 0xffffff, 0xffffff);
   return (jetGeo[ck] = G2);
 }
 
 function buildJet(kind, vk = "", variant = null) {
   const pal = { ...PAL[kind], ...(variant || {}) }, g = jetGeometry(kind, vk, pal), lean = kind === "enemy";
   const root = new THREE.Group();
-  const eK = kind === "ally" ? 0.9 : 0.6;
-  const body = pbr({ vertexColors: true, metalness: 0.3, roughness: 0.5, emissive: 0x05080c, emissiveIntensity: 0.4, envMapIntensity: eK }, { kind: "panel", s: 0.2, k: 0.7 });
-  const wingM = pbr({ color: pal.wing, metalness: 0.3, roughness: 0.5, emissive: 0x05080c, emissiveIntensity: 0.4, envMapIntensity: eK }, { kind: "panel", s: 0.26, k: 0.7 });
-  const darkM = pbr({ color: pal.dark, metalness: 0.8, roughness: 0.4 });
-  const glassM = pbr({ color: pal.glass, metalness: 1, roughness: 0.04, envMapIntensity: 1.8 });
+  const eK = kind === "ally" ? 1.0 : 0.85;
+  const body = pbr({ vertexColors: true, metalness: 0.35, roughness: 0.42, emissive: 0x161c25, emissiveIntensity: 0.6, envMapIntensity: eK }, { kind: "panel", s: 0.2, k: 0.5 });
+  const wingM = pbr({ color: pal.wing, metalness: 0.35, roughness: 0.42, emissive: 0x161c25, emissiveIntensity: 0.6, envMapIntensity: eK }, { kind: "panel", s: 0.26, k: 0.5 });
+  const darkM = pbr({ color: pal.dark, metalness: 0.7, roughness: 0.5 });
+  const metalM = pbr({ color: 0x3b4047, metalness: 0.95, roughness: 0.36, flatShading: true, envMapIntensity: 1.1 });
+  const glassM = pbr({ color: pal.glass, metalness: 1, roughness: 0.05, envMapIntensity: 2.0, transparent: true, opacity: 0.9 });
+  const accentM = new THREE.MeshStandardMaterial({ color: pal.glow, emissive: pal.glow, emissiveIntensity: 0.3, metalness: 0.2, roughness: 0.5 });
   const glowM = new THREE.MeshBasicMaterial({ color: pal.glow, toneMapped: false, fog: false });
-  const OL = outlineMaterial(0x0a0d12, 0.42);
   const add = (geo, mat, o = {}) => {
     const m = new THREE.Mesh(geo, mat);
     if (o.pos) m.position.set(...o.pos); if (o.rot) m.rotation.set(...o.rot); if (o.scale) m.scale.set(...o.scale);
-    if (o.ol && geo.attributes.oNormal) { const ol = new THREE.Mesh(geo, OL); ol.renderOrder = -1; ol.position.copy(m.position); ol.rotation.copy(m.rotation); ol.scale.copy(m.scale); root.add(ol); }
-    root.add(m); return m;
+    (o.parent || root).add(m); return m;
   };
-  add(g.fus, body, { ol: true });
+  add(g.fus, body);
+  const exotic = (pal.shape || 0) >= 3;
   for (const s of [-1, 1]) {
-    add(g.wing, wingM, { pos: [s * 0, -0.2, 0], scale: [s, 1, 1], ol: true });
-    add(g.stab, wingM, { pos: [0, 0.0, 0], scale: [s, 1, 1], ol: true });
-    add(g.fin, wingM, { pos: [s * 1.2, 0.45, 0], rot: [0, 0, -s * 0.5], ol: true });
-    if (lean) add(g.canard, wingM, { pos: [0, 0.05, 0], scale: [s, 1, 1], ol: true });
-    // intakes
-    add(G.box, darkM, { pos: [s * 1.38, -0.12, -1.3], scale: [0.62, 0.55, 1.9], rot: [0, -s * 0.06, 0] });
-    // nozzle housings
-    const nz = add(new THREE.CylinderGeometry(0.62, 0.7, 1.5, 16, 1, true).rotateX(PI / 2), darkM, { pos: [s * 0.88, -0.02, 6.1] });
-    add(new THREE.TorusGeometry(0.55, 0.07, 6, 18), glowM, { pos: [s * 0.88, -0.02, 6.78], rot: [0, 0, 0] });
-    void nz;
-    if (!lean) {
-      // glowing edge strips: wing tips, fuselage chine, fin tips
-      add(G.box, glowM, { pos: [s * 5.68, -0.2, 2.1], scale: [0.07, 0.08, 1.7] });
-      add(G.box, glowM, { pos: [s * 3.45, -0.17, -0.75], scale: [0.07, 0.08, 6.0], rot: [0, s * 0.83, 0] });
-      add(G.box, glowM, { pos: [s * 1.1 + s * 1.0, 3.0, 5.5].map((v, i) => (i === 0 ? v : v)), scale: [0.06, 0.06, 1.1] });
-      add(G.sphereLo, new THREE.MeshBasicMaterial({ color: s < 0 ? 0xff3030 : 0x30ff60, fog: false }), { pos: [s * 5.75, -0.2, 3.1], scale: [0.14, 0.14, 0.14] });
-    }
+    add(g.wing, wingM, { pos: [0, -0.2, 0], scale: [s, 1, 1] });
+    add(g.stab, wingM, { pos: [0, -0.02, 0], scale: [s, 1, 1] });
+    add(g.strake, wingM, { pos: [0, 0.05, 0], scale: [s, 1, 1] });
+    add(g.fin, wingM, { pos: [s * 1.0, 0.35, 0], scale: [s, 1, 1] });
+    // fin-tip band in team accent colour
+    add(g.finTip, accentM, { pos: [s * 1.0 + s * 1.15, 2.5, 5.45], rot: [0, 0, -s * 0.42] });
+    if (lean || exotic) add(g.canard, wingM, { pos: [0, 0.05, 0], scale: [s, 1, 1] });
+    // intake scoop + dark mouth + splitter
+    add(g.intake, body, { pos: [s * 1.5, -0.1, 0], rot: [0, -s * 0.03, 0] });
+    add(G.box, darkM, { pos: [s * 1.5, -0.2, -3.52], scale: [0.78, 0.8, 0.1] });
+    add(G.box, metalM, { pos: [s * 1.02, -0.18, -2.4], scale: [0.04, 1.0, 2.4] });
+    // nozzles
+    add(g.shroud, metalM, { pos: [s * 0.9, -0.02, 5.7] });
+    const pet = add(g.petals, metalM, { pos: [s * 0.9, -0.02, 6.45] });
+    void pet;
+    add(new THREE.CircleGeometry(0.46, 14), new THREE.MeshBasicMaterial({ color: 0x2a1006, fog: false }), { pos: [s * 0.9, -0.02, 6.78] });
+    add(new THREE.TorusGeometry(0.47, 0.035, 5, 18), glowM, { pos: [s * 0.9, -0.02, 6.8] });
+    // pylons + wing-tip rails
+    add(G.box, darkM, { pos: [s * 5.7, -0.12, 2.2], scale: [0.16, 0.12, 1.3] });
+    add(G.sphere, new THREE.MeshBasicMaterial({ color: s < 0 ? 0xff3030 : 0x30ff60, fog: false }), { pos: [s * 5.85, -0.2, 1.6], scale: [0.1, 0.1, 0.1] });
+    // control-surface hinge lines on the wing trailing edge
+    add(G.box, darkM, { pos: [s * 3.4, -0.15, 3.05], scale: [3.0, 0.02, 0.025] });
+    add(G.box, darkM, { pos: [s * 2.7, -0.02, 1.0], scale: [0.025, 0.02, 3.0], rot: [0, 0, 0] });
+    if (exotic) add(G.box, glowM, { pos: [s * 3.45, -0.17, -0.75], scale: [0.05, 0.06, 6.0], rot: [0, s * 0.83, 0] });
   }
-  // canopy: glossy tinted bubble + pilot
-  const canopy = add(G.sphere, glassM, { pos: [0, 0.8, -3.1], scale: [0.62, 0.5, 1.9] });
-  const pilot = add(G.sphere, pbr({ color: 0xe6e9ef, roughness: 0.5 }), { pos: [0, 0.86, -2.7], scale: [0.2, 0.22, 0.24] });
-  if (!lean) {
-    // panel details: weapons-bay doors + spine
-    for (const s of [-1, 1]) add(G.box, darkM, { pos: [s * 0.52, -0.55, 0.9], scale: [0.04, 0.03, 2.8] });
-    add(G.box, darkM, { pos: [0, 0.78, 2.6], scale: [0.7, 0.07, 3.4] });
-  }
+  // central tail sting between the engines, gun port, antennas, weapons-bay seams, spine
+  add(new THREE.CylinderGeometry(0.08, 0.2, 2.8, 8).rotateX(PI / 2), metalM, { pos: [0, 0.1, 6.0] });
+  add(G.box, darkM, { pos: [-0.95, 0.22, -1.9], scale: [0.14, 0.12, 0.4] });
+  add(new THREE.CylinderGeometry(0.018, 0.03, 1.0, 6).rotateX(PI / 2), metalM, { pos: [0, 0, -9.0] });
+  for (const z of [0.9, 3.2]) add(G.box, darkM, { pos: [0, 0.62, z], scale: [0.05, 0.28, 0.5], rot: [0.2, 0, 0] });
+  for (const s of [-1, 1]) add(G.box, darkM, { pos: [s * 0.52, -0.55, 0.9], scale: [0.04, 0.03, 2.8] });
+  add(G.box, wingM, { pos: [0, 0.66, 2.4], scale: [1.1, 0.14, 3.6] });
+  // canopy: tinted glass bubble, frame, seat + pilot
+  const canopy = new THREE.Group(); root.add(canopy);
+  const cg = add(g.canopy, glassM, { pos: [0, 0.22, 0], parent: canopy });
+  void cg;
+  const bar = (px, py, pz, sx, sy, sz, rx = 0, rz = 0) => add(G.box, darkM, { pos: [px, py, pz], scale: [sx, sy, sz], rot: [rx, 0, rz], parent: canopy });
+  bar(0, 0.84, -3.45, 1.0, 0.07, 0.07, 0.5);              // windscreen bow
+  for (const s of [-1, 1]) { bar(s * 0.56, 0.77, -3.2, 0.06, 0.06, 2.4, 0, 0); bar(s * 0.3, 0.9, -4.0, 0.05, 0.05, 1.1, 0.5, -s * 0.5); }
+  bar(0, 0.86, -1.5, 1.1, 0.06, 0.06);                      // rear arch
+  bar(0, 1.04, -2.2, 0.05, 0.05, 2.4);                      // centre rail
+  const pilot = new THREE.Group(); root.add(pilot);
+  add(G.sphere, pbr({ color: 0xd9dde2, roughness: 0.35, metalness: 0.2 }), { pos: [0, 0.9, -2.8], scale: [0.2, 0.22, 0.25], parent: pilot });
+  add(G.box, darkM, { pos: [0, 0.62, -2.5], scale: [0.45, 0.5, 0.2], parent: pilot });
   // afterburners
   const burners = [];
   const bc = pal.burn;
   const flame = new THREE.Group(), core = new THREE.Group();
   for (const s of [-1, 1]) {
-    const o = new THREE.Mesh(flameGeo, addMat(bc[0], 0.65)); o.position.set(s * 0.88, -0.02, 6.8); o.scale.set(1.1, 1.1, 5);
-    const m = new THREE.Mesh(flameGeo, addMat(bc[1], 0.8)); m.position.copy(o.position); m.scale.set(0.8, 0.8, 3.4);
-    const c = new THREE.Mesh(flameGeo, addMat(bc[2], 0.95)); c.position.copy(o.position); c.scale.set(0.45, 0.45, 2.0);
+    const o = new THREE.Mesh(flameGeo, addMat(bc[0], 0.65)); o.position.set(s * 0.9, -0.02, 6.8); o.scale.set(1.0, 1.0, 5);
+    const m = new THREE.Mesh(flameGeo, addMat(bc[1], 0.8)); m.position.copy(o.position); m.scale.set(0.75, 0.75, 3.4);
+    const c = new THREE.Mesh(flameGeo, addMat(bc[2], 0.95)); c.position.copy(o.position); c.scale.set(0.42, 0.42, 2.0);
     flame.add(o, m); core.add(c); burners.push(o, m, c);
   }
   root.add(flame, core);
@@ -212,7 +270,7 @@ function buildJet(kind, vk = "", variant = null) {
   for (const s of [-1, 1]) cbar(s * 0.62, 0.9, -3.0, 0.07, 0.07, 3.2, -s * 0.5);
   cockpit.visible = false; root.add(cockpit);
   const body0 = [];
-  root.traverse((o) => { if (o.isMesh && o !== canopy && o !== pilot) body0.push(o); });
+  root.traverse((o) => { if (!o.isMesh) return; for (let q = o; q; q = q.parent) if (q === canopy || q === pilot) return; body0.push(o); });
   const light = kind !== "player" ? null : new THREE.PointLight(0xff9a50, 0, 60);
   if (light) { light.position.set(0, 0, 8); root.add(light); }
   root.userData = {
@@ -220,9 +278,9 @@ function buildJet(kind, vk = "", variant = null) {
     burn(fl, boost) {
       const k = fl * (1 + boost * 0.9);
       for (let i = 0; i < burners.length; i += 3) {
-        burners[i].scale.set(1.1, 1.1, 5 * k); burners[i + 1].scale.set(0.8, 0.8, 3.4 * k); burners[i + 2].scale.set(0.45, 0.45, 2.0 * k);
+        burners[i].scale.set(1.0, 1.0, 5 * k); burners[i + 1].scale.set(0.75, 0.75, 3.4 * k); burners[i + 2].scale.set(0.42, 0.42, 2.0 * k);
       }
-      glow.scale.setScalar(6 + 3 * k); glow.material.opacity = 0.55 + 0.3 * Math.min(1.4, k);
+      glow.scale.setScalar(3.4 + 1.8 * k); glow.material.opacity = 0.28 + 0.2 * Math.min(1.4, k);
       if (light) light.intensity = 0.8 + boost;
     },
     bodyMeshes: body0,

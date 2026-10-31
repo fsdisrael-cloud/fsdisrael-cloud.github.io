@@ -114,7 +114,7 @@ body.in-game .build-tag { display: none; }
 /* ---------- Settings (top right): gear + Music / Effects ---------- */
 .settings { position: fixed; z-index: 80; top: calc(var(--safe-t) + 8px); right: calc(var(--safe-r) + 10px); display: flex; flex-direction: row; align-items: center; gap: 8px; }
 .toggles { display: flex; gap: 8px; max-width: 0; opacity: 0; overflow: hidden; pointer-events: none; transition: max-width .22s ease, opacity .18s; padding: 4px 0; margin: -4px 0; }
-.settings.open .toggles { max-width: 130px; opacity: 1; pointer-events: auto; }
+.settings.open .toggles { max-width: 190px; opacity: 1; pointer-events: auto; }
 .tgl { position: relative; display: grid; place-items: center; width: 46px; height: 46px; flex: none; padding: 0; border-radius: 50%; color: #1a2028; cursor: pointer; border: 2px solid #0a0c10;
   background: radial-gradient(circle at 35% 25%, #fdfeff, #b4bdc8 45%, #6d7782 72%, #c6ced8); box-shadow: 0 3px 0 #05060a, 0 5px 10px rgba(0,0,0,.45), inset 0 1px 1px #fff; transition: transform .08s, box-shadow .08s; }
 .tgl svg { width: 21px; height: 21px; margin-top: -4px; }
@@ -473,3 +473,15 @@ body.on-title .weapons .thr { display: none; }
 .wcam-ring { box-shadow: 0 0 0 3px #3c434d, 0 0 0 4.5px #04060a, 0 0 0 6px rgba(160,170,185,.55), inset 0 0 18px rgba(0,0,0,.85), inset 0 0 0 2px rgba(255,255,255,.08), 0 6px 12px rgba(0,0,0,.65); background: radial-gradient(ellipse 60% 28% at 36% 20%, rgba(220,240,255,.16), transparent 70%); }
 #radar { box-shadow: 0 6px 12px rgba(0,0,0,.65); background: transparent; }
 .stick-svg { filter: drop-shadow(0 6px 7px rgba(0,0,0,.6)); }
+
+/* build 17: hit markers + streak popups */
+.hitmark { position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; pointer-events: none; opacity: 0; }
+.hitmark i { position: absolute; width: 11px; height: 2.5px; background: #fff; box-shadow: 0 0 6px rgba(0,0,0,.9); }
+.hitmark i:nth-child(1) { left: 0; top: 4px; transform: rotate(45deg); } .hitmark i:nth-child(2) { right: 0; top: 4px; transform: rotate(-45deg); }
+.hitmark i:nth-child(3) { left: 0; bottom: 4px; transform: rotate(-45deg); } .hitmark i:nth-child(4) { right: 0; bottom: 4px; transform: rotate(45deg); }
+.hitmark.on { animation: hmk .22s ease-out; } .hitmark.kill i { background: #ff4a2a; width: 15px; height: 3.5px; }
+.hitmark.kill.on { animation: hmkK .45s ease-out; }
+@keyframes hmk { 0% { opacity: 1; transform: scale(.7); } 100% { opacity: 0; transform: scale(1.25); } }
+@keyframes hmkK { 0% { opacity: 1; transform: scale(.6); } 40% { opacity: 1; transform: scale(1.3); } 100% { opacity: 0; transform: scale(1.7); } }
+.pop.streak b { color: #ff7a2a; letter-spacing: .1em; }
+.pop.streak i { color: #ffd9a0; font-size: clamp(13px, 3.2vmin, 20px); letter-spacing: .26em; }
