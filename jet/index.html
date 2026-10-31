@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="ubu-build" content="7" />
+  <meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Jet" />
+  <meta name="theme-color" content="#0b0a1f" />
+  <meta name="format-detection" content="telephone=no" />
+  <title>Jet</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="192x192" href="img/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png" />
+  <link rel="preload" href="fonts/Fredoka.ttf" as="font" type="font/ttf" crossorigin />
+  <link rel="stylesheet" href="css/jet.css?v=7" />
+  <link rel="stylesheet" href="css/loading.css?v=7" />
+  <script type="importmap">{ "imports": { "three": "./js/vendor/three.module.min.js" } }</script>
+</head>
+<body class="on-title">
+  <!-- iOS 18+ best-effort haptic tick (see js/haptics.js) -->
+  <input id="ios-haptic-switch" type="checkbox" switch aria-hidden="true" tabindex="-1" />
+  <label id="ios-haptic-label" for="ios-haptic-switch" aria-hidden="true"></label>
+
+  <canvas id="game-canvas"></canvas>
+  <canvas id="hud-canvas"></canvas>
+
+  <!-- ===== Music / Effects toggles: always reachable, title and play ===== -->
+  <div id="toggles" class="toggles">
+    <button type="button" class="tgl" id="btn-music" aria-label="Music on/off">
+      <svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="18" r="2.6" fill="currentColor"/><circle cx="17" cy="16" r="2.6" fill="currentColor"/><path class="slash" d="M3 3 21 21" stroke="#ff4d4d" stroke-width="2.6" stroke-linecap="round"/></svg><span>Music</span>
+    </button>
+    <button type="button" class="tgl" id="btn-sfx" aria-label="Effects on/off">
+      <svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16 9a4.5 4.5 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="slash" d="M3 3 21 21" stroke="#ff4d4d" stroke-width="2.6" stroke-linecap="round"/></svg><span>Effects</span>
+    </button>
+  </div>
+
+  <!-- ===== Opening screen (one screen, shown once) ===== -->
+  <section id="screen-title" class="screen title">
+    <div class="sky-fx" aria-hidden="true"><i class="aurora a1"></i><i class="aurora a2"></i><i class="aurora a3"></i><i class="stars"></i><i class="cloud c1"></i><i class="cloud c2"></i><i class="cloud c3"></i><i class="horizon"></i></div>
+    <div class="title-inner">
+      <div class="logo" aria-label="Jet">
+        <svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lg" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#ff7ad9"/><stop offset=".5" stop-color="#7ad9ff"/><stop offset="1" stop-color="#ffe27a"/></linearGradient></defs><path d="M32 4 41 30 60 46 60 51 38 45 35 58 32 60 29 58 26 45 4 51 4 46 23 30Z" fill="url(#lg)" stroke="#0b0a1f" stroke-width="2.5" stroke-linejoin="round"/></svg>
+        <span class="logo-word">Jet</span>
+      </div>
+      <svg class="hero-jet" viewBox="0 0 400 220" aria-hidden="true">
+        <defs>
+          <linearGradient id="hj-body" x1="0" x2="1"><stop offset="0" stop-color="#2d3646"/><stop offset=".45" stop-color="#8fa0b8"/><stop offset=".6" stop-color="#c9d4e2"/><stop offset="1" stop-color="#2a3140"/></linearGradient>
+          <linearGradient id="hj-wing" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#5c6a80"/><stop offset="1" stop-color="#1c2230"/></linearGradient>
+          <linearGradient id="hj-flame" x1="0" x2="1"><stop offset="0" stop-color="#7ad9ff" stop-opacity="0"/><stop offset=".5" stop-color="#7ad9ff"/><stop offset="1" stop-color="#fff"/></linearGradient>
+          <linearGradient id="hj-trail" x1="0" x2="1"><stop offset="0" stop-color="#ff7ad9" stop-opacity="0"/><stop offset=".3" stop-color="#ff7ad9"/><stop offset=".55" stop-color="#ffe27a"/><stop offset=".8" stop-color="#7affb0"/><stop offset="1" stop-color="#7ad9ff"/></linearGradient>
+        </defs>
+        <path d="M0 98 L196 108 L196 114 L0 118Z" fill="url(#hj-trail)" opacity=".8"/>
+        <path d="M0 126 L196 118 L196 123 L0 132Z" fill="url(#hj-trail)" opacity=".55"/>
+        <ellipse cx="206" cy="110" rx="26" ry="5" fill="url(#hj-flame)"/>
+        <path d="M232 86 L300 20 L318 24 L292 96Z M232 134 L300 200 L318 196 L292 124Z" fill="url(#hj-wing)" stroke="#0b0a1f" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M210 98 L250 70 L262 74 L250 100Z M210 122 L250 150 L262 146 L250 120Z" fill="#1c2230" stroke="#0b0a1f" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M206 100 Q214 92 262 92 L356 104 Q388 110 356 116 L262 128 Q214 128 206 120Z" fill="url(#hj-body)" stroke="#0b0a1f" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M296 102 Q322 100 338 108 Q322 114 296 114Z" fill="#7ad9ff" stroke="#0b0a1f" stroke-width="2" opacity=".95"/>
+        <path d="M300 103 Q320 102 332 106" stroke="#fff" stroke-width="2" fill="none" opacity=".8"/>
+        <path d="M230 106 H290" stroke="#ff4d7a" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <div id="menu-buttons" class="menu-buttons"></div>
+      <div class="title-hint" id="title-hint">Hold your phone like a wheel. Tilt to fly.</div>
+    </div>
+    <div id="panel" class="panel hidden" role="dialog">
+      <div class="panel-card"><h2 id="panel-title"></h2><div id="panel-body"></div><button type="button" class="metal-btn small" id="panel-close"><i class="led"></i><span>OK</span></button></div>
+    </div>
+  </section>
+
+  <!-- ===== In-game HUD ===== -->
+  <div id="hud" class="hud">
+    <div class="radar-wrap">
+      <canvas id="radar" aria-label="Radar"></canvas>
+      <button type="button" class="view-btn" id="btn-view" aria-label="Camera view">
+        <svg viewBox="0 0 24 24"><path d="M3 8h4l2-3h6l2 3h4v11H3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.6" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>View</span>
+      </button>
+    </div>
+    <div class="top-center"><div id="hud-timer" class="timer">0:00</div><div class="score"><b id="hud-score">0</b> pts</div><div class="lvl" id="hud-level"></div></div>
+    <div id="hud-obj" class="objectives"></div>
+    <div class="stats">
+      <div class="bar"><i id="hud-hp"></i></div>
+      <div class="nums"><span><b id="hud-spd">0</b> km/h</span><span><b id="hud-alt">0</b> m</span></div>
+    </div>
+    <div id="stick" class="stick"></div>
+    <div id="alert" class="alert hidden"></div>
+    <div id="toasts" class="toasts"></div>
+    <div id="low-alt" class="low-alt">PULL UP</div>
+    <div id="low-edge" class="low-edge"></div>
+    <div id="hit-flash" class="hit-flash"></div>
+    <div id="boom-flash" class="boom-flash"></div>
+    <div id="crash" class="crash hidden">BOOM!<small>back in the sky...</small></div>
+  </div>
+
+  <!-- ===== Loading component (js/loading.js + css/loading.css; restyle there) ===== -->
+  <div id="loading" class="loading hidden"></div>
+
+  <!-- ===== Results card: one button, no menus ===== -->
+  <section id="results" class="screen results hidden">
+    <div class="res-card">
+      <div id="res-title" class="res-title"></div>
+      <div id="res-stars" class="res-stars"></div>
+      <div id="res-sub" class="res-sub"></div>
+      <div id="res-list" class="res-list"></div>
+      <button type="button" class="metal-btn" id="res-btn"><i class="led"></i><span id="res-btn-label">NEXT</span></button>
+    </div>
+  </section>
+
+  <section id="pause" class="screen pause hidden"><div class="res-card"><div class="res-title">Paused</div><button type="button" class="metal-btn" id="pause-btn"><i class="led"></i><span>RESUME</span></button></div></section>
+
+  <div id="build-tag" class="build-tag"></div>
+  <script type="module" src="js/main.js?v=7"></script>
+</body>
+</html>

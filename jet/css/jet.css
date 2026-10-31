@@ -1,0 +1,148 @@
+/* Jet - one opening screen + in-game HUD. Layout knobs are CSS variables at the top. */
+@font-face { font-family: "Fredoka"; src: url("../fonts/Fredoka.ttf") format("truetype"); font-weight: 300 700; font-display: swap; }
+:root {
+  --safe-t: env(safe-area-inset-top, 0px); --safe-r: env(safe-area-inset-right, 0px); --safe-b: env(safe-area-inset-bottom, 0px); --safe-l: env(safe-area-inset-left, 0px);
+  --mint: #4dffa6; --sun: #ffd23f; --red: #ff4d4d; --ink: #0b0a1f;
+  /* adjustable layout */
+  --radar: clamp(104px, 25vmin, 170px);
+  --stick: clamp(190px, min(52vw, 40vh), 290px);
+  --gap: 12px;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0a1f; color: #fff; font-family: "Fredoka", ui-rounded, system-ui, sans-serif; touch-action: none; overscroll-behavior: none; }
+canvas#game-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+canvas#hud-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+.hidden { display: none !important; }
+#ios-haptic-switch, #ios-haptic-label { position: fixed; opacity: 0; pointer-events: none; width: 1px; height: 1px; left: -10px; top: -10px; }
+
+/* ---------- Music / Effects toggles (always on top) ---------- */
+.toggles { position: fixed; z-index: 80; top: calc(var(--safe-t) + 8px); right: calc(var(--safe-r) + 10px); display: flex; gap: 8px; }
+.tgl { position: relative; display: grid; place-items: center; width: 50px; height: 50px; padding: 0; border-radius: 50%; color: #1a2028; cursor: pointer; border: 2px solid #0a0c10;
+  background: radial-gradient(circle at 35% 25%, #fdfeff, #b4bdc8 45%, #6d7782 72%, #c6ced8); box-shadow: 0 3px 0 #05060a, 0 5px 10px rgba(0,0,0,.45), inset 0 1px 1px #fff; transition: transform .08s, box-shadow .08s; }
+.tgl svg { width: 22px; height: 22px; margin-top: -4px; }
+.tgl span { position: absolute; bottom: 6px; font: 600 7px/1 "Fredoka", sans-serif; letter-spacing: 0; text-transform: uppercase; color: #2a323c; }
+.tgl .slash { display: none; }
+.tgl.off { color: #6a7480; } .tgl.off .slash { display: block; }
+.tgl:active { transform: translateY(2px); box-shadow: 0 1px 0 #05060a, inset 0 2px 5px rgba(0,0,0,.4); }
+
+/* ---------- Opening screen ---------- */
+.screen { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; }
+.title { background: linear-gradient(180deg, #120a3a 0%, #2a1260 40%, #7a2f8f 72%, #ff8a6a 100%); overflow: hidden; }
+.sky-fx { position: absolute; inset: 0; overflow: hidden; }
+.sky-fx i { position: absolute; display: block; }
+.aurora { left: -30%; right: -30%; height: 55%; filter: blur(46px); opacity: .7; mix-blend-mode: screen; border-radius: 50%; }
+.aurora.a1 { top: -5%; background: linear-gradient(90deg, #00ffa8, #3a7bff, #d44cff, #ff4fa0); animation: drift1 16s ease-in-out infinite alternate, hue 22s linear infinite; }
+.aurora.a2 { top: 12%; opacity: .5; background: linear-gradient(90deg, #ff4fa0, #ffe45c, #4dffb0, #19d3ff); animation: drift2 21s ease-in-out infinite alternate, hue 30s linear infinite reverse; }
+.aurora.a3 { top: 28%; opacity: .35; background: linear-gradient(90deg, #7a5cff, #ff7ad9, #7affb0); animation: drift1 26s ease-in-out infinite alternate-reverse, hue 40s linear infinite; }
+@keyframes drift1 { from { transform: translateX(-8%) skewY(-4deg); } to { transform: translateX(8%) skewY(4deg); } }
+@keyframes drift2 { from { transform: translateX(7%) skewY(3deg) scaleY(.9); } to { transform: translateX(-7%) skewY(-3deg) scaleY(1.1); } }
+@keyframes hue { to { filter: blur(46px) hue-rotate(360deg); } }
+.stars { inset: 0; background-image: radial-gradient(1.4px 1.4px at 12% 18%, #fff, transparent), radial-gradient(1.2px 1.2px at 30% 8%, #fff, transparent), radial-gradient(1.6px 1.6px at 47% 22%, #fff, transparent), radial-gradient(1.2px 1.2px at 64% 10%, #fff, transparent), radial-gradient(1.5px 1.5px at 82% 20%, #fff, transparent), radial-gradient(1.1px 1.1px at 92% 6%, #fff, transparent), radial-gradient(1.3px 1.3px at 6% 40%, #fff, transparent), radial-gradient(1.2px 1.2px at 72% 38%, #fff, transparent); opacity: .8; animation: twinkle 4s ease-in-out infinite alternate; }
+@keyframes twinkle { to { opacity: .45; } }
+.cloud { width: 60vmax; height: 16vmax; border-radius: 50%; background: radial-gradient(ellipse at 50% 40%, rgba(255,255,255,.95), rgba(255,200,240,.55) 45%, transparent 70%); filter: blur(10px); animation: cloudmove 40s linear infinite, hue 14s linear infinite; }
+.cloud.c1 { bottom: 4%; left: -30%; } .cloud.c2 { bottom: 14%; left: -60%; animation-duration: 55s; opacity: .8; transform: scale(.7); } .cloud.c3 { bottom: -4%; left: -10%; animation-duration: 33s; transform: scale(1.2); opacity: .9; }
+@keyframes cloudmove { from { translate: 0 0; } to { translate: 160vw 0; } }
+.horizon { left: 0; right: 0; bottom: 0; height: 30%; background: linear-gradient(180deg, transparent, rgba(255,160,120,.35)); }
+.title-inner { position: relative; width: min(92vw, 420px); display: flex; flex-direction: column; align-items: center; gap: 10px; padding: calc(var(--safe-t) + 54px) 0 calc(var(--safe-b) + 14px); max-height: 100%; }
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-mark { width: clamp(34px, 8vmin, 52px); height: clamp(34px, 8vmin, 52px); filter: drop-shadow(0 0 10px rgba(122,217,255,.9)); }
+.logo-word { font: 700 clamp(54px, 13vmin, 92px)/1 "Fredoka", sans-serif; letter-spacing: .02em; color: #fff; text-shadow: 0 4px 0 #0b0a1f, 0 0 26px rgba(255,255,255,.55); background: linear-gradient(180deg, #fff, #cfe9ff 60%, #ffd6f4); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; paint-order: stroke fill; -webkit-text-stroke: 2px #0b0a1f; }
+.hero-jet { width: min(76vw, 340px, 34vh * 1.8); animation: heroFloat 5s ease-in-out infinite; filter: drop-shadow(0 8px 18px rgba(0,0,0,.45)); }
+@keyframes heroFloat { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-7px) rotate(1.5deg); } }
+.title-hint { font: 500 14px/1.3 "Fredoka", sans-serif; opacity: .85; text-align: center; text-shadow: 0 2px 0 rgba(0,0,0,.5); }
+
+/* ---------- glossy metal cockpit buttons ---------- */
+.menu-buttons { width: 100%; display: flex; flex-direction: column; gap: 12px; align-items: center; margin-top: 6px; }
+.metal-btn { position: relative; width: min(78vw, 330px); height: clamp(54px, 9.5vh, 66px); display: flex; align-items: center; justify-content: center; gap: 12px; padding: 0 18px 0 16px; cursor: pointer; border-radius: 16px; border: 3px solid #07080b;
+  font: 700 clamp(20px, 3.4vh, 26px)/1 "Fredoka", sans-serif; letter-spacing: .12em; color: #151a21; text-shadow: 0 1px 0 rgba(255,255,255,.75), 0 -1px 0 rgba(0,0,0,.25);
+  background: linear-gradient(180deg, #fbfcfe 0%, #cfd6df 18%, #9aa5b2 46%, #6b7580 52%, #a4aebb 78%, #d9e0e8 100%);
+  box-shadow: 0 5px 0 #05060a, 0 9px 16px rgba(0,0,0,.5), inset 0 2px 2px rgba(255,255,255,.95), inset 0 -3px 4px rgba(0,0,0,.28), inset 0 0 0 2px rgba(255,255,255,.18);
+  transition: transform .07s ease-out, box-shadow .07s ease-out, filter .07s; overflow: hidden; }
+.metal-btn::before { content: ""; position: absolute; left: 6px; right: 6px; top: 3px; height: 42%; border-radius: 12px 12px 40px 40px / 12px 12px 18px 18px; background: linear-gradient(180deg, rgba(255,255,255,.75), rgba(255,255,255,0)); pointer-events: none; }
+.metal-btn::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 1px, rgba(0,0,0,.04) 1px 3px); mix-blend-mode: overlay; pointer-events: none; }
+.metal-btn .led { width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #c9ffe0, #17d36b 55%, #0a5a2e); box-shadow: 0 0 8px #3dff8b, inset 0 0 2px rgba(0,0,0,.5); border: 1.5px solid #05140b; flex: none; }
+.metal-btn.go { color: #3a0a06; background: linear-gradient(180deg, #fff6ea 0%, #ffd9b0 16%, #ffa34a 46%, #d9560f 52%, #ff9a52 80%, #ffd7a6 100%); }
+.metal-btn.go .led { background: radial-gradient(circle at 35% 30%, #fff0c0, #ffb02e 55%, #7a4300); box-shadow: 0 0 10px #ffb02e; border-color: #1a0f00; }
+.metal-btn.small { width: auto; min-width: 120px; height: 48px; font-size: 20px; }
+.metal-btn:active, .metal-btn.pressed { transform: translateY(4px) scale(.985); box-shadow: 0 1px 0 #05060a, 0 3px 6px rgba(0,0,0,.5), inset 0 3px 6px rgba(0,0,0,.4); filter: brightness(.93); }
+.metal-btn:active .led, .metal-btn.pressed .led { box-shadow: 0 0 16px #fff; }
+.metal-btn .sub { position: absolute; right: 14px; bottom: 6px; font: 600 11px/1 "Fredoka"; letter-spacing: .06em; opacity: .7; }
+
+.panel { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; background: rgba(8,6,28,.6); backdrop-filter: blur(4px); }
+.panel-card { width: min(86vw, 380px); padding: 20px 18px 16px; border-radius: 22px; background: linear-gradient(180deg, rgba(40,32,90,.95), rgba(18,12,52,.96)); border: 2px solid rgba(255,255,255,.35); box-shadow: 0 14px 40px rgba(0,0,0,.6); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.panel-card h2 { margin: 0; font: 700 26px "Fredoka"; letter-spacing: .06em; }
+#panel-body { font: 500 16px/1.4 "Fredoka"; opacity: .95; text-align: left; width: 100%; }
+#panel-body .dots { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 8px; }
+#panel-body .dot { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font: 700 15px "Fredoka"; background: rgba(255,255,255,.14); border: 2px solid rgba(255,255,255,.3); }
+#panel-body .dot.done { background: linear-gradient(180deg, #7affb0, #1fb36a); color: #052; border-color: #0a3; }
+#panel-body .dot.now { background: linear-gradient(180deg, #ffe27a, #ff9a1f); color: #3a1a00; border-color: #fff; box-shadow: 0 0 14px #ffb02e; }
+
+/* ---------- HUD ---------- */
+.hud { position: fixed; inset: 0; z-index: 10; pointer-events: none; display: none; }
+body.in-game .hud { display: block; }
+body.on-title .tgl-hide, body.on-title .hud { display: none; }
+.radar-wrap { position: absolute; left: calc(var(--safe-l) + 10px); top: calc(var(--safe-t) + 10px); width: var(--radar); display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+#radar { width: var(--radar); height: var(--radar); display: block; filter: drop-shadow(0 4px 8px rgba(0,0,0,.6)); }
+.view-btn { pointer-events: auto; display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px 0 9px; border-radius: 99px; border: 2px solid #0a0c10; color: #1a2028; cursor: pointer; font: 700 12px "Fredoka"; letter-spacing: .06em; text-transform: uppercase;
+  background: linear-gradient(180deg, #f4f7fa, #a9b3bf 50%, #7a8490 52%, #c3ccd6); box-shadow: 0 3px 0 #05060a, 0 5px 8px rgba(0,0,0,.45), inset 0 1px 1px #fff; }
+.view-btn svg { width: 20px; height: 20px; }
+.view-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #05060a, inset 0 2px 4px rgba(0,0,0,.4); }
+.top-center { position: absolute; top: calc(var(--safe-t) + 8px); left: 50%; transform: translateX(-50%); text-align: center; text-shadow: 0 2px 0 rgba(0,0,0,.7), 0 0 8px rgba(0,0,0,.5); }
+.timer { font: 700 clamp(26px, 6.5vmin, 38px)/1 "Fredoka"; letter-spacing: .04em; } .timer.urgent { color: var(--red); animation: pulse .5s infinite alternate; }
+.score { font: 500 clamp(12px, 2.6vmin, 15px) "Fredoka"; opacity: .9; } .score b { font-weight: 700; }
+.lvl { font: 600 11px "Fredoka"; letter-spacing: .12em; text-transform: uppercase; opacity: .75; }
+@keyframes pulse { to { transform: scale(1.12); } }
+.objectives { position: absolute; right: calc(var(--safe-r) + 10px); top: calc(var(--safe-t) + 62px); max-width: 44vw; font: 600 clamp(11px, 2.4vmin, 14px)/1.25 "Fredoka"; text-align: right; text-shadow: 0 1px 0 #000, 0 0 6px rgba(0,0,0,.8); display: flex; flex-direction: column; gap: 3px; align-items: flex-end; }
+.objectives div { background: rgba(8,6,28,.55); border: 1px solid rgba(255,255,255,.22); border-radius: 10px; padding: 3px 8px; display: flex; gap: 6px; align-items: center; }
+.objectives .chk { width: 11px; height: 11px; border-radius: 3px; border: 2px solid #fff; display: inline-block; flex: none; }
+.objectives .done { opacity: .6; } .objectives .done .chk { background: var(--mint); border-color: var(--mint); }
+.objectives b { color: var(--sun); }
+.stats { position: absolute; left: calc(var(--safe-l) + 12px); bottom: calc(var(--safe-b) + 12px); width: min(40vw, 200px); text-shadow: 0 1px 0 #000; }
+.bar { height: 14px; border-radius: 99px; background: rgba(0,0,0,.55); border: 2px solid rgba(255,255,255,.7); overflow: hidden; } .bar i { display: block; height: 100%; width: 100%; background: var(--mint); transition: width .15s; }
+.nums { margin-top: 5px; display: flex; gap: 12px; font: 500 clamp(12px, 2.6vmin, 14px) "Fredoka"; } .nums b { font-weight: 700; font-size: 1.25em; }
+.alert { position: absolute; top: 24%; left: 50%; transform: translateX(-50%); padding: 8px 18px; border-radius: 14px; background: rgba(255,60,60,.9); border: 2px solid #fff; font: 700 clamp(16px, 3.6vmin, 22px) "Fredoka"; letter-spacing: .05em; text-align: center; animation: pulse .35s infinite alternate; white-space: nowrap; }
+.toasts { position: absolute; top: 31%; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.toast { padding: 5px 14px; border-radius: 99px; background: rgba(8,6,28,.72); border: 1.5px solid rgba(255,255,255,.5); font: 600 clamp(13px, 2.8vmin, 16px) "Fredoka"; animation: toastIn .2s ease-out; white-space: nowrap; }
+@keyframes toastIn { from { transform: translateY(8px) scale(.9); opacity: 0; } }
+.low-alt { position: absolute; top: 38%; left: 50%; transform: translateX(-50%); font: 700 clamp(30px, 8vmin, 54px) "Fredoka"; color: var(--red); letter-spacing: .1em; text-shadow: 0 3px 0 #000; opacity: 0; } .low-alt.on { opacity: 1; animation: pulse .25s infinite alternate; }
+.low-edge { position: absolute; inset: 0; box-shadow: inset 0 0 90px rgba(255,40,40,.65); opacity: 0; transition: opacity .15s; } .low-edge.on { opacity: 1; }
+.hit-flash { position: absolute; inset: 0; background: radial-gradient(transparent 40%, rgba(255,40,40,.7)); opacity: 0; transition: opacity .25s; }
+.boom-flash { position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, rgba(255,255,255,.9), rgba(255,220,160,.5) 60%, transparent); opacity: 0; transition: opacity .35s ease-out; }
+.crash { position: absolute; top: 40%; left: 50%; transform: translateX(-50%); text-align: center; font: 700 clamp(40px, 12vmin, 80px) "Fredoka"; color: #ffd23f; text-shadow: 0 4px 0 #b3200f, 0 0 20px #ff6a1a; } .crash small { display: block; font: 500 16px "Fredoka"; color: #fff; text-shadow: 0 2px 0 #000; }
+
+/* ---------- HOTAS joystick (bottom right) ---------- */
+.stick { position: absolute; right: calc(var(--safe-r) + 6px); bottom: calc(var(--safe-b) + 4px); width: var(--stick); aspect-ratio: 260 / 270; pointer-events: auto; touch-action: none; }
+.stick-persp { position: absolute; inset: 0; perspective: 520px; perspective-origin: 50% 20%; }
+.stick-3d { position: absolute; inset: 0; transform-origin: 50% 84%; transition: none; will-change: transform; }
+.stick-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 8px 10px rgba(0,0,0,.55)); }
+.stick-btn { position: absolute; transform: translate(-50%, -50%); padding: 0; cursor: pointer; border-radius: 50%; border: 2.5px solid #05060a; color: #fff; display: grid; place-items: center; touch-action: none;
+  font: 700 clamp(9px, 1.8vmin, 11px)/1 "Fredoka"; letter-spacing: .06em; box-shadow: 0 3px 0 #05060a, 0 5px 8px rgba(0,0,0,.5), inset 0 1px 2px rgba(255,255,255,.7), inset 0 -3px 5px rgba(0,0,0,.35); transition: transform .06s, box-shadow .06s, filter .06s; }
+.stick-btn i { font-style: normal; text-shadow: 0 1px 0 rgba(0,0,0,.6); pointer-events: none; margin-top: 2px; }
+.stick-btn .n { position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 4px; border-radius: 10px; background: #0b0a1f; border: 1.5px solid #fff; font: 700 12px/17px "Fredoka"; color: #fff; text-align: center; pointer-events: none; }
+.stick-btn.pressed { transform: translate(-50%, calc(-50% + 3px)) scale(.94); box-shadow: 0 0 0 #05060a, inset 0 3px 6px rgba(0,0,0,.5); filter: brightness(.9); }
+.stick-btn.empty { filter: grayscale(.8) brightness(.7); }
+.sb-msl { left: 35.4%; top: 23%; width: 21%; aspect-ratio: 1; background: radial-gradient(circle at 35% 28%, #ffb0a0, #ff3b2f 48%, #8c0e08); }
+.sb-bomb { left: 64.6%; top: 23%; width: 21%; aspect-ratio: 1; color: #1a1200; background: radial-gradient(circle at 35% 28%, #fff2a8, #ffc928 50%, #9a6a00); }
+.sb-gun { left: 50%; top: 47.5%; width: 24%; aspect-ratio: 1; background: radial-gradient(circle at 35% 28%, #7d8794, #2c333c 55%, #0d0f13); border-color: #d63b2f; --heat: 0; }
+.sb-gun::before { content: ""; position: absolute; inset: -7px; border-radius: 50%; background: conic-gradient(#ff4d2e calc(var(--heat) * 1%), transparent 0); -webkit-mask: radial-gradient(circle, transparent 62%, #000 64%); mask: radial-gradient(circle, transparent 62%, #000 64%); pointer-events: none; }
+.sb-gun.hot { filter: hue-rotate(-20deg) brightness(1.1); }
+
+/* ---------- results / pause ---------- */
+.results, .pause { background: rgba(8,6,28,.72); backdrop-filter: blur(5px); z-index: 70; }
+.res-card { width: min(88vw, 380px); max-height: 92vh; overflow: hidden; padding: 20px 18px 22px; border-radius: 24px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; background: linear-gradient(180deg, rgba(48,38,108,.96), rgba(20,14,56,.97)); border: 2px solid rgba(255,255,255,.4); box-shadow: 0 16px 50px rgba(0,0,0,.65); }
+.res-title { font: 700 clamp(26px, 5vh, 36px) "Fredoka"; letter-spacing: .06em; }
+.res-stars { font-size: clamp(30px, 6vh, 44px); letter-spacing: 6px; filter: drop-shadow(0 2px 0 #000); }
+.res-sub { font: 500 16px "Fredoka"; opacity: .9; }
+.res-list { font: 500 14px/1.45 "Fredoka"; opacity: .85; }
+.build-tag { position: fixed; left: calc(var(--safe-l) + 6px); bottom: calc(var(--safe-b) + 2px); font: 500 10px "Fredoka"; opacity: .35; z-index: 3; pointer-events: none; }
+body.in-game .build-tag { display: none; }
+
+/* portrait vs landscape adaptation */
+@media (orientation: landscape) and (max-height: 520px) {
+  .title-inner { flex-direction: column; padding-top: calc(var(--safe-t) + 8px); gap: 4px; }
+  .hero-jet { width: min(30vw, 200px); } .logo-word { font-size: 44px; } .title-hint { display: none; }
+  .metal-btn { height: 46px; font-size: 18px; width: min(54vw, 300px); } .menu-buttons { gap: 8px; margin-top: 0; }
+  .objectives { top: calc(var(--safe-t) + 58px); }
+  .stats { bottom: calc(var(--safe-b) + 8px); }
+}
+@media (orientation: portrait) { .objectives { max-width: 52vw; } .stats { bottom: calc(var(--safe-b) + 14px); width: min(36vw, 170px); } }
