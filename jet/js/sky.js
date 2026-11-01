@@ -1,8 +1,8 @@
 // Time of day + weather: sky dome, sun/moon, stars, lights, fog, toon clouds, rain/snow, lightning.
-import { FX } from "./tex.js?v=25";
+import { FX } from "./tex.js?v=26";
 import * as THREE from "three";
-import { PartBuilder, G, getGradientMap, outlineMaterial } from "./toon.js?v=25";
-import { style, skyHueChunk } from "./surreal.js?v=25";
+import { PartBuilder, G, getGradientMap, outlineMaterial } from "./toon.js?v=26";
+import { style, skyHueChunk } from "./surreal.js?v=26";
 
 export const TIMES = ["dawn", "day", "dusk", "night"];
 export const WEATHERS = ["clear", "cloudy", "rain", "fog", "snow", "storm"];
@@ -10,7 +10,7 @@ export const WEATHERS = ["clear", "cloudy", "rain", "fog", "snow", "storm"];
 const TOD = {
   day: { elev: 55, az: 140, top: 0x2f7fd8, hor: 0xbfe3ff, bot: 0xd9efff, sun: 0xfff4dc, sunI: 2.3, hs: 0xcfe8ff, hg: 0x7a6a50, hI: 1.0, fog: 0xc4dcf0, tint: 0xffffff, cloud: 0xffffff, exp: 1.0, stars: 0 },
   dawn: { elev: 9, az: 85, top: 0x4060a8, hor: 0xffb27a, bot: 0xffd2a8, sun: 0xffb070, sunI: 1.7, hs: 0xffd8c0, hg: 0x5a4a50, hI: 0.8, fog: 0xf0bc9c, tint: 0xffe2cc, cloud: 0xffd2bc, exp: 1.0, stars: 0.15 },
-  dusk: { elev: 6, az: 275, top: 0x2a2f6b, hor: 0xff7a4a, bot: 0xffa070, sun: 0xff8a48, sunI: 1.6, hs: 0xffb090, hg: 0x40304a, hI: 0.7, fog: 0xd88f7a, tint: 0xf4c4ac, cloud: 0xffb39a, exp: 1.0, stars: 0.3 },
+  dusk: { elev: 15, az: 262, top: 0x2b5c9c, hor: 0xffa648, bot: 0xffcf86, sun: 0xffb866, sunI: 2.1, hs: 0xffd2a0, hg: 0x9a7650, hI: 1.7, fog: 0xe8b07c, tint: 0xffdcae, cloud: 0xffcf9a, exp: 1.0, stars: 0.15 },
   night: { elev: 38, az: 200, top: 0x040a1c, hor: 0x1d2d55, bot: 0x26386a, sun: 0xa8c4ff, sunI: 0.9, hs: 0x5876c0, hg: 0x141828, hI: 0.75, fog: 0x15203c, tint: 0x8094c8, cloud: 0x6a7aa4, exp: 1.05, stars: 1 },
 };
 const WX = {

@@ -2,8 +2,8 @@
 // Surreal = pastel hue-shifting palette, gently wavy/melting terrain, soft outlines,
 // floating dream shapes and a cheap CSS glow. All GPU-cheap: a few shader lines + 4 draw calls.
 import * as THREE from "three";
-import { noiseTex, FX, terrainPhotos, BUMP_GLSL } from "./tex.js?v=25";
-import { outlineUniforms, toonMaterial, PartBuilder, G, outlineMaterial } from "./toon.js?v=25";
+import { noiseTex, FX, terrainPhotos, BUMP_GLSL } from "./tex.js?v=26";
+import { outlineUniforms, toonMaterial, PartBuilder, G, outlineMaterial } from "./toon.js?v=26";
 
 const KEY = "jet-style";
 export const style = {
@@ -99,17 +99,18 @@ export function patchTerrain(mat) {
           vec3 base = diffuseColor.rgb;
           float lum = dot(base, vec3(0.3, 0.59, 0.11));
           diffuseColor.rgb = mix(base, vec3(lum) * vec3(1.0, 0.95, 0.88) * 0.95, rock * 0.35);
-          float phd = mix(pg, pr, clamp(rock * 1.6, 0.0, 1.0));
+          float phd = wat ? 0.0 : mix(pg, pr, clamp(rock * 1.6, 0.0, 1.0));
           ubuH = phd;
           diffuseColor.rgb *= 1.0 + (wat ? (n1.r - 0.5) * 0.08 : det * 0.55 * (1.0 + rock * 0.6) + phd * 1.25);
           if (wat) {
             vec2 q1 = vWP.xz * 0.011 + vec2(uT2 * 0.012, uT2 * 0.006);
             vec2 q2 = vWP.xz * 0.037 - vec2(uT2 * 0.02, -uT2 * 0.01);
             vec4 w1 = texture2D(uNoise, q1), w2 = texture2D(uNoise, q2);
-            vec3 wn = normalize(vec3((w1.r - w1.g) * 0.3 + (w2.b - w2.a) * 0.22, 1.0, (w1.b - w1.a) * 0.3 + (w2.r - w2.g) * 0.22));
+            float wFar = 1.0 - smoothstep(300.0, 3200.0, dd);
+            vec3 wn = normalize(vec3(((w1.r - w1.g) * 0.3 + (w2.b - w2.a) * 0.22) * wFar, 1.0, ((w1.b - w1.a) * 0.3 + (w2.r - w2.g) * 0.22) * wFar));
             vec3 V = normalize(cameraPosition - vWP);
             vec3 H = normalize(normalize(uSunD) + V);
-            float sp = pow(max(dot(wn, H), 0.0), 140.0) * 2.2 + pow(max(dot(wn, H), 0.0), 18.0) * 0.12;
+            float sp = pow(max(dot(wn, H), 0.0), 140.0) * 2.2 * mix(0.3, 1.0, wFar) + pow(max(dot(wn, H), 0.0), 18.0) * 0.12;
             float fr = pow(1.0 - clamp(dot(wn, V), 0.0, 1.0), 3.0);
             ubuGlint = uSunC * sp + diffuseColor.rgb * fr * 0.6;
             // b23: deeper teal sea, sky reflection at grazing angles, soft white-caps
@@ -118,7 +119,7 @@ export function patchTerrain(mat) {
               vec3 skyR = fogColor * 1.08;
               float lumF = dot(fogColor, vec3(0.333));
               float cap = smoothstep(0.80, 0.97, w1.g * 0.55 + w2.r * 0.45) * (1.0 - smoothstep(600.0, 3500.0, dd));
-              ubuGlint += skyR * fr * 0.7 + vec3(cap * 0.3 * lumF);
+              ubuGlint += skyR * (0.62 + fr * 0.6) * mix(0.55, 1.0, uSunC.r) + vec3(cap * 0.3 * lumF);
             #endif
           }
         }

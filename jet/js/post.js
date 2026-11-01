@@ -43,7 +43,7 @@ export function createPost(renderer, opts = {}) {
     void main(){ vec3 a = texture2D(t, vUv + px*vec2(-1.0,0.0)).rgb + texture2D(t, vUv + px*vec2(1.0,0.0)).rgb + texture2D(t, vUv + px*vec2(0.0,-1.0)).rgb + texture2D(t, vUv + px*vec2(0.0,1.0)).rgb + 2.0*texture2D(t, vUv).rgb;
       gl_FragColor = vec4(a * (k / 6.0), 1.0); }`, { t: { value: null }, px: { value: new THREE.Vector2() }, k: { value: 1 } },
   { blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor, transparent: true });
-  const comp = mat(`varying vec2 vUv; uniform sampler2D tS, tB; uniform float uBloom, uBlur, uTime, uVig, uAsp, uCA, uHurt;
+  const comp = mat(`varying vec2 vUv; uniform sampler2D tS, tB; uniform float uBloom, uBlur, uTime, uVig, uAsp, uCA, uHurt, uNV;
     uniform vec3 uHaze; uniform vec3 uSun; uniform float uWhite; uniform vec3 uWhiteCol;
     float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233))) * 43758.5453); }
     void main(){
@@ -82,11 +82,18 @@ export function createPost(renderer, opts = {}) {
       col *= mix(vec3(0.93, 0.99, 1.07), vec3(1.07, 1.0, 0.92), smoothstep(0.05, 0.9, l));
       col *= 1.0 - uVig * smoothstep(0.18, 0.62, r2) * 1.1;
       col = mix(col, col * vec3(1.6, 0.35, 0.3), uHurt * smoothstep(0.05, 0.4, r2));
+      if (uNV > 0.5) {   // b26: night-vision goggles - green phosphor, amplified lows, grain, round tube vignette
+        float Ln = dot(col, vec3(0.3, 0.59, 0.11)); Ln = pow(clamp(Ln * 2.4 + 0.04, 0.0, 1.4), 0.72);
+        float gr = hash(vUv * vec2(uAsp * 700.0, 700.0) + uTime * 3.0) * 0.2;
+        vec2 cc = c * vec2(uAsp, 1.0); float tube = 1.0 - smoothstep(0.52, 0.8, length(cc));
+        col = vec3(0.1, 1.0, 0.32) * (Ln + gr * (1.0 - Ln * 0.5)) * tube;
+        col += vec3(0.0, 0.03, 0.01);
+      }
       gl_FragColor = vec4(col, 1.0);
       #include <tonemapping_fragment>
       #include <colorspace_fragment>
       gl_FragColor.rgb += (hash(vUv * 1000.0 + uTime) - 0.5) / 200.0;
-    }`, { tS: { value: null }, tB: { value: null }, uBloom: { value: 0.5 }, uBlur: { value: 0 }, uTime: { value: 0 }, uVig: { value: 0.5 }, uAsp: { value: 1 }, uCA: { value: 0.012 }, uHurt: { value: 0 }, uHaze: { value: new THREE.Vector3() }, uWhite: { value: 0 }, uWhiteCol: { value: new THREE.Vector3(0.8, 0.82, 0.86) }, uSun: { value: new THREE.Vector3() } });
+    }`, { tS: { value: null }, tB: { value: null }, uBloom: { value: 0.5 }, uBlur: { value: 0 }, uTime: { value: 0 }, uVig: { value: 0.5 }, uAsp: { value: 1 }, uCA: { value: 0.012 }, uHurt: { value: 0 }, uNV: { value: 0 }, uHaze: { value: new THREE.Vector3() }, uWhite: { value: 0 }, uWhiteCol: { value: new THREE.Vector3(0.8, 0.82, 0.86) }, uSun: { value: new THREE.Vector3() } });
 
   const pass = (m, target) => { quad.material = m; renderer.setRenderTarget(target); renderer.render(qs, qc); };
   const _v = new THREE.Vector3(), _s = new THREE.Vector3();
@@ -105,7 +112,7 @@ export function createPost(renderer, opts = {}) {
     const u = comp.uniforms;
     u.tS.value = sceneRT.texture; u.tB.value = mips[0].texture;
     u.uBloom.value = p.bloom ?? 0.55; u.uBlur.value = p.blur || 0; u.uTime.value = (p.time || 0) % 100; u.uVig.value = p.vig ?? 0.5; u.uAsp.value = W / H; u.uHurt.value = p.hurt || 0;
-    u.uWhite.value = p.white || 0; if (p.whiteCol) u.uWhiteCol.value.set(p.whiteCol.r, p.whiteCol.g, p.whiteCol.b);
+    u.uNV.value = p.nv ? 1 : 0; u.uWhite.value = p.white || 0; if (p.whiteCol) u.uWhiteCol.value.set(p.whiteCol.r, p.whiteCol.g, p.whiteCol.b);
     if (p.haze) u.uHaze.value.set(p.haze.x, p.haze.y, p.haze.z); else u.uHaze.value.z = 0;
     // sun position on screen
     if (p.sunDir) {

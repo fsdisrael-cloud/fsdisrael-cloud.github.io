@@ -1,16 +1,17 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=25";
-import { createHud } from "./hud.js?v=25";
-import { createControls } from "./controls.js?v=25";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene } from "./variety.js?v=25";
-import { createAudio, trackFor } from "./audio.js?v=25";
-import { createHaptics } from "./haptics.js?v=25";
-import { createRain2D } from "./rain2d.js?v=25";
-import { createLoading } from "./loading.js?v=25";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=25";
-import { setSurreal, tickStyle } from "./surreal.js?v=25";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=25";
+import { createGame } from "./game.js?v=26";
+import { createHud } from "./hud.js?v=26";
+import { createControls } from "./controls.js?v=26";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun } from "./variety.js?v=26";
+import { createAudio, trackFor } from "./audio.js?v=26";
+import { createHaptics } from "./haptics.js?v=26";
+import { createRain2D } from "./rain2d.js?v=26";
+import { createLoading } from "./loading.js?v=26";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=26";
+import { setSurreal, tickStyle } from "./surreal.js?v=26";
+import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=26";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=26";
 
 const $ = (id) => document.getElementById(id);
 
@@ -28,7 +29,7 @@ try {
   for (let i = 0; i < 500; i++) { w.fillStyle = `rgba(${rn() < 0.5 ? "255,255,255" : "0,0,0"},${0.03 + rn() * 0.08})`; w.fillRect(rn() * 256, rn() * 256, 1 + rn() * 2, 1 + rn() * 2); }
   document.documentElement.style.setProperty("--worn", `url(${wc.toDataURL("image/png")})`);
 } catch (e) { /* plain gradients if canvas is unavailable */ }
-const BUILD = 25;
+const BUILD = 26;
 { const t = $("build-tag"); if (t) t.textContent = "JET-X b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;
@@ -77,12 +78,14 @@ const flashEl = (id) => { const f = $(id); f.style.transition = "none"; f.style.
 const game = createGame({
   renderer, audio, controls, haptics,
   events: {
-    toast: (m) => hud.toast(m),
+    toast: (m, k) => hud.toast(m, k),
     onHurt: () => hud.hurtFlash(),
     onEnd: (r) => onLevelEnd(r),
     onBoom: (k) => { const f = $("boom-flash"); f.style.transition = "none"; f.style.opacity = String(Math.min(0.75, k)); void f.offsetWidth; f.style.transition = "opacity .4s ease-out"; f.style.opacity = "0"; },
-    onCrash: () => $("crash").classList.remove("hidden"),
-    onRespawn: () => { $("crash").classList.add("hidden"); hud.toast("Back in the sky!"); },
+    onCrash: () => {},
+    onFade: (on) => { const f = $("fadeblack"); if (f) f.classList.toggle("on", !!on); },
+    onEjectChute: (lv) => hud.toast(lv > 0 ? `PILOT SAFE  -  ${lv} ${lv === 1 ? "LIFE" : "LIVES"} LEFT` : "PILOT SAFE  -  NO LIVES LEFT", lv > 0 ? "good" : "bad"),
+    onRespawn: () => { $("crash").classList.add("hidden"); hud.toast("BACK IN THE AIR", "good"); },
     onEmpty: (kind) => { const b = document.querySelector(kind === "bomb" ? ".w-bomb" : ".w-msl"); if (b) { b.classList.remove("shake"); void b.offsetWidth; b.classList.add("shake"); } },
     onHit: (kill) => { const h = $("hitmark"); if (!h) return; h.classList.toggle("kill", !!kill); h.classList.remove("on"); void h.offsetWidth; h.classList.add("on"); },
     onPop: (pts, combo, kind) => {
@@ -196,6 +199,7 @@ function buildMenu() {
   for (const b of MENU_BUTTONS) {
     const el = document.createElement("button");
     const off = b.id === "cont" && !sv;
+    if (off || b.id === "new") continue;   // b26: TAP TO FLY starts a new sortie; CONT only shows when there is a save
     el.type = "button"; el.className = "plate" + (b.primary ? " go" : "") + (off ? " off" : ""); el.disabled = off;
     el.innerHTML = `<i class="led"></i><span class="pt">${b.label}</span><em class="ps">${off ? "NO SAVE" : b.sub}</em>`;
     el.addEventListener("click", (e) => { e.stopPropagation(); b.run(); });
@@ -206,7 +210,33 @@ function buildMenu() {
 }
 function showPanel(title, html) { $("panel-title").textContent = title; $("panel-body").innerHTML = html; $("panel").classList.remove("hidden"); }
 $("panel-close").addEventListener("click", () => $("panel").classList.add("hidden"));
-buildMenu();
+
+// ---------- b26: language picker ----------
+initLang();
+{
+  const btn = $("lang-btn"), list = $("lang-list"), cur = $("lang-cur");
+  const render = () => {
+    cur.textContent = langInfo()[1];
+    list.innerHTML = "";
+    for (const [code, name, flag] of LANGS) {
+      const b = document.createElement("button");
+      b.type = "button"; b.dataset.code = code; b.setAttribute("role", "option"); b.className = code === getLang() ? "on" : "";
+      b.innerHTML = `<span class="fl">${flag}</span><span class="nm"></span>`; b.querySelector(".nm").textContent = name; b.dir = "auto";
+      list.appendChild(b);
+    }
+  };
+  const open = (v) => { list.classList.toggle("hidden", !v); btn.setAttribute("aria-expanded", v ? "true" : "false"); if (v) { const on = list.querySelector(".on"); if (on) list.scrollTop = Math.max(0, on.offsetTop - 60); } };
+  btn.addEventListener("click", (e) => { e.stopPropagation(); window.__langTapGuard?.(); open(list.classList.contains("hidden")); });
+  list.addEventListener("click", (e) => {
+    e.stopPropagation(); window.__langTapGuard?.();
+    const b = e.target.closest("button[data-code]"); if (!b) return;
+    setLang(b.dataset.code); render(); open(false); audio.click?.();
+  });
+  document.addEventListener("pointerdown", (e) => { if (!list.classList.contains("hidden") && !e.target.closest("#lang-list, #lang-btn")) { open(false); window.__langTapGuard?.(); } }, true);
+  render();
+  window.__langRender = render; window.__langOpen = open;
+}
+buildMenu(); applyDom(); watchDom();
 game.attachWeaponCam($("wcam-c"));
 
 // ---------- start / levels ----------
@@ -214,7 +244,7 @@ async function launch(n, fromTap, sv) {
   if (state === "loading") return;
   state = "loading";
   levelNo = n; saveLevelNo(n);
-  document.body.classList.remove("tp-a", "tp-b", "tp-c", "preview", "rolling"); previewOn = false;
+  document.body.classList.remove("tp-a", "tp-b", "tp-c", "preview", "rolling"); previewOn = false; game.titleOff();
   $("results").classList.add("hidden"); $("pause").classList.add("hidden"); $("resume").classList.add("hidden"); $("crash").classList.add("hidden");
   liveLoad = !!(!sv && preload && preload.n === n && preloadReady);
   let p = !sv && preload && preload.n === n ? preload : null;
@@ -237,7 +267,7 @@ async function launch(n, fromTap, sv) {
   controls.calibrate(); controls.resetLook(); controls.setEnabled(true);
   try { const sv0 = localStorage.getItem("jet-view"); if ((sv0 === "cockpit" || sv0 === "chase") && sv0 !== game.view() && !L.lockView) game.setView(sv0); } catch { /* ignore */ }
   window.__applyThrottle?.(parseFloat(document.getElementById('thr').style.getPropertyValue('--t')) || 0.35);
-  game.setTime(sv ? sv.timeLeft : timeSec);
+  game.setTime(0);   // b26: no time limit - the run ends when the lives are gone
   game.setScore(sv ? sv.score : carryScore);
   if (sv?.snap) { try { game.restoreSnap(sv.snap); } catch { /* ignore */ } }
   window.__settingsOpen?.(false);
@@ -423,7 +453,7 @@ function frame(now) {
       else slowT = 0;
     }
   } else if (state === "title" && previewOn) {
-    game.render();
+    game.titleFrame(dt);
   } else if (state === "loading" && liveLoad) {
     game.render();
   } else if (state === "paused" || state === "results") {
@@ -438,7 +468,7 @@ requestAnimationFrame(frame);
   body.classList.add("tp-a");
   let sceneHist = [], sceneIdx = -1;
   const forced = /[?&](time|planet|place|weather|season)=/.test(location.search);
-  const p0 = startPreload(levelNo, forced ? undefined : (loadScene() || undefined));
+  const p0 = startPreload(levelNo, forced ? undefined : titleRun());
   p0.promise.then((ok) => { preloadReady = ok; });
   const t0 = performance.now();
   const setLabel = () => { const r = preload?.level?.run; $("scene-label").textContent = r ? `${runLabel(r)}  //  ${JET_TYPES[r.jet]?.name || ""}`.toUpperCase() : ""; };
@@ -473,14 +503,22 @@ requestAnimationFrame(frame);
     if (ok) { sceneHist = [preload.level.run]; sceneIdx = 0; saveScene(preload.level.run); }
     body.classList.remove("tp-a"); body.classList.add("tp-b");
   });
-  $("screen-title").addEventListener("pointerdown", () => {
-    if (state !== "title" || !body.classList.contains("tp-b")) return;
-    body.classList.remove("tp-b"); body.classList.add("tp-c"); buildMenu();
+  // b26: TAP TO FLY (or a tap anywhere that is not a control) starts the sortie directly
+  let tapGuard = 0;
+  $("screen-title").addEventListener("click", (e) => {
+    if (state !== "title" || !(body.classList.contains("tp-b") || body.classList.contains("tp-c"))) return;
+    if (e.target.closest("#lang-btn, #lang-list, .slink, .plate, #panel, .menu-buttons, .sec-links")) return;
+    if (performance.now() < tapGuard) return;
+    clearSave(); play();
   });
+  window.__langTapGuard = () => { tapGuard = performance.now() + 350; };
 }
 
 // test hook for the headless verification scripts
 setInterval(() => { if (state === "playing" && !document.hidden) writeSave(); }, 4000);
 window.addEventListener("jet-tap", (e) => { try { const d = e.detail; if (!(d && typeof d.x === "number" && game.tapSelect(d.x, d.y))) game.lockNearest(); } catch { /* ignore */ } });
 window.addEventListener("keydown", (e) => { if (e.code === "KeyT" && !e.repeat) { try { game.lockNearest(); } catch { /* ignore */ } } });
+$("btn-takeoff")?.addEventListener("click", () => game.takeoff());
+$("btn-autoland")?.addEventListener("click", () => game.autoLand());
+window.addEventListener("keydown", (e) => { if (e.code === "Enter" && !e.repeat) game.takeoff(); if (e.code === "KeyL" && !e.repeat) game.autoLand(); });
 window.__ubu = { goBackground, readSave, writeSave, game, controls, audio, hud, loading, state: () => state, play, launch, levelNo: () => levelNo };

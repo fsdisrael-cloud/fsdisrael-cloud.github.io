@@ -132,3 +132,16 @@ export function loadScene() {
     return { planetKey: o.planetKey, planet: PLANETS[o.planetKey], place, time: o.time, season: o.season, weather: o.weather, jet: o.jet, foe: o.foe, tgt: o.tgt, mix: o.mix, seed: o.seed };
   } catch { return null; }
 }
+
+/** b26: the opening-screen scene is a curated cinematic one: golden-hour sea coast, big lit clouds */
+export function titleRun() {
+  const R = rollRun();
+  const coast = EARTH_PLACES.filter((p) => p.sea && p.biome !== "snow" && p.biome !== "mountains");
+  R.planetKey = "earth"; R.planet = PLANETS.earth;
+  R.place = coast[Math.floor(Math.random() * coast.length)] || R.place;
+  R.time = "dusk"; R.weather = "cloudy"; R.season = "summer";
+  R.jet = ["viper", "raptor", "falcon", "tomcat"][Math.floor(Math.random() * 4)];
+  R.foe = ["red", "camo", "black", "sand"][Math.floor(Math.random() * 4)];
+  R.tgt = R.place.biome === "desert" ? "desert" : "army";
+  return R;
+}

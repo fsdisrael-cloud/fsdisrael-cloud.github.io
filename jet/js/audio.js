@@ -554,6 +554,21 @@ export function createAudio() {
       try { const u = new SpeechSynthesisUtterance(text); u.rate = key === "say-msl" ? 1.25 : 1.05; u.pitch = 0.55; u.volume = 1; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch { /* ignore */ }
     },
     warn() { if (!gate("warn", 2500)) return; tone({ f0: 660, dur: 0.16, peak: 0.07, type: "square", a: 0.01 }); tone({ f0: 990, dur: 0.16, peak: 0.07, type: "square", a: 0.01, delay: 0.2 }); },
+    /** b26: landing-gear actuator: electric motor whine that rises while the legs travel, then a heavy mechanical clunk when they lock */
+    gearMotor(dur = 1.3, down = true) {
+      tone({ f0: down ? 95 : 150, f1: down ? 160 : 90, dur, peak: 0.07, type: "sawtooth", a: 0.08, prio: 2 });
+      tone({ f0: down ? 190 : 300, f1: down ? 320 : 180, dur, peak: 0.03, type: "square", a: 0.1, prio: 1 });
+      noise({ dur, peak: 0.07, type: "bandpass", f0: 900, f1: 1500, q: 2, a: 0.1 });
+      setTimeout(() => this.gearClunk(), dur * 1000);
+    },
+    gearClunk() { play("clunk", { gain: 1.0, rate: 0.7, prio: 2, lp: 3500 }); tone({ f0: 62, f1: 40, dur: 0.22, peak: 0.45, a: 0.002, prio: 2 }); noise({ dur: 0.06, peak: 0.3, type: "bandpass", f0: 2400, q: 3, a: 0.001 }); },
+    /** touchdown: tyre chirp + thud, then a rolling rumble */
+    touchdown() { noise({ dur: 0.7, peak: 0.34, type: "highpass", f0: 2600, f1: 1400, a: 0.004, prio: 2 }); tone({ f0: 75, f1: 38, dur: 0.35, peak: 0.5, a: 0.002, prio: 2 }); noise({ dur: 2.6, peak: 0.12, type: "lowpass", f0: 260, f1: 90, a: 0.05 }); },
+    /** b26: target-switch lever: crisp two-click detent + rising blip (its own unmistakable sound) */
+    tgtSwitch() { noise({ dur: 0.03, peak: 0.28, type: "bandpass", f0: 3000, q: 4, a: 0.001, prio: 2 }); tone({ f0: 1180, f1: 1560, dur: 0.07, peak: 0.1, type: "square", a: 0.002, delay: 0.02, prio: 2 }); noise({ dur: 0.025, peak: 0.2, type: "bandpass", f0: 2200, q: 4, a: 0.001, delay: 0.09 }); },
+    /** ejection seat fire: sharp bang + rocket hiss */
+    seatFire() { noise({ dur: 0.18, peak: 0.6, type: "lowpass", f0: 3000, f1: 300, a: 0.001, prio: 2 }); tone({ f0: 90, f1: 30, dur: 0.4, peak: 0.5, a: 0.001, prio: 2 }); noise({ dur: 1.1, peak: 0.25, type: "bandpass", f0: 1400, f1: 3200, q: 0.8, a: 0.04 }); },
+    chuteOpen() { noise({ dur: 0.35, peak: 0.4, type: "bandpass", f0: 600, f1: 200, q: 0.7, a: 0.01, prio: 2 }); tone({ f0: 140, f1: 55, dur: 0.3, peak: 0.25, a: 0.004 }); },
     pullUp() { if (!gate("pu", 2500)) return; tone({ f0: 520, dur: 0.25, peak: 0.045, a: 0.04 }); },
     thunder() { noise({ dur: 3.2, peak: 0.7, type: "lowpass", f0: 400, f1: 60, a: 0.08, rate: 0.5 }); tone({ f0: 55, f1: 30, dur: 2.4, peak: 0.35, type: "sine", a: 0.1 }); },
     crash() {

@@ -1,6 +1,7 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=25";
+import { LABEL } from "./missions.js?v=26";
+import { tr } from "./i18n.js?v=26";
 
 const ALLY = "#3dff8b";
 const COL = { jet: "#ff3b3b", tank: "#ff5a48", flak: "#ff4636", sam: "#ff3a2a", base: "#ff6a58", ship: "#ff5a48", pad: "#3dff8b", ring: "#ffe14d" };
@@ -12,6 +13,7 @@ export function createHud() {
   const radar = document.getElementById("radar");
   const rctx = radar.getContext("2d");
   const el = (id) => document.getElementById(id);
+  const $n = (id) => document.getElementById(id);
   const dom = { timer: el("hud-timer"), score: el("hud-score"), obj: el("hud-obj"), hp: el("hud-lives"), spd: el("hud-spd"), thr: el("thr-spd"), alt: el("hud-alt"), fl: el("hud-fl"), trk: el("hud-track"), alert: el("alert"), toasts: el("toasts"), flash: el("hit-flash"), low: el("low-alt"), edge: el("low-edge"),
     tlabel: el("hud-time-label"), heat: el("hud-heat"), heatRow: document.querySelector(".statrow.heat"),
     bGun: document.querySelector(".w-gun"), bMsl: document.querySelector(".w-msl"), bBomb: document.querySelector(".w-bomb") };
@@ -37,15 +39,134 @@ export function createHud() {
     ctx.lineWidth = lw; ctx.strokeStyle = color; ctx.stroke();
   }
 
+
+  // ===== b26: helmet-mounted display (F-35 HMDS / JHMCS style): green symbology, amber cues, pitch ladder, tapes, designator boxes =====
+  const HG = "#4dff91", HA = "#ffb52e", HK = "rgba(0,12,4,0.8)";
+  const _hv = new THREE.Vector3(), _hr = new THREE.Vector3(), _hu = new THREE.Vector3(), _hd = new THREE.Vector3();
+  let hmdK = 0;
+  function hline(x1, y1, x2, y2, col, lw = 1.6) {
+    ctx.lineWidth = lw + 2; ctx.strokeStyle = HK; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.lineWidth = lw; ctx.strokeStyle = col; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  }
+  function htext(t, x, y, col = HG, size = 12, al = "center") {
+    ctx.font = `700 ${size}px "Share Tech Mono", "Courier New", monospace`; ctx.textAlign = al; ctx.textBaseline = "middle";
+    ctx.lineWidth = 3; ctx.strokeStyle = HK; ctx.strokeText(t, x, y); ctx.fillStyle = col; ctx.fillText(t, x, y);
+  }
+  function hbracket(x, y, r, col, lw = 1.8) {
+    const c = r * 0.45; ctx.lineWidth = lw + 2; ctx.strokeStyle = HK;
+    for (const pass of [0, 1]) {
+      if (pass) { ctx.lineWidth = lw; ctx.strokeStyle = col; }
+      ctx.beginPath();
+      for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { ctx.moveTo(x + sx * r, y + sy * (r - c)); ctx.lineTo(x + sx * r, y + sy * r); ctx.lineTo(x + sx * (r - c), y + sy * r); }
+      ctx.stroke();
+    }
+  }
+  function drawHMD(s) {
+    const P = s.player, cam = s.camera; if (!P || s.crashing) return;
+    hmdK = Math.min(1, hmdK + 0.04);
+    ctx.save(); ctx.globalAlpha = 0.5 + 0.5 * hmdK; ctx.lineCap = "round";
+    const cx = W / 2, cy = H / 2, sc = Math.min(W, H) / 390;
+    // world-fixed frame: heading vector (level), right vector
+    _hd.set(-Math.sin(P.yaw), 0, -Math.cos(P.yaw));
+    _hr.set(Math.cos(P.yaw), 0, -Math.sin(P.yaw));
+    const hp = (deg, side = 0) => { const a = deg * Math.PI / 180; _hv.copy(P.pos).addScaledVector(_hd, Math.cos(a) * 1000).addScaledVector(_hu.set(0, 1, 0), Math.sin(a) * 1000).addScaledVector(_hr, side); return project(_hv, cam); };
+    // pitch ladder + horizon (rungs every 5 deg, numbered every 10)
+    const pitchDeg = P.pitch * 180 / Math.PI;
+    for (let d = -40; d <= 40; d += 5) {
+      if (Math.abs(d - pitchDeg) > 34) continue;
+      const a = hp(d, -90), b = hp(d, 90), m = hp(d, 0);
+      if (a.behind || b.behind || m.behind) continue;
+      if (d === 0) { hline(a.x - 20 * sc, a.y, a.x + (b.x - a.x) * 0.38, a.y + (b.y - a.y) * 0.38, HG, 1.8); hline(a.x + (b.x - a.x) * 0.62, a.y + (b.y - a.y) * 0.62, b.x + 20 * sc, b.y, HG, 1.8); continue; }
+      if (d % 10 !== 0) {   // 5-degree short rungs
+        const L = 0.2; hline(m.x + (a.x - m.x) * L, m.y + (a.y - m.y) * L, m.x + (a.x - m.x) * 0.1, m.y + (a.y - m.y) * 0.1, HG, 1.2);
+        hline(m.x + (b.x - m.x) * L, m.y + (b.y - m.y) * L, m.x + (b.x - m.x) * 0.1, m.y + (b.y - m.y) * 0.1, HG, 1.2); continue;
+      }
+      const tick = (d > 0 ? 1 : -1) * 7 * sc;
+      for (const e of [a, b]) {
+        const inner = { x: m.x + (e.x - m.x) * 0.3, y: m.y + (e.y - m.y) * 0.3 };
+        if (d < 0) { // dashed negative rungs
+          for (let q = 0; q < 3; q++) { const f0 = 0.3 + q * 0.23, f1 = f0 + 0.13; hline(m.x + (e.x - m.x) * f0, m.y + (e.y - m.y) * f0, m.x + (e.x - m.x) * f1, m.y + (e.y - m.y) * f1, HG, 1.6); }
+        } else hline(inner.x, inner.y, m.x + (e.x - m.x) * 0.96, m.y + (e.y - m.y) * 0.96, HG, 1.6);
+        hline(m.x + (e.x - m.x) * 0.96, m.y + (e.y - m.y) * 0.96, m.x + (e.x - m.x) * 0.96, m.y + (e.y - m.y) * 0.96 + tick, HG, 1.6);
+      }
+      htext(String(Math.abs(d)), a.x - 14 * sc, a.y + (d > 0 ? 4 : -4), HG, 10 * sc);
+      htext(String(Math.abs(d)), b.x + 14 * sc, b.y + (d > 0 ? 4 : -4), HG, 10 * sc);
+    }
+    // heading tape (top) with cardinal letters
+    const hdg = (((-P.yaw * 180 / Math.PI) % 360) + 360) % 360, ty = 26 * sc, tw = Math.min(W * 0.34, 300 * sc);
+    hline(cx - tw / 2, ty + 10 * sc, cx + tw / 2, ty + 10 * sc, HG, 1.2);
+    for (let d = Math.floor((hdg - 30) / 5) * 5; d <= hdg + 30; d += 5) {
+      const x = cx + (d - hdg) / 30 * tw / 2, dd = ((d % 360) + 360) % 360, major = dd % 10 === 0;
+      hline(x, ty + 10 * sc, x, ty + (major ? 3 : 6) * sc, HG, 1.2);
+      if (dd % 30 === 0) htext(dd === 0 ? "N" : dd === 90 ? "E" : dd === 180 ? "S" : dd === 270 ? "W" : String(dd / 10).padStart(2, "0"), x, ty - 4 * sc, HG, 10 * sc);
+    }
+    ctx.strokeStyle = HG; hline(cx, ty + 12 * sc, cx - 5 * sc, ty + 19 * sc, HG, 1.6); hline(cx, ty + 12 * sc, cx + 5 * sc, ty + 19 * sc, HG, 1.6);
+    htext(String(Math.round(hdg) % 360).padStart(3, "0"), cx, ty + 30 * sc, HG, 13 * sc);
+    // airspeed (left) & altitude (right) scrolling tapes, with boxes
+    const kmh = P.speed * 3.6, alt = P.pos.y, yL = cy, xL = W > H ? W * 0.31 : Math.max(36, W * 0.2), xR = W - xL;
+    const tape = (x, val, step, side, label) => {
+      const hh = 70 * sc;
+      for (let k = -4; k <= 4; k++) {
+        const v0 = Math.round(val / step) * step + k * step, y = yL - (v0 - val) / step * 17 * sc;
+        if (Math.abs(y - yL) > hh) continue;
+        hline(x, y, x + side * 7 * sc, y, HG, 1.3);
+        if (k % 2 === 0 && Math.abs(y - yL) > 12 * sc) htext(String(Math.max(0, Math.round(v0))), x + side * 30 * sc, y, HG, 10 * sc);
+      }
+      hline(x, yL - hh, x, yL + hh, HG, 1.2);
+      ctx.lineWidth = 1.6; ctx.strokeStyle = HG; ctx.fillStyle = "rgba(0,18,6,0.55)"; ctx.beginPath(); ctx.rect(side > 0 ? x + 5 * sc : x - 50 * sc, yL - 9 * sc, 45 * sc, 18 * sc); ctx.fill(); ctx.stroke();
+      htext(String(Math.max(0, Math.round(val))), side > 0 ? x + 27 * sc : x - 28 * sc, yL, HG, 13 * sc);
+      htext(label, x + side * 24 * sc, yL - hh - 9 * sc, HG, 9 * sc);
+    };
+    tape(xL, kmh, 50, -1, "KM/H"); tape(xR, alt, 25, 1, "ALT M");
+    // flight-path marker (velocity vector) and boresight
+    _hv.copy(P.pos).addScaledVector(P.vel && P.vel.lengthSq() > 1 ? _hu.copy(P.vel).normalize() : s.fwd, 600);
+    const fp = project(_hv, cam);
+    if (fp.on) {
+      ctx.lineWidth = 1.8; ctx.strokeStyle = HK; for (const pass of [0, 1]) { ctx.lineWidth = pass ? 1.6 : 3.6; ctx.strokeStyle = pass ? HG : HK; ctx.beginPath(); ctx.arc(fp.x, fp.y, 6 * sc, 0, 7); ctx.moveTo(fp.x - 6 * sc, fp.y); ctx.lineTo(fp.x - 16 * sc, fp.y); ctx.moveTo(fp.x + 6 * sc, fp.y); ctx.lineTo(fp.x + 16 * sc, fp.y); ctx.moveTo(fp.x, fp.y - 6 * sc); ctx.lineTo(fp.x, fp.y - 12 * sc); ctx.stroke(); }
+    }
+    _hv.copy(P.pos).addScaledVector(s.fwd, 600); const bs = project(_hv, cam);
+    if (bs.on) { hline(bs.x - 5 * sc, bs.y, bs.x + 5 * sc, bs.y, HG, 1.4); hline(bs.x, bs.y - 5 * sc, bs.x, bs.y + 5 * sc, HG, 1.4); }
+    // live target boxes: enemies in brackets with range, locked target in amber with designator diamond + closure
+    let nb = 0;
+    for (const t of s.targets) {
+      if (!t.alive || t.kind === "ally") continue;
+      const d = t.pos.distanceTo(P.pos); if (d > 6000) continue;
+      const pr = project(t.pos, cam); if (!pr.on) continue;
+      const lk = t === s.lockTarget, r = Math.max(9, Math.min(34, 2600 / (d + 60))) * sc;
+      if (!lk && ++nb > 8) continue;
+      hbracket(pr.x, pr.y, r, lk ? HA : HG, lk ? 2.2 : 1.5);
+      if (lk) {
+        const cl = s.lockTime > 0 ? Math.round(P.speed * 3.6) : 0;
+        hline(pr.x, pr.y - r - 6 * sc, pr.x + 6 * sc, pr.y - r, HA, 1.6); hline(pr.x, pr.y - r - 6 * sc, pr.x - 6 * sc, pr.y - r, HA, 1.6);
+        htext((d / 1000).toFixed(1) + " KM", pr.x, pr.y + r + 10 * sc, HA, 11 * sc);
+        htext("TD", pr.x, pr.y - r - 14 * sc, HA, 10 * sc);
+      } else if (d < 3000) htext((d / 1000).toFixed(1), pr.x, pr.y + r + 8 * sc, HG, 9 * sc);
+    }
+    // status block (bottom): weapons, fuel, G, mode - amber when there is something to warn about
+    const fuelK = Math.max(0, Math.min(1, s.fuel ?? 1)), lowF = fuelK < 0.2;
+    htext(`MSL ${s.player.rockets | 0}   BOMB ${s.player.bombs | 0}   GUN ${s.overheated ? "HOT" : "RDY"}`, cx, H - 22 * sc, s.overheated ? HA : HG, 11 * sc);
+    htext(`FUEL ${(fuelK * 100) | 0}%`, xL, H - 44 * sc, lowF ? HA : HG, 11 * sc, "center");
+    htext(`G ${(s.gload || 1).toFixed(1)}`, xR, H - 44 * sc, (s.gload || 1) > 6 ? HA : HG, 11 * sc, "center");
+    htext(nvOn ? "NVG ON" : "NVG", cx - 70 * sc, 30 * sc + 30 * sc, nvOn ? HA : HG, 9 * sc);
+    ctx.restore();
+  }
+  let nvOn = false;
+  function setNV(on) { nvOn = on; window.__nv = on; document.body.classList.toggle("nv", on); }
+  addEventListener("keydown", (e) => { if ((e.key === "n" || e.key === "N") && document.body.classList.contains("cockpit")) setNV(!nvOn); });
+  document.getElementById("nv-btn")?.addEventListener("click", () => setNV(!nvOn));
+
   function draw(s, dt) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
+    const cockpitView = s.viewMode === "cockpit";
+    if (cockpitView !== document.body.classList.contains("cockpit")) { document.body.classList.toggle("cockpit", cockpitView); if (!cockpitView) { hmdK = 0; if (nvOn) setNV(false); } }
     if (!s.player) return;
     const cam = s.camera;
+    if (cockpitView) { try { drawHMD(s); } catch (e) { /* never break the frame */ } }
     // crosshair: point 500 m ahead of the nose
     v.copy(s.player.pos).addScaledVector(s.fwd, 500);
     const ch = project(v, cam);
-    if (ch.on) {
+    if (ch.on && !cockpitView) {
       circle(ch.x, ch.y, 13, "#ffffff", 2.5);
       ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ch.x, ch.y, 2.5, 0, Math.PI * 2); ctx.fill();
     }
@@ -347,9 +468,27 @@ export function createHud() {
       if (html !== dom._tally) { dom._tally = html; dom.obj.innerHTML = html; }
     }
     {   // b24: 7 life squares
-      const lv = Math.max(0, Math.min(7, s.lives ?? 7)), sq = dom.hp.children;
+      const lv = Math.max(0, Math.min(s.livesMax || 5, s.lives ?? 5)), sq = dom.hp.children; dom.hp.style.setProperty("--hull", String(Math.round(Math.max(0, Math.min(100, s.hull ?? 100)))) + "%");
       for (let i = 0; i < sq.length; i++) sq[i].classList.toggle("off", i >= lv);
       dom.hp.classList.toggle("low", lv <= 2);
+    }
+    {   // b26: fuel dial (EMPTY..FULL), ops panel (loading / takeoff), auto-land button
+      const fv = Math.max(0, Math.min(1, s.fuel ?? 1)), nd = $n("fuel-needle"), fd = $n("fuel-dial");
+      if (nd) nd.style.transform = `rotate(${(-120 + fv * 240).toFixed(1)}deg)`;
+      if (fd) fd.classList.toggle("low", fv < 0.22);
+      const op = $n("ops-panel"), mode = s.ops;
+      if (op) {
+        const show = mode === "load" || mode === "reload" || mode === "ready";
+        op.classList.toggle("hidden", !show);
+        if (show) {
+          $n("ops-title").textContent = tr(mode === "ready" ? "AIRCRAFT READY" : mode === "load" ? "LOADING AMMO + FUEL" : "REFUELING + REARMING");
+          const k = s.opsK || { kf: 1, ka: 1 };
+          $n("ops-fuel").style.width = (k.kf * 100).toFixed(0) + "%"; $n("ops-ammo").style.width = (k.ka * 100).toFixed(0) + "%";
+          $n("btn-takeoff").classList.toggle("hidden", mode !== "ready");
+        }
+      }
+      const al = $n("btn-autoland");
+      if (al) { const can = s.hasStrip && !mode && !s.crashing && !s.landing; al.classList.toggle("hidden", !can); al.classList.toggle("urgent", can && fv < 0.25); }
     }
     dom.spd.textContent = Math.round(s.player.speed * 3.6); if (dom.thr) dom.thr.textContent = dom.spd.textContent;
     dom.alt.textContent = Math.round(s.player.pos.y); if (dom.fl) dom.fl.textContent = s.player.flares ?? 0; if (dom.trk) dom.trk.classList.toggle("on", !!s.track);
@@ -373,13 +512,16 @@ export function createHud() {
     if (s.alert) { dom.alert.textContent = s.alert; dom.alert.classList.remove("hidden"); } else dom.alert.classList.add("hidden");
   }
 
-  function toast(msg, big = false) {
+  // b26: short, transparent, colour-coded messages (green = good, amber = warning, red = danger, blue-grey = info); max 2 on screen, ~1.3 s
+  function toast(msg, kind) {
+    let k = typeof kind === "string" ? kind : "";
+    if (!k) k = /eject|crash|destroy|shot down|lost|damage|hit!|collision|flak|critical|no lives|empty/i.test(msg) ? "bad" : /warn|low|fuel|ammo|incoming|lock|missile!|danger|overheat|pull up/i.test(msg) ? "warn" : /\+|got|complete|clear|life|safe|back|good|ready|refuel|landed|kill|splash|target/i.test(msg) ? "good" : "info";
     const d = document.createElement("div");
-    d.className = "toast" + (big ? " big" : "");
-    d.textContent = msg;
+    d.className = "toast t-" + k;
+    d.textContent = tr(String(msg)).toUpperCase();
     dom.toasts.appendChild(d);
-    while (dom.toasts.children.length > 3) dom.toasts.firstChild.remove();
-    setTimeout(() => d.remove(), big ? 2500 : 1700);
+    while (dom.toasts.children.length > 2) dom.toasts.firstChild.remove();
+    setTimeout(() => d.remove(), k === "bad" ? 1800 : 1250);
   }
   function hurtFlash() { dom.flash.style.opacity = "1"; setTimeout(() => { dom.flash.style.opacity = "0"; }, 160); }
   function clear() { dom.low?.classList.remove("on"); dom.edge?.classList.remove("on");

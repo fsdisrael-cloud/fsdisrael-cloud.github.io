@@ -198,6 +198,22 @@ export function createControls() {
     if (bUp) bindTP(bUp, { down(e, id) { tgtEdge = -1; press(bUp, true); say("tgt"); }, up(e, id) { press(bUp, false); } });
     if (bDn) bindTP(bDn, { down(e, id) { tgtEdge = 1; press(bDn, true); say("tgt"); }, up(e, id) { press(bDn, false); } });
     for (const b of [bGun, bMsl, bBomb, bUp, bDn]) b && b.addEventListener("contextmenu", (e) => e.preventDefault());
+    // b26 BOMB-BUTTON FIX: (1) a touch that lands just OUTSIDE a button's art (fat thumbs, rotated layouts) still counts: hit-test every touch against
+    // slightly inflated button rectangles; (2) held flags are cleared when the page loses focus / a touch is cancelled, so nothing sticks or goes dead.
+    const fat = [[bBomb, () => { bombEdge = true; bombHeld = true; setTimeout(() => { bombHeld = false; }, 120); press(bBomb, true); setTimeout(() => press(bBomb, false), 140); say("bomb"); }],
+                 [bMsl, () => { if (enabled) rocketEdge = true; press(bMsl, true); setTimeout(() => press(bMsl, false), 140); say("missile"); }]];
+    window.addEventListener("touchstart", (e) => {
+      if (!enabled) return;
+      for (const t of e.changedTouches) for (const [b, fn] of fat) {
+        if (!b || (e.target && b.contains(e.target))) continue;
+        const r = b.getBoundingClientRect(); if (!r.width) continue;
+        if (t.clientX >= r.left - 12 && t.clientX <= r.right + 12 && t.clientY >= r.top - 12 && t.clientY <= r.bottom + 12) fn();
+      }
+    }, { capture: true, passive: true });
+    const clearHeld = () => { gunHeld = bombHeld = mslHeld = brakeHeld = false; own.gun = own.msl = own.bomb = null; for (const b of [bGun, bMsl, bBomb]) b && press(b, false); };
+    window.addEventListener("blur", clearHeld); document.addEventListener("visibilitychange", () => { if (document.hidden) clearHeld(); });
+    window.addEventListener("touchcancel", (e) => { if (e.touches.length === 0) clearHeld(); });
+    window.addEventListener("touchend", (e) => { if (e.touches.length === 0) { gunHeld = bombHeld = mslHeld = false; own.gun = own.msl = own.bomb = null; for (const b of [bGun, bMsl, bBomb]) b && press(b, false); } }, { capture: true });
   }
 
   /** HEAD-LOOK: a swipe on the bare game surface turns only the view (look.yaw: + = look left, look.pitch: + = look up). A short tap selects a target. */

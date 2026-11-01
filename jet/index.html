@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="ubu-build" content="25" />
+  <meta name="ubu-build" content="26" />
   <meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -18,8 +18,8 @@
   <link rel="icon" type="image/png" sizes="192x192" href="img/icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png" />
   <link rel="preload" href="fonts/Fredoka.ttf" as="font" type="font/ttf" crossorigin />
-  <link rel="stylesheet" href="css/jet.css?v=25" />
-  <link rel="stylesheet" href="css/loading.css?v=25" />
+  <link rel="stylesheet" href="css/jet.css?v=26" />
+  <link rel="stylesheet" href="css/loading.css?v=26" />
   <script type="importmap">{ "imports": { "three": "./js/vendor/three.module.min.js" } }</script>
 </head>
 <body class="on-title tp-a">
@@ -58,16 +58,29 @@
   <section id="screen-title" class="screen title">
     <div class="ver-b" data-ver></div>
     <div class="sky-fx" aria-hidden="true"><i class="aurora a1"></i><i class="aurora a2"></i><i class="aurora a3"></i><i class="stars"></i><i class="cloud c1"></i><i class="cloud c2"></i><i class="cloud c3"></i><i class="horizon"></i></div>
-    <div class="title-inner">
-      <div class="logo" aria-label="JET-X">
-        <div data-logo3d="logo-img"></div>
-        <div class="built-by">Built by Grok</div>
+    <div class="title-inner t26">
+      <div class="t26-top">
+        <div class="t26-plate" role="img" aria-label="JET-X">
+          <i class="hz hz-t"></i><i class="hz hz-b"></i><i class="rv r1"></i><i class="rv r2"></i><i class="rv r3"></i><i class="rv r4"></i>
+          <img class="t26-letters" src="img/logo7_letters.webp" alt="" draggable="false">
+        </div>
+        <div class="t26-lang no-i18n">
+          <button type="button" id="lang-btn" class="t26-langbtn" aria-haspopup="listbox" aria-expanded="false" aria-label="Language">
+            <svg class="t26-mic" viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><path d="M7 27V21.6C4.6 19.7 3.4 16.9 3.4 13.9 3.4 8.4 7.6 4.4 13 4.4c5.2 0 9.2 3.6 9.2 8.4v.5l2.3 3.7c.3.5 0 1.1-.6 1.1h-1.7v3.1c0 1.1-.9 2-2 2h-2.5V27z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M13 9.5c2.2 0 4 1.7 4 3.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M26 7.6c1.6 1.4 2.6 3.4 2.6 5.6M29.2 4.6c2.2 2.3 3.4 5.2 3.4 8.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" transform="translate(-3 0)"/></svg>
+            <span id="lang-cur">English</span><i class="t26-car"></i>
+          </button>
+          <div id="lang-list" class="t26-langlist hidden" role="listbox"></div>
+        </div>
       </div>
       <div class="scene-label" id="scene-label"></div>
-      <div id="menu-buttons" class="menu-buttons plates"></div>
+      <div id="menu-buttons" class="menu-buttons plates t26-sec"></div>
       <div class="sec-links" id="sec-links"></div>
-      <button type="button" class="plate reroll" id="btn-reroll" aria-label="New scene"><svg viewBox="0 0 24 24" width="22" height="22"><rect x="3.5" y="3.5" width="17" height="17" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><g fill="currentColor"><circle cx="8" cy="8" r="1.6"/><circle cx="16" cy="8" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="8" cy="16" r="1.6"/><circle cx="16" cy="16" r="1.6"/></g></svg><span class="pt">NEW SCENE</span></button>
-      <div class="tap-prompt" id="tap-prompt"><i>&raquo;</i><span>TAP ANYWHERE</span><i>&laquo;</i></div>
+      <button type="button" class="plate reroll" id="btn-reroll" aria-label="New scene"><svg viewBox="0 0 24 24" width="22" height="22"><rect x="3.5" y="3.5" width="17" height="17" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><g fill="currentColor"><circle cx="8.5" cy="8.5" r="1.5"/><circle cx="15.5" cy="15.5" r="1.5"/><circle cx="15.5" cy="8.5" r="1.5"/><circle cx="8.5" cy="15.5" r="1.5"/></g></svg></button>
+      <div class="t26-bottom">
+        <button type="button" id="tap-fly" class="t26-tap"><i class="hz hz-t"></i><span class="t26-tapt">TAP TO FLY</span><i class="hz hz-b"></i></button>
+        <div class="t26-by"><svg viewBox="0 0 48 48" width="26" height="26" aria-hidden="true"><path d="M5 6h38L24 44z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M15 12h18v5h-6.5v14h-5V17H15z" fill="currentColor"/></svg><span>by TESSIE</span></div>
+      </div>
+      <div class="tap-prompt" id="tap-prompt" style="display:none"></div>
     </div>
     <div id="panel" class="panel hidden" role="dialog">
       <div class="panel-card"><h2 id="panel-title"></h2><div id="panel-body"></div><button type="button" class="metal-btn small" id="panel-close"><i class="led"></i><span>OK</span></button></div>
@@ -80,6 +93,7 @@
     <div class="radar-wrap">
       <canvas id="radar" aria-label="Radar"></canvas>
       <button type="button" class="view-btn" id="btn-view" aria-label="Camera view: cockpit or chase"><span class="vseg" data-v="cockpit">COCKPIT</span><span class="vseg" data-v="chase">CHASE</span></button>
+      <button type="button" class="view-btn nv-btn" id="nv-btn" aria-label="Night vision"><span class="vseg">NVG</span></button>
       <div class="wcam" id="wcam" aria-label="Weapon camera"><canvas id="wcam-c" width="160" height="160"></canvas><i class="wcam-ring"></i></div>
     </div>
     <canvas id="rain-canopy"></canvas>
@@ -87,10 +101,18 @@
     <div id="hint" class="hint"></div>
     <div id="popups" class="popups"></div>
     <div id="hitmark" class="hitmark"><i></i><i></i><i></i><i></i></div>
+    <div id="ops-panel" class="ops hidden"><div class="ops-title" id="ops-title">LOADING</div>
+        <div class="ops-bars"><div><span id="ops-l1">FUEL</span><i><b id="ops-fuel"></b></i></div><div><span id="ops-l2">ARMAMENT</span><i><b id="ops-ammo"></b></i></div></div>
+        <button id="btn-takeoff" class="mil-btn big hidden" type="button"><span class="mb-ic">&#9650;</span> TAKEOFF</button></div>
+    <button id="btn-autoland" class="mil-btn autoland hidden" type="button"><span class="mb-ic">&#9660;</span> AUTO LAND</button>
     <div class="top-center">
       <div class="top-row">
         <div class="pill score-pill"><small>SCORE</small><b id="hud-score">0</b></div>
-        <div class="pill time-pill" id="time-pill"><small id="hud-time-label">TIME</small><b id="hud-timer" class="timer">0:00</b></div>
+        <div class="fuel-dial" id="fuel-dial" title="FUEL"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="47" class="fd-bez"/><circle cx="50" cy="50" r="40" class="fd-face"/><path d="M 19.4 73 A 40 40 0 1 1 80.6 73" class="fd-arc"/><path d="M 19.4 73 A 40 40 0 0 1 28 30" class="fd-red"/>
+<g class="fd-ticks"><line x1="50" y1="14" x2="50" y2="22"/><line x1="26" y1="24" x2="31" y2="30"/><line x1="74" y1="24" x2="69" y2="30"/><line x1="14" y1="50" x2="21" y2="50"/><line x1="86" y1="50" x2="79" y2="50"/></g>
+<text x="24" y="86" class="fd-t">EMPTY</text><text x="76" y="86" class="fd-t">FULL</text><text x="50" y="68" class="fd-t fd-lbl">FUEL</text>
+<g id="fuel-needle"><line x1="50" y1="50" x2="50" y2="18" class="fd-nd"/></g><circle cx="50" cy="50" r="5" class="fd-hub"/></svg></div>
+        <div class="pill time-pill" id="time-pill" style="display:none"><small id="hud-time-label">TIME</small><b id="hud-timer" class="timer">0:00</b></div>
       </div>
       <div class="lvl" id="hud-level"></div>
       <div class="lvl world" id="hud-world"></div>
@@ -98,7 +120,7 @@
     <div id="hud-track" class="hud-track">TRACK</div>
     <div id="hud-obj" class="objectives"></div>
     <div class="stats" id="stats">
-      <div class="statrow"><span>LIFE</span><div class="lives" id="hud-lives"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="statrow"><span>LIFE</span><div class="lives" id="hud-lives"><i></i><i></i><i></i><i></i><i></i></div></div>
       <div class="statrow heat"><span id="hud-heat-label">GUN</span><div class="bar"><i id="hud-heat"></i></div></div>
       <div class="nums"><span><b id="hud-spd">0</b> km/h</span><span><b id="hud-alt">0</b> m</span><span class="fl-c"><b id="hud-fl">12</b> flares</span><span class="kl-c"><b id="hud-kl">0</b> kills</span></div>
     </div>
@@ -122,6 +144,7 @@
     <div id="low-edge" class="low-edge"></div>
     <div id="hit-flash" class="hit-flash"></div>
     <div id="boom-flash" class="boom-flash"></div>
+    <div id="fadeblack"></div>
     <div id="crash" class="crash hidden">BOOM!<small>back in the sky...</small></div>
   </div>
 
@@ -169,6 +192,6 @@
     </div>
   </section>
   <div id="build-tag" class="build-tag"></div>
-  <script type="module" src="js/main.js?v=25"></script>
+  <script type="module" src="js/main.js?v=26"></script>
 </body>
 </html>
