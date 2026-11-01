@@ -1,0 +1,357 @@
+{
+ "title": "TESSIE FOLDER",
+ "updated": "2026-11-01 05:59",
+ "projects": [
+  {
+   "id": "jet-x",
+   "name": "JET-X",
+   "blurb": "Mobile 3D jet combat game. Live: build 24.",
+   "url": "https://fsdisrael-cloud.github.io/jet/",
+   "thumb": "img/jetx.webp",
+   "next": {
+    "label": "Build 25",
+    "note": "Planned. Changes are being collected."
+   },
+   "entries": [
+    {
+     "label": "Build 24",
+     "when": "2026-10-31 20:50",
+     "title": "Full freedom + combat overhaul",
+     "bullets": [
+      "Full-freedom flight (rolls, loops, steep dives); auto-level almost off",
+      "One-finger weapons (double-tap = missile, triple-tap = bomb), flares and brake buttons, buffered weapon presses",
+      "Physical missile guidance, enemy missiles and SAMs with RWR warning, enemy jinks, breaks and flares",
+      "3-minute levels, big LEVEL title, 7 lives, more targets, lake ships, new icon"
+     ]
+    },
+    {
+     "label": "Build 23",
+     "when": "2026-10-31 16:52",
+     "title": "Push-to-fire, multi-touch, sea units",
+     "bullets": [
+      "Guns fire only while held; every touch tracked separately",
+      "TGT rocker to cycle ground targets, better weapon cam",
+      "Warships, submarines, rain, one-time control hints, pause when app is hidden"
+     ]
+    },
+    {
+     "label": "Build 22",
+     "when": "2026-10-31 16:23",
+     "title": "Responsive steering",
+     "bullets": [
+      "Responsive fly-by-wire steering",
+      "Impact flash fix, credit position"
+     ]
+    },
+    {
+     "label": "Build 21",
+     "when": "2026-10-31 16:10",
+     "title": "Hotfix + feedback round 3",
+     "bullets": [
+      "Pitch flip, bomb crosshair, wingtips",
+      "Damage model, weapon cam, on-screen version label"
+     ]
+    },
+    {
+     "label": "Build 20",
+     "when": "2026-10-31 15:43",
+     "title": "Feedback round 2",
+     "bullets": [
+      "Attitude-command steering, easy mode, flares, auto-follow",
+      "Ribbon trails, bomb lock, TESSIE credit on loading page"
+     ]
+    },
+    {
+     "label": "Build 19",
+     "when": "2026-10-31 14:57",
+     "title": "Logo v7 + easier flight",
+     "bullets": [
+      "Logo v7 with 3D tilt, 'Built by Grok'",
+      "Target glow, easier flight, new gun/missile/bomb sounds, bomb visuals"
+     ]
+    },
+    {
+     "label": "Build 18",
+     "when": "2026-10-31 14:28",
+     "title": "Hotfix",
+     "bullets": [
+      "CONT/NEW buttons fixed",
+      "Flight, combat, visual and audio tweaks"
+     ]
+    },
+    {
+     "label": "Build 17",
+     "when": "2026-10-31 14:02",
+     "title": "Flight assist + endless waves",
+     "bullets": [
+      "Flight assist with expo stick, new SFX",
+      "Endless waves, more detailed jets, post-processing, bigger explosions, resume save"
+     ]
+    },
+    {
+     "label": "Build 16",
+     "when": "2026-10-31 13:13",
+     "title": "Graphics pass 2",
+     "bullets": [
+      "New sky and clouds, terrain photo detail",
+      "Jet bump maps, music mix"
+     ]
+    },
+    {
+     "label": "Build 15",
+     "when": "2026-10-31 13:03",
+     "title": "Photoreal textures + high scores",
+     "bullets": [
+      "Audio stops on exit, stick pitch fix",
+      "New techno music, photoreal textures, high-score flow"
+     ]
+    },
+    {
+     "label": "Build 14",
+     "when": "2026-10-31 12:19",
+     "title": "Ground forces + friendly fire",
+     "bullets": [
+      "Alien ground forces with red/green markers",
+      "Friendly fire, high scores"
+     ]
+    },
+    {
+     "label": "Build 13",
+     "when": "2026-10-31 12:03",
+     "title": "Compact stick",
+     "bullets": [
+      "Compact top-down F-15 stick"
+     ]
+    },
+    {
+     "label": "Build 12",
+     "when": "2026-10-31 11:53",
+     "title": "Declutter",
+     "bullets": [
+      "Decluttered HUD, F-15 grip",
+      "Throttle bottom-left, free-look easing"
+     ]
+    },
+    {
+     "label": "Build 11",
+     "when": "2026-10-31 11:41",
+     "title": "Throttle + aim assist",
+     "bullets": [
+      "Throttle lever, aim assist",
+      "Combos, waves, burning wrecks"
+     ]
+    },
+    {
+     "label": "Build 10",
+     "when": "2026-10-31 11:14",
+     "title": "New logo + CONT/NEW flow",
+     "bullets": [
+      "New logo, CONT/NEW start flow",
+      "Scene preview with re-roll, background save, sci-fi craft"
+     ]
+    },
+    {
+     "label": "Build 9",
+     "when": "2026-10-31 10:54",
+     "title": "Hardpoints + weapon cam",
+     "bullets": [
+      "Hardpoints, weapon cam, random worlds",
+      "Night vision, techno music, v2 look"
+     ]
+    },
+    {
+     "label": "Build 8",
+     "when": "2026-10-31 10:36",
+     "title": "Checkpoint",
+     "bullets": [
+      "New layout, head-look, allies",
+      "Time limit, weapon racks"
+     ]
+    },
+    {
+     "label": "Build 7",
+     "when": "2026-10-31 10:08",
+     "title": "First publish",
+     "bullets": [
+      "Single-jet game added at /jet/"
+     ]
+    }
+   ],
+   "fit": "contain"
+  },
+  {
+   "id": "jet-x-art",
+   "name": "JET-X art",
+   "blurb": "Logos, wordmarks, app icons and wallpaper for JET-X.",
+   "thumb": "img/jetx-art.webp",
+   "entries": [
+    {
+     "label": "Logo v7 + iPhone wallpaper",
+     "when": "2026-10-31 14:48",
+     "bullets": [
+      "Logos v5, v6 and v7 (v7 is used in the game and its Home Screen icon)",
+      "iPhone 13 wallpaper, full and small size"
+     ]
+    },
+    {
+     "label": "v4 full-game mockup",
+     "when": "2026-10-31 11:25",
+     "bullets": [
+      "Full in-game concept image, 1920x1080"
+     ]
+    },
+    {
+     "label": "v3 loading screen",
+     "when": "2026-10-31 10:51",
+     "bullets": [
+      "Loading-screen art, portrait and landscape"
+     ]
+    },
+    {
+     "label": "v2 scenes + HUD",
+     "when": "2026-10-31 10:18",
+     "bullets": [
+      "Sunset-ocean and desert-dusk scenes, loading screens, HUD overlay"
+     ]
+    },
+    {
+     "label": "v1 logo set A / B / C",
+     "when": "2026-10-31 09:55",
+     "bullets": [
+      "Three logo directions with wordmarks, X marks, app icons and opening screens"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "oo8oo",
+   "name": "OO8OO",
+   "blurb": "Kid-friendly phone flight game, flown by tilting. Predecessor of JET-X.",
+   "url": "https://fsdisrael-cloud.github.io/oo8oo/",
+   "thumb": "img/oo8oo.webp",
+   "entries": [
+    {
+     "label": "Build 6 (staged)",
+     "when": "",
+     "bullets": [
+      "Newest staged build, with automatic version check and reload",
+      "Exact date not recorded"
+     ]
+    },
+    {
+     "label": "Published",
+     "when": "2026-10-10 19:19",
+     "bullets": [
+      "First public release on GitHub Pages"
+     ]
+    },
+    {
+     "label": "History starts here",
+     "when": "",
+     "bullets": [
+      "Earlier build dates were not kept"
+     ]
+    }
+   ],
+   "fit": "contain"
+  },
+  {
+   "id": "skyline",
+   "name": "Skyline jet prototype",
+   "blurb": "First phone flight prototype with real aircraft; led to OO8OO. Archived, not public.",
+   "thumb": "img/skyline.webp",
+   "entries": [
+    {
+     "label": "History starts here",
+     "when": "",
+     "bullets": [
+      "Archived prototype; no dated versions were kept"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "lttm",
+   "name": "Late To The Mic",
+   "blurb": "Robot video podcast hosted by Tessie and Meyra.",
+   "thumb": "img/lttm.webp",
+   "entries": [
+    {
+     "label": "Roadster short (step 1)",
+     "when": "2026-10-31 11:53",
+     "bullets": [
+      "1080p short rendered; new cast and approval frame",
+      "Plan and cast notes written the same day"
+     ]
+    },
+    {
+     "label": "Episode 2: Neuralink",
+     "when": "",
+     "bullets": [
+      "Delivered in 720p and 1080p (about 3 min); waiting for feedback"
+     ]
+    },
+    {
+     "label": "Houston Cybercab test",
+     "when": "",
+     "bullets": [
+      "Locked voice reference for the cloned voices"
+     ]
+    },
+    {
+     "label": "Episode 1 (English + Hebrew)",
+     "when": "",
+     "bullets": [
+      "English version done; the first Hebrew version is the preferred one"
+     ]
+    },
+    {
+     "label": "History starts here",
+     "when": "",
+     "bullets": [
+      "Dates for episodes 1 and 2 were not recorded"
+     ]
+    }
+   ],
+   "fit": "contain"
+  },
+  {
+   "id": "bobo-nini",
+   "name": "Bobo & Nini",
+   "blurb": "Recurring caricature series with locked character rules.",
+   "thumb": "",
+   "entries": [
+    {
+     "label": "Character rules locked",
+     "when": "2026-10-05",
+     "dateOnly": true,
+     "bullets": [
+      "Look, outfit and image-brief rules fixed for both characters"
+     ]
+    },
+    {
+     "label": "History starts here",
+     "when": "",
+     "bullets": [
+      "No dated image batches were recorded"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mars",
+   "name": "Mars: Grok Bot Build",
+   "blurb": "Short animated clip with theme music.",
+   "thumb": "img/mars.webp",
+   "entries": [
+    {
+     "label": "History starts here",
+     "when": "",
+     "bullets": [
+      "Finished video, music and key frames; production date not recorded"
+     ]
+    }
+   ]
+  }
+ ]
+}
