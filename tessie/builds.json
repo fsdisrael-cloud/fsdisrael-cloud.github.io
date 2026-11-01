@@ -1,6 +1,6 @@
 {
  "title": "TESSIE FOLDER",
- "updated": "2026-11-01 06:54",
+ "updated": "2026-11-01 06:59",
  "projects": [
   {
    "id": "jet-x",
@@ -8,11 +8,31 @@
    "icon": "jet-logo",
    "url": "https://fsdisrael-cloud.github.io/jet/",
    "next": {
-    "short": "B25",
-    "label": "Build 25",
+    "short": "B26",
+    "label": "Build 26",
     "note": "Planned. Changes are being collected."
    },
    "items": [
+    {
+     "id": "b25",
+     "short": "B25",
+     "label": "Build 25",
+     "when": "2026-11-01 06:59",
+     "title": "Arcade control + top-tier look",
+     "bullets": [
+      "Arcade controls: full stick authority, auto-level the moment you let go",
+      "Darker polished jet, soft ground shadow, crisper cinematic grade",
+      "Bigger, clearer enemies on ground, sea and air",
+      "New flare button, flares eject from the tail with smoke",
+      "Throttle-linked turbofan and deep afterburner roar",
+      "Faster loading, smoother on iPhone"
+     ],
+     "shot": "b25",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LAUNCH",
+     "linkNote": ""
+    },
     {
      "id": "b24",
      "short": "B24",
@@ -28,8 +48,8 @@
      "shot": "jet24",
      "shotReal": true,
      "link": "https://fsdisrael-cloud.github.io/jet/",
-     "linkLabel": "LAUNCH",
-     "linkNote": ""
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
     },
     {
      "id": "b23",
