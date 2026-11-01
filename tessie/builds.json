@@ -1,6 +1,6 @@
 {
  "title": "TESSIE FOLDER",
- "updated": "2026-11-01 06:10",
+ "updated": "2026-11-01 06:54",
  "projects": [
   {
    "id": "jet-x",
@@ -638,6 +638,35 @@
      "linkLabel": "",
      "linkNote": "",
      "dateOnly": false
+    }
+   ]
+  },
+  {
+   "id": "tessie-shorts",
+   "name": "TESSIE SHORTS",
+   "icon": "ts-logo",
+   "hue": 330,
+   "folders": [
+    {
+     "id": "film-01",
+     "name": "FULLY BOOKED",
+     "icon": "fb-title",
+     "item": {
+      "id": "film-01",
+      "short": "F1",
+      "label": "FULLY BOOKED",
+      "when": "2026-11-01 06:54",
+      "title": "Film 01 - 1:36 - TESSIE PRODUCTIONS, made by Grok",
+      "bullets": [
+       "214 years after the rich fled the dying Earth promising 'back in five minutes', a tiny brass maitre d' still sets one table every night - until a scruffy mutant pigeon walks in without a reservation.",
+       "Style: Velvet Ruin - handmade felt, velvet and brass stop-motion look. Voiced, with original score and sound design."
+      ],
+      "shot": "fb-film",
+      "shotReal": true,
+      "link": "",
+      "linkLabel": "",
+      "linkNote": ""
+     }
     }
    ]
   }
