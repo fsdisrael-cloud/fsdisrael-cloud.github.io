@@ -2,8 +2,8 @@
 // Player + enemy jets: PBR-lit (metal, glossy canopy, environment reflections) with a thin illustrated outline.
 // Ground units: toon + outline. Illustrated look, readable colours.
 import * as THREE from "three";
-import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=24";
-import { patchDetail, missileTex } from "./tex.js?v=24";
+import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=25";
+import { patchDetail, missileTex } from "./tex.js?v=25";
 
 const PI = Math.PI;
 
@@ -24,19 +24,22 @@ export function initEnv(renderer) {
   const geo = new THREE.SphereGeometry(50, 24, 16);
   const col = [];
   const p = geo.attributes.position;
-  const top = new THREE.Color(0x4f8dff), hor = new THREE.Color(0xfff0e0), bot = new THREE.Color(0x2c2a3a), mid = new THREE.Color();
+  const top = new THREE.Color(0x4f8dff), hor = new THREE.Color(0xe6d6c2), bot = new THREE.Color(0x14161c), mid = new THREE.Color();
   for (let i = 0; i < p.count; i++) {
     const y = p.getY(i) / 50;
     if (y > 0) mid.copy(hor).lerp(top, Math.pow(y, 0.7)); else mid.copy(hor).lerp(bot, Math.min(1, -y * 2.2));
     // prismatic band so metal picks up a hint of colour
     const hue = (Math.atan2(p.getZ(i), p.getX(i)) / (2 * PI) + 1) % 1;
-    mid.lerp(new THREE.Color().setHSL(hue, 0.9, 0.6), 0.05 * Math.max(0, 1 - Math.abs(y) * 2.5));
+    
     col.push(mid.r, mid.g, mid.b);
   }
   geo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
   s.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
   const sun = new THREE.Mesh(new THREE.SphereGeometry(6, 12, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(14, 13, 11) }));
   sun.position.set(20, 34, -14); s.add(sun);
+  // b25: studio soft-boxes: long bright strips give the airframe crisp, glossy highlight lines along fuselage and wings
+  const sb = new THREE.MeshBasicMaterial({ color: new THREE.Color(5, 5.2, 5.6), side: THREE.DoubleSide });
+  for (const [x, y, z, w, h, ry] of [[-30, 22, 10, 40, 4, 1.2], [32, 14, 22, 36, 3, -1.1], [0, 40, 0, 6, 34, 0], [-10, 6, -38, 30, 2.5, 0.2]]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), sb); m.position.set(x, y, z); m.lookAt(0, 0, 0); m.rotateZ(ry); s.add(m); }
   const pm = new THREE.PMREMGenerator(renderer);
   ENV = pm.fromScene(s, 0.02).texture;
   pm.dispose();
@@ -117,7 +120,7 @@ const flameGeo = (() => { const g = new THREE.ConeGeometry(0.5, 1, 14, 1, true);
 const addMat = (color, op) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
 
 const PAL = {
-  player: { lo: 0x5d6671, hi: 0xb9c1cb, wing: 0x9aa3ae, dark: 0x1a1f25, glass: 0xc99a46, glow: 0x35c8e0, burn: [0xff7a2e, 0xffd27a, 0xcfeaff] },
+  player: { lo: 0x2b323b, hi: 0x79838f, wing: 0x4b535d, dark: 0x0f1317, glass: 0xc99a46, glow: 0x35c8e0, burn: [0xff7a2e, 0xffd27a, 0xcfeaff] },
   ally: { lo: 0x22302b, hi: 0x93a89c, wing: 0x56695f, dark: 0x0e1613, glass: 0x7acfa0, glow: 0x3dd98b, burn: [0x3dffb0, 0xb8ffe0, 0xeafff6] },
   enemy: { lo: 0x1c1f23, hi: 0x5a5148, wing: 0x3a3836, dark: 0x0d0f11, glass: 0xd8503c, glow: 0xff4030, burn: [0xff3a1a, 0xff9a40, 0xffe0b0] },
 };
@@ -209,9 +212,9 @@ function roundelTex() {
 function buildJet(kind, vk = "", variant = null) {
   const pal = { ...PAL[kind], ...(variant || {}) }, g = jetGeometry(kind, vk, pal), lean = kind === "enemy";
   const root = new THREE.Group();
-  const eK = kind === "ally" ? 1.0 : 0.85;
-  const body = pbr({ vertexColors: true, metalness: 0.35, roughness: 0.42, emissive: 0x161c25, emissiveIntensity: 0.6, envMapIntensity: eK }, { kind: "panel", s: 0.2, k: 0.5 });
-  const wingM = pbr({ color: pal.wing, metalness: 0.35, roughness: 0.42, emissive: 0x161c25, emissiveIntensity: 0.6, envMapIntensity: eK }, { kind: "panel", s: 0.26, k: 0.5 });
+  const eK = kind === "ally" ? 1.0 : 1.05;
+  const body = pbr({ vertexColors: true, metalness: 0.62, roughness: 0.3, emissive: 0x10151c, emissiveIntensity: 0.35, envMapIntensity: eK }, { kind: "panel", s: 0.2, k: 0.5 });
+  const wingM = pbr({ color: pal.wing, metalness: 0.62, roughness: 0.32, emissive: 0x10151c, emissiveIntensity: 0.3, envMapIntensity: eK }, { kind: "panel", s: 0.26, k: 0.5 });
   const darkM = pbr({ color: pal.dark, metalness: 0.7, roughness: 0.5 });
   const metalM = pbr({ color: 0x3b4047, metalness: 0.95, roughness: 0.36, flatShading: true, envMapIntensity: 1.1 });
   const glassM = pbr({ color: pal.glass, metalness: 1, roughness: 0.05, envMapIntensity: 2.0, transparent: true, opacity: 0.9 });

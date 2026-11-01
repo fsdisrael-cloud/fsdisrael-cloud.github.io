@@ -527,7 +527,7 @@ html, body { background: #8fb4dc; height: 100%; min-height: 100vh; min-height: -
 
 /* build 21: small engraved version label, bottom-right of title / loading screens (text comes from version.json) */
 .ver-b { position: absolute; right: calc(env(safe-area-inset-right, 0px) + 14px); bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); pointer-events: none; user-select: none; z-index: 3;
-  font: 400 clamp(8px, 1.7vmin, 11px)/1 "Stencil", "Fredoka", sans-serif; letter-spacing: .2em; color: #aeb6bf; opacity: .55;
+  font: 400 clamp(11px, 2.5vmin, 16px)/1 "Stencil", "Fredoka", sans-serif; letter-spacing: .2em; color: #c3cad2; opacity: .72;
   text-shadow: 0 1px 0 rgba(255,255,255,.22), 0 -1px 0 rgba(0,0,0,.85), 0 2px 4px rgba(0,0,0,.7); }
 
 /* build 22: landscape title - TESSIE credit moves to the bottom-left so the buttons never cover it */
@@ -559,7 +559,8 @@ html, body { background: #8fb4dc; height: 100%; min-height: 100vh; min-height: -
 @keyframes lifeBlink { to { opacity: .45; } }
 .aux { position: absolute; right: calc(var(--safe-r) + 6px); bottom: calc(var(--safe-b) + 4px + var(--stick) + 6px); display: flex; gap: 10px; align-items: center; pointer-events: auto; touch-action: none; }
 .abtn { position: relative; width: calc(var(--wb) * 0.92); height: calc(var(--wb) * 0.92); min-width: 50px; min-height: 50px; border-radius: 50%; border: 2px solid #05070a; background: radial-gradient(circle at 35% 28%, #4a5058, #1b1f26 70%); color: #ffd36a; display: grid; place-items: center; font: 400 10px "Stencil", monospace; letter-spacing: .08em; box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 3px 8px rgba(0,0,0,.65); touch-action: none; -webkit-tap-highlight-color: transparent; user-select: none; }
-.abtn .fe { font-size: 22px; line-height: 1; filter: drop-shadow(0 0 5px rgba(255,190,60,.9)); }
+.abtn .fe { width: 30px; height: 30px; margin-top: -6px; filter: drop-shadow(0 0 5px rgba(255,150,40,.9)); }
+.abtn.a-flare { border-color: #7a3a10; box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 0 14px rgba(255,120,30,.45), 0 3px 8px rgba(0,0,0,.65); }
 .abtn em { font-style: normal; font-size: 8px; position: absolute; bottom: 5px; opacity: .85; }
 .abtn.a-brake { color: #9fd8ff; } .abtn.a-brake::before { content: "\2261"; font-size: 22px; line-height: 1; margin-top: -7px; }
 .abtn.pressed, .abtn:active { transform: scale(.92); border-color: #ffb02e; background: radial-gradient(circle at 35% 28%, #6a5a38, #2b2416 70%); }

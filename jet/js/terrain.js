@@ -152,7 +152,7 @@ export async function buildTerrain(lat, lon, { quality = "high", onProgress } = 
 
   // --- detail mesh ---
   const W = (mxB - mxA) * k; // true metres
-  const SEG = quality === "low" ? 96 : 128;
+  const SEG = quality === "low" ? 96 : 160;
   const geo = new THREE.PlaneGeometry(W, W, SEG, SEG);
   geo.rotateX(-Math.PI / 2);
   const p0 = toWorld(mxA, myTop), p1 = toWorld(mxB, myBot);

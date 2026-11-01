@@ -94,7 +94,7 @@ export function createAudio() {
     const c = ctx;
     try { master.gain.cancelScheduledValues(0); master.gain.setValueAtTime(0, c.currentTime); } catch { /* ignore */ }
     if (tech) { try { clearInterval(tech.timer); } catch { /* ignore */ } tech = null; }
-    if (engine) { try { engine.o.stop(); engine.n.stop(); } catch { /* ignore */ } engine = null; }
+    if (engine) { try { engine.o.stop(); engine.n.stop(); engine.o2 && engine.o2.stop(); engine.wh && engine.wh.stop(); engine.w && engine.w.stop(); engine.b && engine.b.stop(); engine.lfo && engine.lfo.stop(); engine.ab && engine.ab.n.stop(); } catch { /* ignore */ } engine = null; }
     if (current) { try { current.src.stop(); } catch { /* ignore */ } current = null; }
     // suspend first (instant), then close the context for good; a fresh one is built on CONT / NEW (inside the tap)
     try { const r = c.suspend(); if (r && r.then) r.then(() => { try { return c.close(); } catch { /* ignore */ } }).catch(() => {}); } catch { /* ignore */ }
@@ -447,6 +447,9 @@ export function createAudio() {
       const g = ctx.createGain(); g.gain.value = 0;
       o.connect(of); of.connect(g); n.connect(nf); nf.connect(g); g.connect(sfxGain);
       o.start(); n.start();
+      // b25: layered turbofan: detuned sub oscillator (deep growl) + a rising compressor whine that follows the throttle
+      const o2 = ctx.createOscillator(); o2.type = "triangle"; o2.frequency.value = 38; const o2g = ctx.createGain(); o2g.gain.value = 0.7; o2.connect(o2g); o2g.connect(of); o2.start();
+      const wh = ctx.createOscillator(); wh.type = "sine"; wh.frequency.value = 900; const whg = ctx.createGain(); whg.gain.value = 0; wh.connect(whg); whg.connect(g); wh.start();
       // wind / airflow: rush that rises with speed, plus a low buffet that pulses with G-load
       const w = ctx.createBufferSource(); w.buffer = noiseBuf; w.loop = true; w.playbackRate.value = 0.83;
       const wf = ctx.createBiquadFilter(); wf.type = "bandpass"; wf.frequency.value = 500; wf.Q.value = 0.45;
@@ -456,7 +459,7 @@ export function createAudio() {
       const bg = ctx.createGain(); bg.gain.value = 0; const lfo = ctx.createOscillator(); lfo.frequency.value = 9; const lg = ctx.createGain(); lg.gain.value = 0;
       lfo.connect(lg); lg.connect(bg.gain); b.connect(bf); bf.connect(bg); bg.connect(sfxGain);
       w.start(); b.start(0, 0.7); lfo.start();
-      engine = { o, of, n, nf, g, w, wf, wg, b, bg, lfo, lg, ab: null };
+      engine = { o, of, n, nf, g, w, wf, wg, b, bg, lfo, lg, ab: null, o2, wh, whg };
       } catch { engine = null; }
     },
     updateEngine(throttle, cockpit, speed = 150, load = 0) {
@@ -466,10 +469,14 @@ export function createAudio() {
       lastEngineT = t;
       try {
         const set = (p, v, tc) => { p.cancelScheduledValues(t); p.setTargetAtTime(v, t, tc); };
-        set(engine.o.frequency, 60 + throttle * 50, 0.2);
-        set(engine.nf.frequency, 600 + throttle * 900, 0.2);
-        set(engine.of.frequency, cockpit ? 220 : 360, 0.3);
-        set(engine.g.gain, (cockpit ? 0.05 : 0.08) + throttle * 0.06, 0.2);
+        // b25: pitch and body swing clearly with the throttle: idle growl -> screaming turbine
+        set(engine.o.frequency, 52 + throttle * 96, 0.14);
+        set(engine.o2.frequency, 30 + throttle * 44, 0.14);
+        set(engine.nf.frequency, 500 + throttle * 1700, 0.15);
+        set(engine.of.frequency, (cockpit ? 200 : 320) + throttle * 520, 0.2);
+        set(engine.g.gain, (cockpit ? 0.045 : 0.07) + throttle * 0.11, 0.15);
+        set(engine.wh.frequency, 700 + throttle * 2300, 0.12);
+        set(engine.whg.gain, (cockpit ? 0.004 : 0.008) + throttle * throttle * 0.02, 0.15);
         const sk = Math.max(0, Math.min(1, (speed - 100) / 260)), ld = Math.max(0, Math.min(1, load));
         set(engine.wf.frequency, 380 + sk * sk * 2400 + ld * 700, 0.15);
         set(engine.wg.gain, (cockpit ? 0.035 : 0.06) + sk * sk * 0.3 + ld * 0.12, 0.15);
@@ -482,7 +489,7 @@ export function createAudio() {
       if (!engine) return;
       const e = engine; engine = null;
       try { e.g.gain.cancelScheduledValues(ctx.currentTime); e.g.gain.setTargetAtTime(0, ctx.currentTime, 0.1); } catch { /* ignore */ }
-      setTimeout(() => { try { e.o.stop(); e.n.stop(); e.w.stop(); e.b.stop(); e.lfo.stop(); e.g.disconnect(); e.wg.disconnect(); e.bg.disconnect(); if (e.ab) { e.ab.n.stop(); e.ab.g.disconnect(); } } catch { /* ignore */ } }, 400);
+      setTimeout(() => { try { e.o.stop(); e.o2 && e.o2.stop(); e.wh && e.wh.stop(); e.n.stop(); e.w.stop(); e.b.stop(); e.lfo.stop(); e.g.disconnect(); e.wg.disconnect(); e.bg.disconnect(); if (e.ab) { e.ab.n.stop(); e.ab.g.disconnect(); } } catch { /* ignore */ } }, 400);
     },
     gun() {
       if (!ctx || !sfxOn || ctx.state !== "running") return; const now = ctx.currentTime; gunT = now;
@@ -536,7 +543,7 @@ export function createAudio() {
       if (!engine || !ctx) return;
       try {
         if (!engine.ab) { const n = ctx.createBufferSource(); n.buffer = noiseBuf; n.loop = true; n.playbackRate.value = 0.6; const f = ctx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 520; const g = ctx.createGain(); g.gain.value = 0; n.connect(f); f.connect(g); g.connect(sfxGain); n.start(); engine.ab = { n, g }; }
-        engine.ab.g.gain.setTargetAtTime(on ? 0.2 : 0, ctx.currentTime, 0.25);
+        engine.ab.g.gain.setTargetAtTime(on ? 0.46 : 0, ctx.currentTime, on ? 0.12 : 0.35); if (on && !engine.abKick) { engine.abKick = true; try { const n2 = ctx.currentTime; const k = ctx.createOscillator(); k.type = 'sine'; k.frequency.setValueAtTime(90, n2); k.frequency.exponentialRampToValueAtTime(34, n2 + 0.6); const kg = ctx.createGain(); kg.gain.setValueAtTime(0.0001, n2); kg.gain.exponentialRampToValueAtTime(0.5, n2 + 0.05); kg.gain.exponentialRampToValueAtTime(0.0001, n2 + 0.7); k.connect(kg); kg.connect(sfxGain); k.start(n2); k.stop(n2 + 0.8); } catch {} } if (!on) engine.abKick = false;
       } catch { /* ignore */ }
     },
     /** b24: cockpit voice: "MISSILE" and wingman callouts (speech synthesis; cancelled when you leave the app) */

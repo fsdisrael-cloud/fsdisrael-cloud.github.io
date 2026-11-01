@@ -27,7 +27,7 @@ export function createPost(renderer, opts = {}) {
     if (v.x === W && v.y === H && sceneRT) return;
     W = v.x; H = v.y;
     sceneRT?.dispose(); mips.forEach((m) => m.dispose()); mips.length = 0;
-    sceneRT = new THREE.WebGLRenderTarget(W, H, { ...rtOpts, depthBuffer: true, samples: hi ? 4 : 0 });
+    sceneRT = new THREE.WebGLRenderTarget(W, H, { ...rtOpts, depthBuffer: true, samples: hi ? (window.__touchDev ? 2 : 4) : 0 });
     let w = W, h = H;
     for (let i = 0; i < LEV; i++) { w = Math.max(2, w >> 1); h = Math.max(2, h >> 1); mips.push(new THREE.WebGLRenderTarget(w, h, rtOpts)); }
   }
@@ -73,8 +73,12 @@ export function createPost(renderer, opts = {}) {
       col = mix(col, uWhiteCol * (0.85 + 0.15 * hash(floor(uv * 6.0) + floor(uTime * 3.0))), uWhite * 0.9);
       // grade: gentle filmic contrast, split toning (cool shadows, warm highlights), saturation
       float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
-      col = max((col - 0.16) * 1.07 + 0.16, 0.0);   // b23: a touch more punch
-      col = mix(vec3(l), col, 1.16);
+      // b25: cheap unsharp mask (4 taps) for crisp detail, then a darker, cinematic military grade: more contrast, calmer saturation, olive greens
+      { vec2 px = vec2(1.0 / uAsp, 1.0) * 0.0016; vec3 bl4 = (texture2D(tS, uv + vec2(px.x, 0.0)).rgb + texture2D(tS, uv - vec2(px.x, 0.0)).rgb + texture2D(tS, uv + vec2(0.0, px.y)).rgb + texture2D(tS, uv - vec2(0.0, px.y)).rgb) * 0.25; col += clamp(col - bl4, -0.25, 0.25) * 0.45; }
+      l = dot(col, vec3(0.2126, 0.7152, 0.0722));
+      col = max((col - 0.17) * 1.16 + 0.15, 0.0);
+      col = mix(vec3(l), col, 0.98);
+      col.g -= max(0.0, col.g - max(col.r, col.b)) * 0.28; col.r *= 1.03;
       col *= mix(vec3(0.93, 0.99, 1.07), vec3(1.07, 1.0, 0.92), smoothstep(0.05, 0.9, l));
       col *= 1.0 - uVig * smoothstep(0.18, 0.62, r2) * 1.1;
       col = mix(col, col * vec3(1.6, 0.35, 0.3), uHurt * smoothstep(0.05, 0.4, r2));

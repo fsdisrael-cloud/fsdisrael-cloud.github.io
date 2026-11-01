@@ -1,16 +1,16 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=24";
-import { createHud } from "./hud.js?v=24";
-import { createControls } from "./controls.js?v=24";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene } from "./variety.js?v=24";
-import { createAudio, trackFor } from "./audio.js?v=24";
-import { createHaptics } from "./haptics.js?v=24";
-import { createRain2D } from "./rain2d.js?v=24";
-import { createLoading } from "./loading.js?v=24";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=24";
-import { setSurreal, tickStyle } from "./surreal.js?v=24";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=24";
+import { createGame } from "./game.js?v=25";
+import { createHud } from "./hud.js?v=25";
+import { createControls } from "./controls.js?v=25";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene } from "./variety.js?v=25";
+import { createAudio, trackFor } from "./audio.js?v=25";
+import { createHaptics } from "./haptics.js?v=25";
+import { createRain2D } from "./rain2d.js?v=25";
+import { createLoading } from "./loading.js?v=25";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=25";
+import { setSurreal, tickStyle } from "./surreal.js?v=25";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=25";
 
 const $ = (id) => document.getElementById(id);
 
@@ -28,7 +28,7 @@ try {
   for (let i = 0; i < 500; i++) { w.fillStyle = `rgba(${rn() < 0.5 ? "255,255,255" : "0,0,0"},${0.03 + rn() * 0.08})`; w.fillRect(rn() * 256, rn() * 256, 1 + rn() * 2, 1 + rn() * 2); }
   document.documentElement.style.setProperty("--worn", `url(${wc.toDataURL("image/png")})`);
 } catch (e) { /* plain gradients if canvas is unavailable */ }
-const BUILD = 24;
+const BUILD = 25;
 { const t = $("build-tag"); if (t) t.textContent = "JET-X b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;
@@ -55,7 +55,10 @@ setSurreal(false); // fixed illustrated-realistic look (the psychedelic signatur
 // ---------- core ----------
 const canvas = $("game-canvas");
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" });
-let pixelRatio = Math.min(2, window.devicePixelRatio || 1);
+// b25: phones render at <=1.5x (sharp, but ~45% fewer pixels than 2x) and the adaptive check below still steps down if fps dips
+const IS_TOUCH = matchMedia("(pointer: coarse)").matches;
+window.__touchDev = IS_TOUCH;
+let pixelRatio = Math.min(IS_TOUCH ? 1.5 : 2, window.devicePixelRatio || 1);
 renderer.setPixelRatio(pixelRatio);
 renderer.setSize(innerWidth, innerHeight, false);
 const audio = createAudio();
@@ -416,7 +419,7 @@ function frame(now) {
     fpsAcc += dt; fpsN++;
     if (fpsAcc > 2) {
       const fps = fpsN / fpsAcc; fpsAcc = 0; fpsN = 0;
-      if (fps < 40 && pixelRatio > 1) { if (++slowT >= 2) { pixelRatio = Math.max(1, pixelRatio - 0.25); renderer.setPixelRatio(pixelRatio); renderer.setSize(innerWidth, innerHeight, false); slowT = 0; } }
+      if (fps < 46 && pixelRatio > 1) { if (++slowT >= 2) { pixelRatio = Math.max(1, pixelRatio - 0.25); renderer.setPixelRatio(pixelRatio); renderer.setSize(innerWidth, innerHeight, false); slowT = 0; } }
       else slowT = 0;
     }
   } else if (state === "title" && previewOn) {
