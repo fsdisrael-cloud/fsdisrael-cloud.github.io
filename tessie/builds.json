@@ -1,6 +1,6 @@
 {
  "title": "TESSIE FOLDER",
- "updated": "2026-11-01 07:43",
+ "updated": "2026-11-01 08:36",
  "projects": [
   {
    "id": "jet-x",
@@ -709,6 +709,28 @@
       "linkNote": ""
      },
      "hue": 320
+    },
+    {
+     "id": "film-03",
+     "name": "עד הגל הבא",
+     "icon": "ng-title",
+     "item": {
+      "id": "film-03",
+      "short": "FI",
+      "label": "עד הגל הבא",
+      "when": "2026-11-01 08:40",
+      "title": "Until the next wave - Hebrew short, 1:41",
+      "bullets": [
+       "A rushing dad slows down for his 9-year-old daughter's quiet fear, and they learn to live until the next wave.",
+       "Golden Hour Realism: realistic animation with anime influence, original score"
+      ],
+      "shot": "ng-film",
+      "shotReal": true,
+      "link": "",
+      "linkLabel": "",
+      "linkNote": ""
+     },
+     "hue": 200
     }
    ]
   }
