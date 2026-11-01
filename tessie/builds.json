@@ -1,6 +1,6 @@
 {
  "title": "TESSIE FOLDER",
- "updated": "2026-11-01 06:59",
+ "updated": "2026-11-01 07:43",
  "projects": [
   {
    "id": "jet-x",
@@ -687,6 +687,28 @@
       "linkLabel": "",
       "linkNote": ""
      }
+    },
+    {
+     "id": "film-02",
+     "name": "PRE-LOVED",
+     "icon": "pl-title",
+     "item": {
+      "id": "film-02",
+      "short": "FI",
+      "label": "PRE-LOVED",
+      "when": "2026-11-01 07:43",
+      "title": "Film 02 - 1:51 - TESSIE PRODUCTIONS, made by Grok",
+      "bullets": [
+       "In a decaying love-booth arcade, two lonely strangers swap confessions and trade a gold tooth and a pearl for time with their 'synthetic companions' - until the clerk reveals both have been paying to talk to each other all along.",
+       "Style: Decadent Grotesque - photoreal, weird-faced humans in a neon-rotted futurist ruin, with a tango and bandoneon score, layered ambience and voiced dark-comic dialogue."
+      ],
+      "shot": "pl-film",
+      "shotReal": true,
+      "link": "",
+      "linkLabel": "",
+      "linkNote": ""
+     },
+     "hue": 320
     }
    ]
   }
