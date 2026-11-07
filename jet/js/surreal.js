@@ -2,8 +2,8 @@
 // Surreal = pastel hue-shifting palette, gently wavy/melting terrain, soft outlines,
 // floating dream shapes and a cheap CSS glow. All GPU-cheap: a few shader lines + 4 draw calls.
 import * as THREE from "three";
-import { noiseTex, FX, terrainPhotos, BUMP_GLSL } from "./tex.js?v=29";
-import { outlineUniforms, toonMaterial, PartBuilder, G, outlineMaterial } from "./toon.js?v=29";
+import { noiseTex, FX, terrainPhotos, BUMP_GLSL } from "./tex.js?v=30";
+import { outlineUniforms, toonMaterial, PartBuilder, G, outlineMaterial } from "./toon.js?v=30";
 
 const KEY = "jet-style";
 export const style = {
@@ -113,13 +113,27 @@ export function patchTerrain(mat) {
             float sp = pow(max(dot(wn, H), 0.0), 140.0) * 2.2 * mix(0.3, 1.0, wFar) + pow(max(dot(wn, H), 0.0), 18.0) * 0.12;
             float fr = pow(1.0 - clamp(dot(wn, V), 0.0, 1.0), 3.0);
             ubuGlint = uSunC * sp + diffuseColor.rgb * fr * 0.6;
-            // b23: deeper teal sea, sky reflection at grazing angles, soft white-caps
-            diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.62, 0.98, 1.22) + vec3(0.0, 0.025, 0.045), 0.55);
+            // b30: realistic sea - no satellite pixels: procedural depth colour (shallow turquoise -> deep navy), coast foam, smooth multi-scale waves
+            vec2 q3 = mat2(0.8, -0.6, 0.6, 0.8) * vWP.xz * 0.0047 + vec2(-uT2 * 0.007, uT2 * 0.009);
+            vec4 w3 = texture2D(uNoise, q3);
+            wn = normalize(vec3(((w1.r - w1.g) * 0.22 + (w2.b - w2.a) * 0.16 + (w3.g - w3.r) * 0.2) * wFar, 1.0, ((w1.b - w1.a) * 0.22 + (w2.r - w2.g) * 0.16 + (w3.a - w3.b) * 0.2) * wFar));
+            H = normalize(normalize(uSunD) + V);
+            sp = pow(max(dot(wn, H), 0.0), 220.0) * 3.0 * mix(0.35, 1.0, wFar) + pow(max(dot(wn, H), 0.0), 24.0) * 0.14;
+            fr = 0.04 + 0.96 * pow(1.0 - clamp(dot(wn, V), 0.0, 1.0), 5.0);
+            float depth = lakeM > 0.5 ? 0.6 : clamp(-vWP.y / 35.0, 0.0, 1.0);
+            float lumM = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
+            depth = max(depth, clamp(1.0 - lumM * 3.2, 0.0, 1.0) * 0.7);   // imagery brightness only as a soft depth hint, never as pixels
+            vec3 deepC = vec3(0.015, 0.075, 0.16), shallowC = vec3(0.06, 0.36, 0.42);
+            diffuseColor.rgb = mix(shallowC, deepC, smoothstep(0.0, 0.85, depth));
+            float foam = (1.0 - smoothstep(0.0, 0.12, depth)) * smoothstep(0.45, 0.75, w2.g * 0.6 + w3.r * 0.4 + 0.15 * sin(uT2 * 1.3 + vWP.x * 0.02));
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.85, 0.9, 0.92), foam * 0.7 * (1.0 - smoothstep(400.0, 3000.0, dd)));
+            ubuGlint = uSunC * sp + vec3(0.0);
             #ifdef USE_FOG
               vec3 skyR = fogColor * 1.08;
               float lumF = dot(fogColor, vec3(0.333));
               float cap = smoothstep(0.80, 0.97, w1.g * 0.55 + w2.r * 0.45) * (1.0 - smoothstep(600.0, 3500.0, dd));
-              ubuGlint += skyR * (0.62 + fr * 0.6) * mix(0.55, 1.0, uSunC.r) + vec3(cap * 0.3 * lumF);
+              ubuGlint += skyR * fr * 0.9 * mix(0.55, 1.0, uSunC.r) + vec3(cap * 0.22 * lumF);
+              ubuGlint += skyR * 0.25 * smoothstep(2500.0, 14000.0, dd);   // fade into the horizon haze
             #endif
           }
         }

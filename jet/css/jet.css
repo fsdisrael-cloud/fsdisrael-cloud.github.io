@@ -776,3 +776,28 @@ body.tp-a .t26-lang, body.on-title .t26-lang { visibility:visible !important; op
 .t26-langlist.float { position:fixed; top:70px; right:12px; left:auto; transform:none; }
 #btn-lang2 span { font-size:7px; }
 .weapons, .aux { z-index:6; position:absolute; } .stick { z-index:5; }
+/* b30: home-screen app (black-translucent status bar) - keep top controls below the status bar / notch */
+.t26 .t26-lang, body .t26 .t26-lang { top:calc(env(safe-area-inset-top, 0px) + 10px) !important; left:calc(env(safe-area-inset-left, 0px) + 12px) !important; z-index:200 !important; display:block !important; }
+.t26-langbtn { background:#0b1520 !important; border:2px solid #f3b61f !important; color:#fff !important; min-height:40px; }
+body.on-title .settings, .settings { top:calc(env(safe-area-inset-top, 0px) + 10px) !important; }
+.t26-langlist.float { top:calc(env(safe-area-inset-top, 0px) + 64px); }
+/* b30: CONT / NEW plates sit clearly ABOVE the TAP TO FLY plate, never overlapping */
+.t26 .menu-buttons { bottom:calc(max(10px, env(safe-area-inset-bottom)) + 200px) !important; z-index:20; }
+@media (orientation: landscape) { .t26 .menu-buttons { bottom:auto !important; top:50% !important; left:auto !important; right:calc(env(safe-area-inset-right, 0px) + 16px) !important; transform:translateY(-50%) !important; flex-direction:column !important; } }
+:root { --title-p:url('../img/art/title30.jpg') !important; --title-l:url('../img/art/title30.jpg') !important; }
+@media (orientation: landscape) { body.on-title .screen.title, body.preview .screen.title, body.preview.rolling .screen.title, .loading, .loading.live { background-size:contain !important; background-position:center !important; } }
+
+/* b30: eject seat handles (always visible in play) */
+.ej-h { position:fixed; z-index:36; left:50%; transform:translateX(-50%); bottom:calc(var(--safe-b, 0px) + 6px); width:84px; height:30px; padding:0; border:0; background:transparent; display:none; pointer-events:auto; touch-action:none; }
+body.in-game .ej-h { display:block; }
+.ej-h i { position:absolute; top:0; width:34px; height:26px; border-radius:13px 13px 4px 4px; border:4px solid transparent; background:repeating-linear-gradient(-45deg,#ffc400 0 5px,#111 5px 10px) border-box; -webkit-mask:linear-gradient(#000 0 0) padding-box exclude, linear-gradient(#000 0 0); mask:linear-gradient(#000 0 0) padding-box exclude, linear-gradient(#000 0 0); }
+.ej-h i:first-child { left:2px; } .ej-h i:nth-child(2) { right:2px; }
+.ej-h span { position:absolute; left:0; right:0; top:6px; font:700 9px/1 var(--mil, sans-serif); letter-spacing:.12em; color:#ffc400; text-align:center; text-shadow:0 1px 0 #000; }
+.ej-h em { position:absolute; left:0; right:0; top:17px; font:700 7px/1 sans-serif; font-style:normal; color:#ddd; text-align:center; }
+.ej-h.pull { transform:translateX(-50%) translateY(-6px); filter:drop-shadow(0 0 6px #ffc400); transition:transform .8s; }
+/* b30: AUTO LAND - clean spot: centre, above the eject handles, away from weapons / stick */
+.autoland { left:50% !important; right:auto !important; transform:translateX(-50%) !important; bottom:calc(var(--safe-b, 0px) + 44px) !important; top:auto !important; max-width:none !important; }
+@media (orientation: landscape) { .autoland { bottom:auto !important; top:calc(var(--safe-t, 0px) + 70px) !important; } }
+.ej-h { bottom:calc(var(--safe-b, 0px) + 206px); }
+.autoland { bottom:calc(var(--safe-b, 0px) + 244px) !important; }
+@media (orientation: landscape) { .ej-h { bottom:calc(var(--safe-b, 0px) + 8px); } }

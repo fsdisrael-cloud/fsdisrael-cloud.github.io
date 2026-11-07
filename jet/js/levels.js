@@ -11,7 +11,7 @@ export const BIOMES = {
   valley: "Green valley",
   mountains: "Mountains",
 };
-import { rollRun } from "./variety.js?v=29";
+import { rollRun } from "./variety.js?v=30";
 const P = {
   seward: { name: "Resurrection Bay, Alaska", lat: 60.05, lon: -149.4 },
   monument: { name: "Monument Valley", lat: 36.99, lon: -110.10 },
@@ -58,7 +58,8 @@ export function buildLevel(n, run0) {
     for (const k of ["jet", "tank", "base", "flak", "sam"]) if (d[k]) d[k] = Math.max(1, Math.round(d[k] * ramp * more[k]));
     if (d.jets) d.jets = Math.max(3, Math.round(d.jets * ramp * more.jet) + Math.min(8, Math.max(0, n - 10))); }
   const objectives = [];
-  objectives.push({ kind: "jet", need: d.jets, label: `Shoot down ${d.jets} enemy planes` });
+  d.jets = 15 + 3 * (n - 1);   // b30: level 1 = 15 air enemies (jets + choppers), +3 per level
+  objectives.push({ kind: "jet", need: d.jets, label: `Shoot down ${d.jets} enemy aircraft` });
   for (const k of ["base", "tank", "flak", "sam"]) if (d[k]) objectives.push({ kind: k, need: d[k], label: `${VERB[k]} ${d[k]} ${NOUN[k]}` });
   return {
     run, n, title: `${n}. ${d0.title}`, biome: d.biome, place: d.place, time: d.time, weather: d.weather,

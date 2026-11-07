@@ -1,17 +1,17 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=29";
-import { createHud } from "./hud.js?v=29";
-import { createControls } from "./controls.js?v=29";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun } from "./variety.js?v=29";
-import { createAudio, trackFor } from "./audio.js?v=29";
-import { createHaptics } from "./haptics.js?v=29";
-import { createRain2D } from "./rain2d.js?v=29";
-import { createLoading } from "./loading.js?v=29";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=29";
-import { setSurreal, tickStyle } from "./surreal.js?v=29";
-import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=29";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=29";
+import { createGame } from "./game.js?v=30";
+import { createHud } from "./hud.js?v=30";
+import { createControls } from "./controls.js?v=30";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun } from "./variety.js?v=30";
+import { createAudio, trackFor } from "./audio.js?v=30";
+import { createHaptics } from "./haptics.js?v=30";
+import { createRain2D } from "./rain2d.js?v=30";
+import { createLoading } from "./loading.js?v=30";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=30";
+import { setSurreal, tickStyle } from "./surreal.js?v=30";
+import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=30";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=30";
 
 const $ = (id) => document.getElementById(id);
 
@@ -504,10 +504,9 @@ requestAnimationFrame(frame);
     setLabel(); body.classList.remove("rolling"); previewOn = true;
   }
   // Art variants follow scene changes; never reveal the rejected live/plain menu.
-  let art = Math.floor(Math.random() * 3);
-  const setArt = () => { const s = document.documentElement.style; s.setProperty("--title-p", `url("${new URL(`img/art/title27-p${art}.jpg`, location.href).href}")`); s.setProperty("--title-l", `url("${new URL(`img/art/title27-l${art}.jpg`, location.href).href}")`); };
+  let art = window.__titleArt ?? 0;   // b30: ONE art per session, chosen in <head> before first paint
+  const setArt = () => { const s = document.documentElement.style, u = `url("${new URL("img/art/title30.jpg", location.href).href}")`; s.setProperty("--title-p", u); s.setProperty("--title-l", u); };   // b30: ONE fixed opening image
   setArt();
-  $("btn-reroll").addEventListener("click", () => { art = (art + 1) % 3; setArt(); });
   $("tap-fly").addEventListener("click", (e) => { e.stopPropagation(); if (preloadReady && state === "title") { clearSave(); play(); } });
   $("btn-reroll").addEventListener("pointerdown", (e) => e.stopPropagation());
   $("btn-reroll").addEventListener("click", (e) => { e.stopPropagation(); reroll(1); });
@@ -541,6 +540,10 @@ setInterval(() => { if (state === "playing" && !document.hidden) writeSave(); },
 window.addEventListener("jet-tap", (e) => { try { const d = e.detail; if (!(d && typeof d.x === "number" && game.tapSelect(d.x, d.y))) game.lockNearest(); } catch { /* ignore */ } });
 window.addEventListener("keydown", (e) => { if (e.code === "KeyT" && !e.repeat) { try { game.lockNearest(); } catch { /* ignore */ } } });
 $("btn-eject")?.addEventListener("click", () => game.eject());
+// b30: yellow/black seat handles - hold 0.8 s to eject (any time in the air)
+{ const h = $("eject-handles"); let tm = 0; const go = (e) => { e.preventDefault(); e.stopPropagation(); h.classList.add("pull"); clearTimeout(tm); tm = setTimeout(() => { h.classList.remove("pull"); game.ejectNow?.(); }, 800); };
+  const stop = () => { clearTimeout(tm); h.classList.remove("pull"); };
+  h?.addEventListener("touchstart", go, { passive: false }); h?.addEventListener("mousedown", go); for (const n of ["touchend", "touchcancel", "mouseup", "mouseleave"]) h?.addEventListener(n, stop); }
 $("btn-takeoff")?.addEventListener("click", () => game.takeoff());
 $("btn-autoland")?.addEventListener("click", () => game.autoLand());
 window.addEventListener("keydown", (e) => { if (e.code === "Enter" && !e.repeat) game.takeoff(); if (e.code === "KeyL" && !e.repeat) game.autoLand(); });

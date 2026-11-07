@@ -65,7 +65,9 @@ export function createControls() {
     const a = readAngles(e);
     if (calAt && performance.now() > calAt) { calAt = 0; wantCal = true; }
     if (wantCal) { zeroPitch = a.pitch; zeroRoll = a.roll; rawPitch = a.pitch; rawRoll = a.roll; smPitch = a.pitch; smRoll = a.roll; wantCal = false; }
-    rawPitch = a.pitch; rawRoll = a.roll;
+    // b30: unwrap around the calibrated zero (landscape / upright phone crosses the +-180 seam -> nose-down got lost)
+    const wr = (v) => ((v + 540) % 360) - 180;
+    rawPitch = zeroPitch + wr(a.pitch - zeroPitch); rawRoll = zeroRoll + wr(a.roll - zeroRoll);
   });
   const recalSoon = () => { calAt = performance.now() + 450; };
   window.addEventListener("orientationchange", recalSoon);

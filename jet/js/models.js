@@ -2,8 +2,8 @@
 // Player + enemy jets: PBR-lit (metal, glossy canopy, environment reflections) with a thin illustrated outline.
 // Ground units: toon + outline. Illustrated look, readable colours.
 import * as THREE from "three";
-import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=29";
-import { patchDetail, missileTex } from "./tex.js?v=29";
+import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=30";
+import { patchDetail, missileTex } from "./tex.js?v=30";
 
 const PI = Math.PI;
 
@@ -319,7 +319,7 @@ function buildJet(kind, vk = "", variant = null) {
   const cockpit = new THREE.Group();
   const frameM = pbr({ color: 0x15181d, metalness: 0.7, roughness: 0.5 });
   const cbar = (px, py, pz, sx, sy, sz, rz = 0) => { const m = new THREE.Mesh(G.box, frameM); m.position.set(px, py, pz); m.scale.set(sx, sy, sz); m.rotation.z = rz; cockpit.add(m); };
-  cbar(0, 0.62, -3.55, 1.3, 0.22, 0.9);
+  // b30: centre glareshield block removed (it sat in the middle of the cockpit view)
   for (const s of [-1, 1]) cbar(s * 0.62, 0.9, -3.0, 0.07, 0.07, 3.2, -s * 0.5);
   cockpit.visible = false; root.add(cockpit);
 

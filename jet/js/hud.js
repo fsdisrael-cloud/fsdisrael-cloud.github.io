@@ -1,7 +1,7 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=29";
-import { tr } from "./i18n.js?v=29";
+import { LABEL } from "./missions.js?v=30";
+import { tr } from "./i18n.js?v=30";
 
 const ALLY = "#3dff8b";
 const COL = { boss:"#ff3b3b", bossweapon:"#ff8a40", jet: "#ff3b3b", tank: "#ff9c35", flak: "#ff9c35", sam: "#ff9c35", base: "#ff9c35", ship: "#bd6aff", pad: "#3dff8b", ring: "#ffe14d" };
@@ -182,7 +182,8 @@ export function createHud() {
         const air = t.kind === "jet" || t.kind === "boss" || t.kind === "bossweapon";
         if (t === s.lockTarget) {
           const R = Math.max(16, Math.min(46, 2600 / Math.max(d, 1) * (t.radius / 8) + 10)), pu = 1 + 0.06 * Math.sin(s.elapsed * 8);
-          if (air) diamond(pr.x, pr.y, R * pu * 1.15, "rgba(255,95,55,0.85)"); else brackets(pr.x, pr.y, R * pu * 1.15, "rgba(255,95,55,0.85)", 1.1);
+          const lc = air ? "#ff3b3b" : t.kind === "ship" ? "#bd6aff" : "#ff9c35";   // b30: lock = red air / purple sea / orange ground
+          if (air) diamond(pr.x, pr.y, R * pu * 1.15, lc); else brackets(pr.x, pr.y, R * pu * 1.15, lc, 1.1);
           label(pr.x, pr.y + R * pu + 15, `${air ? "AIR" : t.kind === "ship" ? "SEA" : "GND"} ${d < 1000 ? Math.round(d) + "m" : (d / 1000).toFixed(1) + "km"}`, "rgba(255,225,200,0.9)", 11);
         } else {
           if (t === s.lockCand && s.lockTime > 0) { const R = 28 - Math.min(1, s.lockTime / 0.8) * 18; if (R > 8) circle(pr.x, pr.y, R, "rgba(255,80,80,0.35)", 1.1); }
@@ -239,9 +240,9 @@ export function createHud() {
     // b21: bomb aim: line from the impact point to the snapped ground target + a bright cross on the target
     if (s.bombAim) {
       const pa = project(s.bombAim, cam), pc = s.ccip ? project(s.ccip, cam) : null;
-      if (!pa.on) edgeArrow(s.bombAim, cam, "#ffa040", false, null, 1);
+      if (!pa.on) edgeArrow(s.bombAim, cam, s.bombKind === "ship" ? "#bd6aff" : "#ff9c35", false, null, 1);
       if (pa.on) {
-        ctx.save(); ctx.strokeStyle = "#ffa040"; ctx.fillStyle = "#ffa040"; ctx.shadowColor = "rgba(0,0,0,.8)"; ctx.shadowBlur = 3;
+        const bc = s.bombKind === "ship" ? "#bd6aff" : "#ff9c35"; ctx.save(); ctx.strokeStyle = bc; ctx.fillStyle = bc;   // b30: sea = purple, ground = orange ctx.shadowColor = "rgba(0,0,0,.8)"; ctx.shadowBlur = 3;
         // b23: always a clear line from the aim point (or the jet) to the selected ground target
         { const fx = pc && pc.on ? pc.x : W / 2, fy = pc && pc.on ? pc.y : H * 0.62;
           ctx.lineWidth = 2.5; ctx.setLineDash([]); ctx.globalAlpha = 0.95; ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(pa.x, pa.y); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
@@ -260,8 +261,8 @@ export function createHud() {
 
   // corner brackets (red = enemy, green = friendly)
   function brackets(x, y, r, color, w) {
-    const k = r * 0.45;
-    ctx.save(); ctx.lineCap = "round"; ctx.lineJoin = "round";
+    r *= 1.2; w = Math.min(w || 1.2, 1.2); const k = r * 0.32;   // b30: subtle corners OUTSIDE the silhouette, never covering it
+    ctx.save(); ctx.globalAlpha = 0.6; ctx.lineCap = "round"; ctx.lineJoin = "round";
     for (const [lw, st] of [[w + 1.6, "rgba(0,0,0,.18)"], [w, color]]) {
       ctx.lineWidth = lw; ctx.strokeStyle = st; ctx.beginPath();
       for (const sx of [-1, 1]) for (const sy of [-1, 1]) { ctx.moveTo(x + sx * r, y + sy * (r - k)); ctx.lineTo(x + sx * r, y + sy * r); ctx.lineTo(x + sx * (r - k), y + sy * r); }
@@ -271,8 +272,10 @@ export function createHud() {
   }
 
   function diamond(x, y, R, color) {
-    ctx.save(); ctx.lineJoin = "round"; ctx.beginPath(); ctx.moveTo(x, y - R); ctx.lineTo(x + R * 0.8, y); ctx.lineTo(x, y + R); ctx.lineTo(x - R * 0.8, y); ctx.closePath();
-    ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,0.14)"; ctx.stroke(); ctx.lineWidth = 1.2; ctx.strokeStyle = color; ctx.stroke(); ctx.restore();
+    // b30: air targets: 4 thin diamond tips only (open centre), drawn outside the jet's shape
+    const r = R * 1.25, k = r * 0.3; ctx.save(); ctx.globalAlpha = 0.6; ctx.lineCap = "round"; ctx.lineWidth = 1.1; ctx.strokeStyle = color; ctx.beginPath();
+    for (const [ax, ay] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) { const px = x + ax * r * (ax ? 0.85 : 1), py = y + ay * r; const tx = ay ? 1 : 0, ty = ax ? 1 : 0; ctx.moveTo(px - tx * k - ax * k * 0.6, py - ty * k - ay * k * 0.6); ctx.lineTo(px, py); ctx.lineTo(px + tx * k - ax * k * 0.6, py + ty * k - ay * k * 0.6); }
+    ctx.stroke(); ctx.restore();
   }
   // artificial horizon cue: a faint line through the world horizon, rolling with the camera; flashes when auto-leveling
   const _h = new THREE.Vector3();
@@ -407,8 +410,8 @@ export function createHud() {
       const q = toScope(bc);
       rctx.beginPath(); const r = 7 * u;
       for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.5236; rctx[i ? "lineTo" : "moveTo"](q.x + Math.cos(a) * r, q.y + Math.sin(a) * r); }
-      rctx.closePath(); rctx.strokeStyle = "#ff5a48"; rctx.lineWidth = 2 * u; rctx.stroke();
-      rctx.beginPath(); rctx.moveTo(q.x - 3.4 * u, q.y + 2.4 * u); rctx.lineTo(q.x, q.y - 3.2 * u); rctx.lineTo(q.x + 3.4 * u, q.y + 2.4 * u); rctx.closePath(); rctx.fillStyle = "#ff5a48"; rctx.fill();
+      rctx.closePath(); rctx.strokeStyle = "#ff9c35"; rctx.lineWidth = 2 * u; rctx.stroke();
+      rctx.beginPath(); rctx.moveTo(q.x - 3.4 * u, q.y + 2.4 * u); rctx.lineTo(q.x, q.y - 3.2 * u); rctx.lineTo(q.x + 3.4 * u, q.y + 2.4 * u); rctx.closePath(); rctx.fillStyle = "#ff9c35"; rctx.fill();
     }
     // ground targets: orange squares (flak / SAM slightly redder)
     for (const t of s.targets) {
@@ -417,7 +420,8 @@ export function createHud() {
       rctx.beginPath(); rctx.rect(q.x - z, q.y - z, z * 2, z * 2);
       rctx.fillStyle = t.kind === "ship" ? "#bd6aff" : "#ff9c35"; rctx.fill(); outline(1.2);
     }
-    for (const m of s.missiles) if (m.active) { const q = toScope(m.p); rctx.beginPath(); rctx.arc(q.x, q.y, (3.2 + 1.2 * Math.sin(sweep * 4)) * u, 0, 7); rctx.fillStyle = "#ff2a2a"; rctx.fill(); outline(1); rctx.strokeStyle = "rgba(255,60,60,.7)"; rctx.lineWidth = 1.2 * u; rctx.beginPath(); rctx.arc(q.x, q.y, (6 + 2 * Math.sin(sweep * 4)) * u, 0, 7); rctx.stroke(); }
+    // b30: incoming enemy missiles = small yellow dot + thin yellow trail
+    for (const m of s.missiles) if (m.active) { const q = toScope(m.p), v = m.v || m.vel; if (v) { const tq = toScope({ x: m.p.x - v.x * 2.2, y: m.p.y, z: m.p.z - v.z * 2.2 }); rctx.beginPath(); rctx.moveTo(tq.x, tq.y); rctx.lineTo(q.x, q.y); rctx.strokeStyle = "rgba(255,225,77,.85)"; rctx.lineWidth = 1.1 * u; rctx.stroke(); } rctx.beginPath(); rctx.arc(q.x, q.y, 2.4 * u, 0, 7); rctx.fillStyle = "#ffe14d"; rctx.fill(); }
     // enemy planes: red triangles pointing along their heading
     for (const t of s.targets) {
       if (!t.alive || !["jet","boss","bossweapon"].includes(t.kind)) continue;
