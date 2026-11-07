@@ -95,7 +95,7 @@ export function hasTable(code) { return code === "en" || !!dict[code]; }
 export function setLang(code, save = true) {
   if (!LANGS.some((l) => l[0] === code)) code = "en";
   lang = code;
-  if (save) { try { localStorage.setItem("jet-lang", code); } catch { /* ignore */ } }
+  if (save) { try { localStorage.setItem("jet-lang27", code); } catch { /* ignore */ } }
   document.documentElement.lang = code;
   document.body.classList.toggle("lang-rtl", RTL.has(code));
   applyDom();
@@ -104,7 +104,7 @@ export function setLang(code, save = true) {
 export function onLang(f) { listeners.push(f); }
 export function initLang() {
   let c = "en";
-  try { c = localStorage.getItem("jet-lang") || ""; } catch { /* ignore */ }
+  try { c = localStorage.getItem("jet-lang27") || ""; } catch { /* ignore */ }
   if (!c) { c = "en"; }
   setLang(c, false);
 }
