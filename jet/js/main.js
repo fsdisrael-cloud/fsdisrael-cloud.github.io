@@ -1,17 +1,17 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=341";
-import { createHud } from "./hud.js?v=341";
-import { createControls } from "./controls.js?v=341";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=341";
-import { createAudio, trackFor } from "./audio.js?v=341";
-import { createHaptics } from "./haptics.js?v=341";
-import { createRain2D } from "./rain2d.js?v=341";
-import { createLoading } from "./loading.js?v=341";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=341";
-import { setSurreal, tickStyle } from "./surreal.js?v=341";
-import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=341";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=341";
+import { createGame } from "./game.js?v=35";
+import { createHud } from "./hud.js?v=35";
+import { createControls } from "./controls.js?v=35";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=35";
+import { createAudio, trackFor } from "./audio.js?v=35";
+import { createHaptics } from "./haptics.js?v=35";
+import { createRain2D } from "./rain2d.js?v=35";
+import { createLoading } from "./loading.js?v=35";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=35";
+import { setSurreal, tickStyle } from "./surreal.js?v=35";
+import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=35";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=35";
 
 const $ = (id) => document.getElementById(id);
 
@@ -284,7 +284,7 @@ async function launch(n, fromTap, sv) {
   game.dbg.setLives(carryLives);
   if (sv?.snap) { try { game.restoreSnap(sv.snap); } catch { /* ignore */ } }
   window.__settingsOpen?.(false);
-  game.start();
+  game.start(); try { controls.calibrate(); } catch { /* ignore */ }   // b35: tilt neutral = how the phone is held at launch
   { const b = $("lvl-banner"), lv = game.level?.() || {}, ob = (lv.objectives || []).map((o) => o.label).filter(Boolean)[0] || "Destroy the enemy";   // b34: clear level goal
     $("lvl-b1").textContent = `LEVEL ${n}`; $("lvl-b2").textContent = ob.toUpperCase() + ((n % 5 === 0) ? " · BOSS!" : "");
     b.classList.remove("hidden", "go"); void b.offsetWidth; b.classList.add("go"); clearTimeout(window.__lvlB); window.__lvlB = setTimeout(() => b.classList.add("hidden"), 4200); }
@@ -503,8 +503,8 @@ requestAnimationFrame(frame);
   const p0 = startPreload(levelNo, forced ? undefined : titleRun());
   p0.promise.then((ok) => { preloadReady = ok; });
   const t0 = performance.now();
-  function setArtFor(jet) { const A = TITLE_ART[jet] || TITLE_ART.viper, s = document.documentElement.style, u = `url("${new URL("img/art/" + A.img, location.href).href}")`; s.setProperty("--title-p", u, "important"); s.setProperty("--title-l", u, "important"); }   // b33
-  setArtFor("viper"); setTimeout(() => { for (const k of TITLE_JETS) { const im = new Image(); im.src = "img/art/" + TITLE_ART[k].img; } }, 2500);
+  function setArtFor(jet) { const A = TITLE_ART[jet] || TITLE_ART.viper, s = document.documentElement.style, u = `url("${new URL("img/art/" + A.img, location.href).href}")`; s.setProperty("--title-p", u, "important"); s.setProperty("--title-l", `url("${new URL("img/art/" + A.img.replace(".jpg", "_l.jpg"), location.href).href}")`, "important"); }   // b33/b35
+  setArtFor("viper"); setTimeout(() => { for (const k of TITLE_JETS) { const im = new Image(); im.src = "img/art/" + TITLE_ART[k].img.replace(".jpg", innerWidth > innerHeight ? "_l.jpg" : ".jpg"); } }, 2500);
   $("scene-label")?.addEventListener("click", (e) => { e.stopPropagation(); reroll(1); });
   const setLabel = () => { const r = preload?.level?.run; if (r) setArtFor(r.jet); $("scene-label").textContent = r ? `${runLabel(r)}  //  ${JET_TYPES[r.jet]?.name || ""}`.toUpperCase() : ""; };
   // dir 0 / 1: a new random scene; -1: step back to the previous scene; swiping left/right on the menu calls this
@@ -574,7 +574,16 @@ fetch("version.json?t=" + Date.now()).then(r => r.json()).then(j => { const e = 
   up(); new MutationObserver(up).observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] }); }
 // b33: hold LOOK BACK to glance behind (gentle bandit-behind cue lights it up)
 { const b = document.getElementById("btn-six"); if (b) { const on = (e) => { e.preventDefault(); e.stopPropagation(); controls.lookBack = true; }, off = () => { controls.lookBack = false; };
-  b.addEventListener("pointerdown", on); b.addEventListener("touchstart", on, { passive: false }); for (const ev of ["pointerup", "pointercancel", "pointerleave", "touchend", "touchcancel"]) b.addEventListener(ev, off); } }
+  b.addEventListener("pointerdown", on); b.addEventListener("touchstart", on, { passive: false }); b.addEventListener("pointerdown", (e) => { try { b.setPointerCapture(e.pointerId); } catch { /* ignore */ } }); for (const ev of ["pointerup", "pointercancel", "touchend", "touchcancel"]) b.addEventListener(ev, off); } }
 
 // b34: WebGL context lost (iOS memory) -> clear message + one-tap reload instead of a black screen
 renderer.domElement.addEventListener("webglcontextlost", (e) => { e.preventDefault(); const d = document.createElement("div"); d.style.cssText = "position:fixed;inset:0;z-index:9998;display:flex;align-items:center;justify-content:center;background:#070c12;color:#ffd36a;font:800 20px system-ui;text-align:center"; d.textContent = "Graphics reset - tap to continue"; d.onclick = () => location.reload(); document.body.appendChild(d); });
+// b35: title layout - caption + SCENE & JET live in a row directly above TAP TO FLY (flow layout, never overlaps)
+(function titleRow() {
+  const lab = document.getElementById("scene-label"), rr = document.getElementById("btn-reroll"), tap = document.getElementById("tap-fly");
+  if (!lab || !rr || !tap) return;
+  const row = document.createElement("div"); row.className = "t35-row"; tap.parentElement.insertBefore(row, tap); row.append(lab, rr);
+})();
+// b35: iOS forgets motion permission each session - re-ask on the first tap if TILT was left on
+addEventListener("click", () => { let pref = false; try { pref = localStorage.getItem("jet-tilt-v2") === "1"; } catch { /* ignore */ }
+  if (pref && controls.needsPermission() && !controls.tiltOn()) controls.requestGyro().then((ok) => { controls.setTilt(ok); controls.calibrate(); try { syncTilt(); } catch { /* ignore */ } }); }, { once: true, capture: true });

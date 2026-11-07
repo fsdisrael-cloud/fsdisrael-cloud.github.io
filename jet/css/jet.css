@@ -844,7 +844,7 @@ html, body { background:#070c12 !important; }
 /* b33: look-back */
 .six-btn { position:absolute; z-index:20; left:calc(env(safe-area-inset-left) + 10px); top:calc(env(safe-area-inset-top) + 272px); padding:6px 9px; border-radius:10px; border:2px solid #556; background:rgba(10,14,20,.7); color:#cdd; font:800 11px/1 "Rajdhani",system-ui,sans-serif; letter-spacing:.08em; touch-action:none; }
 .six-btn.warn { border-color:#ffcf40; color:#fff3c0; box-shadow:0 0 12px rgba(255,200,40,.6); animation:sixp 1.4s ease-in-out infinite; }
-.six-btn.warn::after { content:"BANDIT BEHIND"; position:absolute; left:0; top:100%; margin-top:4px; white-space:nowrap; font-size:10px; color:#ffd860; text-shadow:0 1px 2px #000; }
+/* b35: no duplicate BANDIT label (toast says it) */
 @keyframes sixp { 50% { box-shadow:0 0 4px rgba(255,200,40,.3); } }
 @media (orientation: landscape) { .six-btn { top:auto; left:auto; right:calc(env(safe-area-inset-right) + 110px); bottom:calc(env(safe-area-inset-bottom) + 160px); } }
 /* b33: realistic single yellow/black ejection loop, smaller; landscape centred between the legs */
@@ -881,3 +881,22 @@ body:not(.in-game) #eject-handles, .results:not(.hidden) ~ #eject-handles { disp
   #btn-reroll.reroll { top:auto !important; bottom:calc(env(safe-area-inset-bottom) + 25vh) !important; }
   .screen.title .scene-label { top:auto !important; bottom:calc(env(safe-area-inset-bottom) + 25vh) !important; }
 }
+/* b35: clean arcade HUD */
+#hud-world { display:none !important; }
+#hud-level { margin-top:4px; font:900 12px/1 "Rajdhani",Impact,system-ui,sans-serif !important; letter-spacing:.16em; color:#ffd36a !important; text-shadow:0 1px 0 #000,0 0 6px rgba(255,140,20,.6); background:rgba(6,10,14,.6); border-radius:8px; padding:3px 8px; display:inline-block; }
+.nums .fl-c, .nums .kl-c { display:none !important; }
+/* b35: landscape title art fills the screen */
+@media (orientation: landscape) { body.on-title .screen.title, body.preview .screen.title { background-size: cover !important; background-position: center 45% !important; } }
+/* b35: caption row in flow above TAP TO FLY */
+.t35-row { display:flex; align-items:center; justify-content:center; gap:10px; width:min(94vw,560px); margin:0 auto 12px; pointer-events:auto; }
+.t35-row .scene-label, .t35-row #btn-reroll.reroll { position:static !important; inset:auto !important; top:auto !important; bottom:auto !important; left:auto !important; right:auto !important; transform:none !important; margin:0 !important; }
+.t35-row .scene-label { flex:1 1 auto; min-width:0; max-width:none !important; white-space:normal !important; overflow:visible !important; text-overflow:clip !important; text-align:center !important; }
+.t35-row #btn-reroll.reroll { flex:0 0 auto; }
+@media (orientation: landscape) { .t35-row { width:min(70vw,620px); margin-bottom:8px; } .t35-row .scene-label { max-width:none !important; } }
+/* b35: real UI over clean art (no UI baked into the images) */
+.t26 .t26-plate, .t26 .t26-by { visibility:visible !important; }
+.t26 .t26-tap { position:relative !important; left:auto !important; top:auto !important; width:auto !important; height:auto !important; opacity:1 !important; }
+#scene-label.scene-label { position:static !important; }
+/* b35: LOOK BACK always on top and touchable */
+#btn-six.six-btn { z-index: 60 !important; pointer-events: auto !important; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#btn-six { display:none !important; }   /* b35: replaced by center-screen swipe free-look */

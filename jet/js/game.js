@@ -1,15 +1,15 @@
 // Ubu game world: flight model, camera, targets, AI, weapons, effects, objectives.
-import { createPost } from "./post.js?v=341";
+import { createPost } from "./post.js?v=35";
 import * as THREE from "three";
-import { buildTerrain } from "./terrain.js?v=341";
-import { createSky } from "./sky.js?v=341";
-import { createPilot, createSeat, createChute, createAirstrip, STRIP, createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createShip, createWarship, createSub, createSamSite, createRocket, createHeli, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=341";
-import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=341";
-import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=341";
-import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=341";
-import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=341";
-import { setQuality, FX as FXQ } from "./tex.js?v=341";
-import { style, patchTerrain, waveAt, createDreamShapes, onStyle, setLake } from "./surreal.js?v=341";
+import { buildTerrain } from "./terrain.js?v=35";
+import { createSky } from "./sky.js?v=35";
+import { createPilot, createSeat, createChute, createAirstrip, STRIP, createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createShip, createWarship, createSub, createSamSite, createRocket, createHeli, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=35";
+import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=35";
+import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=35";
+import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=35";
+import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=35";
+import { setQuality, FX as FXQ } from "./tex.js?v=35";
+import { style, patchTerrain, waveAt, createDreamShapes, onStyle, setLake } from "./surreal.js?v=35";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V(), tE = V();
@@ -57,7 +57,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   // gun heat: fills in ~4 s of firing, overheats at 100%, must cool below 30% before firing again
   const HEAT_UP = 4, HEAT_DOWN = 2.5, HEAT_RESUME = 0.3;
   let assist = true; try { assist = localStorage.getItem("jet-assist") !== "0"; } catch { /* ignore */ }
-  let aP = 0, aR = 0, assistDanger = 0;
+  let aP = 0, aR = 0, assistDanger = 0, chaseDirT = 10, turnTgt = null;
   const MAX_BANK = 1.2; // rad: roll is limited (no barrel rolls)
   let endless = false;
   const allies = [];
@@ -488,8 +488,8 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   let chaseOn = false;
   function chaseTarget() {
     if (nearPad || landing || maneuver || crashing || ops) return null;
-    let best = null, bd = 1700; const f = fwdFrom(player.yaw, player.pitch, V());
-    for (const t of targets) { if (!t.alive || t.kind !== "jet" || t.heli) continue; tA.subVectors(t.pos, player.pos); const d = tA.length(); if (d < 80 || d > bd) continue; if (tA.normalize().dot(f) < 0.8) continue; best = t; bd = d; }
+    let best = null, bd = 2200; const f = fwdFrom(player.yaw, player.pitch, V());
+    for (const t of targets) { if (!t.alive || t.kind !== "jet" || t.heli) continue; tA.subVectors(t.pos, player.pos); const d = tA.length(); if (d < 80 || d > bd) continue; if (tA.normalize().dot(f) < 0.86) continue; best = t; bd = d; }
     return best;
   }
   function spawnQuotaShip() {
@@ -618,7 +618,13 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (t.breakT > 0) yr = t.breakDir * 2.2;
     t.yaw += yr * dt;
     t.bank += (THREE.MathUtils.clamp(-yr / 0.6, -1, 1) * 0.8 - t.bank) * dt * 2.5;
-    let wantPitch = THREE.MathUtils.clamp((t.holdY - t.pos.y) * 0.004 + Math.sin(t.t * 0.7 + t.ph) * 0.07, -0.3, 0.3);
+    if (t.mode === "flee") {   // b35: escape tricks: barrel rolls + flares when you lock him
+      t.rollCd = (t.rollCd ?? 3 + Math.random() * 4) - dt;
+      if (t.rollCd <= 0 && !t.rollT) { t.rollT = 1.1; t.rollDir = Math.random() < 0.5 ? -1 : 1; t.rollCd = 5 + Math.random() * 5; }
+      if (t.rollT) { t.rollT = Math.max(0, t.rollT - dt); t.rollA = (t.rollA || 0) + t.rollDir * dt * Math.PI * 2 / 1.1; if (!t.rollT) t.rollA = 0; }
+      if (lockTarget === t && (t.flCd = (t.flCd ?? 2) - dt) <= 0) { t.flCd = 4 + Math.random() * 3; try { enemyFlares(t, null); } catch { /* ignore */ } }
+    }
+    let wantPitch = THREE.MathUtils.clamp((t.holdY - t.pos.y) * 0.004 + Math.sin(t.t * 0.7 + t.ph) * (t.mode === "flee" ? 0.2 : 0.07), -0.35, 0.35);   // b35: fleeing jets jink up/down too
     if (t.breakT > 0) wantPitch = t.pull * 0.45;
     if (t.pos.y - groundAt(t.pos.x, t.pos.z) < 400) wantPitch = 0.4;
     t.pitch += (wantPitch - t.pitch) * dt * 1.2;
@@ -626,7 +632,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (onSix && dist < 1500) { const desired = THREE.MathUtils.clamp(player.speed * (dist > 600 ? 0.92 : 1.015), 105, 220); t.speed += (desired - t.speed) * Math.min(1, dt * 0.5); }
     fwdFrom(t.yaw, t.pitch, t.vel).multiplyScalar(t.speed);
     t.pos.addScaledVector(t.vel, dt);
-    t.obj.rotation.set(t.pitch, t.yaw, -t.bank, "YXZ");
+    t.obj.rotation.set(t.pitch, t.yaw, -t.bank - (t.rollA || 0), "YXZ");
     t.obj.userData.beacon.visible = Math.sin(t.t * 7) > 0;
     t.obj.userData.burn?.(1, 0.5);
     if ((t.ct -= dt) <= 0 && tA.subVectors(player.pos, t.pos).length() < 5500) { t.ct = 0.08; tD.set(0, 0, 7.5).applyEuler(t.obj.rotation).add(t.pos); puff(tD, null, 2.4, 9, 1.5, 0xeef4ff); }
@@ -1130,7 +1136,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     // ---- pitch: stick = nose RATE (expo). Hard pull = extra-fast break; airbrake tightens it further
     const uP = Math.max(0, Math.abs(st.pitch) - 0.05) / 0.95;
     const sm = (a, b, x) => { const t = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-    const maxPR = (1.9 - 0.3 * ez) * (1 + 0.12 * brkV) * (1 + 0.2 * sm(0.72, 1, uP));
+    const maxPR = (1.7 - 0.25 * ez) * (1 + 0.12 * brkV) * (1 + 0.2 * sm(0.72, 1, uP));
     let pitchRate = Math.sign(st.pitch) * Math.pow(uP, 1.3) * maxPR;
     if (pitchRate < 0 && !player.inverted && assistDanger > 0.6) pitchRate *= Math.max(0, 1 - (assistDanger - 0.6) * 2.5);
     if (pitchRate > 0 && player.inverted && assistDanger > 0.1) pitchRate *= Math.max(0, 1 - assistDanger * 1.6);
@@ -1145,10 +1151,22 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     // b25 ARCADE: full authority while the stick is held (nothing fights you); the instant you let go the jet rolls wings-level
     // and eases the nose back to the horizon (short grace so a quick re-grab keeps your attitude). Works from any bank incl. inverted.
     holdT = sp < 0.07 ? holdT + dt : 0;
-    const dK = THREE.MathUtils.clamp((holdT - 0.22) / 0.35, 0, 1);
-    if (dK > 0 && assistDanger < 0.05 && !loopPull_) {
+    const dK = THREE.MathUtils.clamp((holdT - 0.1) / 0.25, 0, 1);   // b35: stick released = straight & level quickly
+    // b35 TURN-TO-TARGET: let go while banked toward an enemy and the jet keeps the turn until it faces it, then levels out
+    if (sp > 0.2) turnTgt = null;
+    if (dK > 0 && !turnTgt && Math.abs(player.bank) > 0.35 && Math.abs(player.bank) < 1.6 && holdT < 0.4) {
+      let bd = 1e9; for (const t of targets) { if (!t.alive || t.kind === "ally" || t.ally) continue; tB.subVectors(t.pos, player.pos); const d = tB.length(); if (d > 6000) continue;
+        const e = -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw); if (Math.sign(e) !== Math.sign(player.bank) || Math.abs(e) < 0.2) continue; const sc = d * (1 + Math.abs(e)); if (sc < bd) { bd = sc; turnTgt = t; } }
+    }
+    let turning = false;
+    if (dK > 0 && turnTgt && turnTgt.alive && assistDanger < 0.05) {
+      tB.subVectors(turnTgt.pos, player.pos); const e = -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw);
+      if (Math.abs(e) > 0.12 && Math.sign(e) === Math.sign(player.bank || e)) { turning = true; const want = Math.sign(e) * Math.min(1.05, 0.35 + Math.abs(e)); rr -= THREE.MathUtils.clamp((player.bank - want) * 3, -2.5, 2.5); pitchRate -= THREE.MathUtils.clamp(player.pitch * 1.5, -0.8, 0.8); }
+      else turnTgt = null;
+    }
+    if (dK > 0 && !turning && assistDanger < 0.05 && !loopPull_) {
       const bk = player.bank;
-      rr -= THREE.MathUtils.clamp(bk * 2.6, -2.4, 2.4) * dK;          // roll upright by the short way
+      rr -= THREE.MathUtils.clamp(bk * 3.6, -3, 3) * dK;          // roll upright by the short way
       if (Math.abs(bk) < 1.9) pitchRate -= THREE.MathUtils.clamp(player.pitch * 1.9, -1.1, 1.1) * dK * Math.max(0, 1 - Math.abs(bk) / 1.9);
     }
     // ground rescue: roll upright first if inverted, then pull
@@ -1171,10 +1189,10 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       _qI.copy(player.q).invert(); _vA.subVectors(lockTarget.pos, player.pos); const dd = _vA.length(); _vA.applyQuaternion(_qI);
       if (dd > 60 && dd < 4600 && _vA.z < 0) {
         const ex = Math.atan2(_vA.x, -_vA.z), ey = Math.atan2(_vA.y, Math.hypot(_vA.x, _vA.z));
-        if (Math.abs(ex) < 1.0 && Math.abs(ey) < 0.75) {
+        if (Math.abs(ex) < 0.3 && Math.abs(ey) < 0.25) {   // b35: magnetism only near the sight (no self-turning)
           const w = Math.max(0, 0.95 - 1.6 * sp) * (0.55 + 0.45 * ez);   // b29: any real stick / tilt input = no pull
           pitchRate += THREE.MathUtils.clamp(ey * 2.2, -0.9, 0.9) * w;
-          rr += THREE.MathUtils.clamp(ex * 1.4, -1, 1) * w * 1.1 * Math.max(0, 1 - Math.abs(player.bank) / 1.1);
+          
           rotBody(AY, -THREE.MathUtils.clamp(ex * 1.8, -1, 1) * w * dt);
         }
       }
@@ -1228,8 +1246,8 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     // b32 ARCADE CHASE: an enemy close ahead -> auto match its speed (sit ~250 m behind) and softly slide in behind it (height + line)
     { const ct = chaseTarget(); if (ct && !boost) { const d = ct.pos.distanceTo(player.pos), want = ct.speed + THREE.MathUtils.clamp((d - 250) * 0.12, -25, 45); target += (want - target) * 0.85;
       const sk = Math.max(0, 1 - Math.max(Math.abs(controls.stick.pitch), Math.abs(controls.stick.roll)) * 1.4);
-      player.pos.y += THREE.MathUtils.clamp(ct.pos.y - player.pos.y, -40, 40) * 0.5 * dt * sk;
-      tB.subVectors(ct.pos, player.pos); const ex = -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw); rotWorld(AY, -THREE.MathUtils.clamp(ex, -0.4, 0.4) * 0.7 * dt * sk); chaseOn = true; } else chaseOn = false; }
+      player.pos.y += THREE.MathUtils.clamp(ct.pos.y - player.pos.y, -60, 60) * 1.1 * dt * sk;   // b35: strong follow assist
+      tB.subVectors(ct.pos, player.pos); const ex = -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw); rotWorld(AY, -THREE.MathUtils.clamp(ex, -0.6, 0.6) * 1.6 * dt * sk); chaseOn = true; } else chaseOn = false; }
     target *= 1 - 0.5 * brkV; target -= 16 * Math.min(1, Math.max(Math.abs(aP), Math.abs(aR) * 0.5)) * (1 - boost);
     if (maneuver && maneuver.kind === "loop") target = Math.max(target, 140);
     if (nearPad) target = Math.min(target, 100);
@@ -1746,7 +1764,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       camera.fov = portrait ? 88 : 66;
       tA.copy(plane.userData.eye).applyMatrix4(plane.matrixWorld);
       camera.position.copy(tA);
-      { const ek = cpre ? Math.min(1, crashing.t / (crashing.cp - 0.1)) : 0; _q.setFromEuler(new THREE.Euler(look.pitch - 0.5 * ek * ek * (3 - 2 * ek), look.yaw, 0, "YXZ")); }
+      { const ek = cpre ? Math.min(1, crashing.t / (crashing.cp - 0.1)) : 0; _q.setFromEuler(new THREE.Euler(look.pitch - 0.5 * ek * ek * (3 - 2 * ek), look.yaw - THREE.MathUtils.clamp(player.bank, -1.2, 1.2) * 0.16, 0, "YXZ")); /* b35: head leans into the turn */ }
       camera.quaternion.copy(plane.quaternion).multiply(_q);
       camQ.copy(player.q);
       plane.userData.hands?.update(dt, controls.stick, throttle, controls.gunHeld() ? 1 : 0, cpre ? Math.min(1, crashing.t / (crashing.cp - 0.1)) : 0);
@@ -1757,7 +1775,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       const dist = (portrait ? 27 : 19) + (camSurge - 0.35) * 9;   // b26: arcade chase cam, closer; full throttle the jet surges ahead in frame, low throttle it drifts back
       // chase camera lives in the jet's own (smoothed) frame -> follows loops, rolls and inverted flight
       camQ.slerp(player.q, snap ? 1 : 1 - Math.exp(-dt * ((maneuver && maneuver.kind === "roll") || Math.abs(controls.stick.roll) > 0.35 ? 16 : (assist ? 3.6 : 4.5))));   // b29: rolls - chase cam stays locked behind the jet, no swing
-      const el = 0.17 - look.pitch, az = look.yaw, ce = Math.cos(el); // look: +yaw = view turns left, +pitch = view tilts up
+      const el = 0.17 - look.pitch, az = look.yaw - THREE.MathUtils.clamp(player.bank, -1.2, 1.2) * 0.1, ce = Math.cos(el); // look: +yaw = view turns left, +pitch = view tilts up
       tA.set(Math.sin(az) * ce, Math.sin(el), Math.cos(az) * ce).multiplyScalar(dist).applyQuaternion(camQ);
       camera.position.copy(player.pos).add(tA);
       const gy = groundAt(camera.position.x, camera.position.z) + 4;
@@ -2332,6 +2350,10 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       pad.pos.y = 0.4 + Math.sin(pad.t * 0.7) * 0.25;
     }
     updateFires(dt); updateWrecks(dt);
+    if (!ended) {
+      chaseDirT = (chaseDirT || 0) + dt;   // b35: an escaping bandit appears right in front every ~18 s -> instant, effortless chase
+      if (chaseDirT > 12 && !chaseOn && !ops && !landing && player.pos.y - groundAt(player.pos.x, player.pos.z) > 150) { chaseDirT = 0; let cj = null, cd = 5000; for (const t of targets) { if (t.alive && t.kind === "jet" && !t.heli && !t.ally) { const d = t.pos.distanceTo(player.pos); if (d < cd) { cd = d; cj = t; } } } if (cj) { cj.mode = "flee"; cj.baseYaw = cj.yaw = player.yaw; cj.speed = THREE.MathUtils.clamp(player.speed * 0.8, 60, 140); cj.jink = 1; } else cj = spawnJetAhead(player.pos, true); const f0 = fwdFrom(player.yaw, 0, V()); f0.y = 0; f0.normalize(); cj.pos.set(player.pos.x + f0.x * 520, player.pos.y + 20, player.pos.z + f0.z * 520); cj.holdY = cj.pos.y; events.toast?.("BANDIT AHEAD - CHASE HIM!", "warn"); }
+    }
     // endless reinforcement waves of enemy jets
     if (false && jetSpawner && !ended) {
       waveT += dt; sixT -= dt;
@@ -2661,7 +2683,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     for (let y = 0; y < WCS; y += 3) { c.fillStyle = "rgba(60,255,110,0.05)"; c.fillRect(0, y, WCS, 1); }
     c.strokeStyle = "rgba(90,255,130,0.35)"; c.lineWidth = 1; c.beginPath(); c.moveTo(WCS / 2 - 14, WCS / 2); c.lineTo(WCS / 2 + 14, WCS / 2); c.moveTo(WCS / 2, WCS / 2 - 14); c.lineTo(WCS / 2, WCS / 2 + 14); c.stroke();
     c.fillStyle = "rgba(120,255,150,0.6)"; c.font = "bold 11px monospace"; c.textAlign = "center"; c.fillText("WPN CAM", WCS / 2, WCS / 2 + 34); c.fillText("STANDBY", WCS / 2, WCS / 2 + 48);
-    if (WC.canvas) { WC.canvas.style.opacity = 1; WC.canvas.dataset.live = "0"; }
+    if (WC.canvas) { WC.canvas.style.opacity = 1; WC.canvas.dataset.live = "0"; if (WC.canvas.parentElement && WC.canvas.parentElement !== document.body) WC.canvas.parentElement.style.visibility = "hidden"; }   // b35: no empty camera bezel
   }
   const wcQ = [];
   function wcNext() { while (wcQ.length) { const q = wcQ.shift(); if (q.obj.active || q.obj.result == null) { wcStart(q.obj, q.label); return true; } } return false; }
@@ -2767,7 +2789,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     c.fillStyle = WC.state === "boom" ? "rgba(255,200,120,1)" : "rgba(160,255,180,0.95)";
     c.fillText(pre ? (WC.dist > 1000 ? (WC.dist / 1000).toFixed(1) + " KM" : Math.round(WC.dist) + " M") : WC.state === "follow" ? (WC.dist > 0 ? Math.round(WC.dist) + " M" : "TRACKING") : WC.state === "boom" ? "IMPACT" : "LOST", WCS / 2, WCS - 14 * K);
     c.shadowBlur = 0;
-    WC.canvas.dataset.live = "1";
+    WC.canvas.dataset.live = "1"; if (WC.canvas.parentElement) WC.canvas.parentElement.style.visibility = "";
     WC.canvas.style.opacity = WC.state === "fade" ? Math.max(0, 1 - WC.t / 0.9).toFixed(2) : 1;
   }
 

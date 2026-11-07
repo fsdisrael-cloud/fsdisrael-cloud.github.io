@@ -148,14 +148,14 @@ export function createAudio() {
   function startTechno(o = {}) {
     stopTechno();
     const r = mulberry(((o.seed || 0) ^ ((Math.random() * 4294967295) >>> 0)) >>> 0);
-    const bpm = 138 + Math.floor(r() * 22);                       // 138 - 159 bpm
+    const bpm = 136 + Math.floor(r() * 5);                        // b35: trance tempo 136-140
     const step = 60 / bpm / 4;
     const root = 31 + Math.floor(r() * 9);                        // low bass root
     const scales = [[0, 2, 3, 5, 7, 8, 10], [0, 1, 3, 5, 7, 8, 10], [0, 2, 3, 5, 7, 9, 10]];
     const sc = scales[Math.floor(r() * scales.length)];
     const prog = [[0, 0, 5, 3], [0, 3, 5, 4], [0, 0, 3, 6], [0, 5, 3, 4]][Math.floor(r() * 4)]; // scale degrees per bar
     const deg = (d) => sc[((d % 7) + 7) % 7] + 12 * Math.floor(d / 7);
-    const bassPat = Array.from({ length: 16 }, (_, i) => (i % 4 === 2 ? (r() < 0.9 ? 1 : 0) : i % 4 === 0 ? 0 : r() < 0.28 ? 1 : 0));
+    const bassPat = Array.from({ length: 16 }, (_, i) => (i % 4 === 0 ? 0 : 1));   // b35: rolling trance bass (every 16th off the kick)
     const bassOct = r() < 0.3 ? 12 : 0;
     const arpPat = Array.from({ length: 16 }, () => (r() < 0.7 ? 1 + Math.floor(r() * 3) : 0)); // 0 = rest, else a chord tone index
     const arpDeg = [0, 2, 4, 7, 9, 11, 14];
@@ -186,6 +186,12 @@ export function createAudio() {
       o.detune.value = (r() - 0.5) * 14; f.type = "lowpass"; f.frequency.setValueAtTime(3200, t); f.frequency.exponentialRampToValueAtTime(700, t + len); f.Q.value = 3;
       env(g, t, 0.004, vol, len); o.connect(f); f.connect(g); g.connect(duck); g.connect(delay); o.start(t); o.stop(t + len + 0.03);
     };
+    const pad = (t, m, len, vol) => {
+      const f = ctx.createBiquadFilter(), g = ctx.createGain(); f.type = "lowpass"; f.frequency.value = 1900; f.Q.value = 0.5;
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + len * 0.3); g.gain.linearRampToValueAtTime(0.0001, t + len);
+      f.connect(g); g.connect(duck); g.connect(delay);
+      for (const d of [0, sc[2], sc[4]]) for (const dt of [-11, 0, 11]) { const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = mtof(m + d); o.detune.value = dt; o.connect(f); o.start(t); o.stop(t + len + 0.05); }
+    };
     const tick = () => {
       if (!ctx || tech == null) return;
       while (next < ctx.currentTime + 0.18) {
@@ -196,8 +202,9 @@ export function createAudio() {
         if (!breakdown && ph >= 0 && (s === 4 || s === 12)) { noise(t, 0.16, "bandpass", 1700, 0.5, 1.2); noise(t + 0.012, 0.1, "bandpass", 2300, 0.3, 1.2); }
         if (ph >= 1 && (s % 4 === 2)) noise(t, 0.16, "highpass", 7500, 0.22);
         else if (ph >= 2 && s % 2 === 1 && !breakdown) noise(t + (hatSwing && s % 4 === 3 ? 0.012 : 0), 0.045, "highpass", 9000, 0.1 + r() * 0.08);
-        if (ph >= 2 && !breakdown && bassPat[s]) bass(t, root + sc[0] + bd + bassOct, step * (s % 4 === 2 ? 1.7 : 0.9));
+        if (ph >= 2 && !breakdown && bassPat[s]) bass(t, root + sc[0] + bd + bassOct, step * 0.85);
         if (ph >= 4 && arpPat[s] && !(ph === 15 && s > 8)) lead(t, root + 24 + bd + deg(arpDeg[(arpPat[s] * 2 + (s >> 2)) % arpDeg.length]), step * 1.5, breakdown ? 0.14 : 0.09);
+        if (s === 0 && ph >= 2) pad(t, root + 12 + bd, step * 16, breakdown ? 0.05 : 0.028);   // b35: supersaw trance pad
         if (breakdown && s === 0) { for (const d of [0, 2, 4]) lead(t, root + 24 + deg(d + bd), step * 14, 0.07); }
         if (riser && s % 2 === 0) noise(t, step * 2, "highpass", 1500 + s * 380, 0.1 + s * 0.012);
         if (riser && s >= 12 && s % 1 === 0) kick(t, 0.5);
@@ -445,11 +452,12 @@ export function createAudio() {
       const n = ctx.createBufferSource(); n.buffer = noiseBuf; n.loop = true;
       const nf = ctx.createBiquadFilter(); nf.type = "bandpass"; nf.frequency.value = 900; nf.Q.value = 0.6;
       const g = ctx.createGain(); g.gain.value = 0;
-      o.connect(of); of.connect(g); n.connect(nf); nf.connect(g); g.connect(sfxGain);
+      const og = ctx.createGain(); og.gain.value = 0.22; const ng = ctx.createGain(); ng.gain.value = 1.9;   // b35: real jet = turbine roar (noise) + whine, not a buzzy saw
+      o.connect(of); of.connect(og); og.connect(g); n.connect(nf); nf.connect(ng); ng.connect(g); g.connect(sfxGain);
       o.start(); n.start();
       // b25: layered turbofan: detuned sub oscillator (deep growl) + a rising compressor whine that follows the throttle
       const o2 = ctx.createOscillator(); o2.type = "triangle"; o2.frequency.value = 38; const o2g = ctx.createGain(); o2g.gain.value = 0.7; o2.connect(o2g); o2g.connect(of); o2.start();
-      const wh = ctx.createOscillator(); wh.type = "sine"; wh.frequency.value = 900; const whg = ctx.createGain(); whg.gain.value = 0; wh.connect(whg); whg.connect(g); wh.start();
+      const wh = ctx.createOscillator(); wh.type = "sine"; wh.frequency.value = 900; const whg = ctx.createGain(); whg.gain.value = 0; wh.connect(whg); whg.connect(g); wh.start(); const wh2 = ctx.createOscillator(); wh2.type = "sine"; wh2.frequency.value = 1400; const wh2g = ctx.createGain(); wh2g.gain.value = 0.45; wh2.connect(wh2g); wh2g.connect(whg); wh2.start();
       // wind / airflow: rush that rises with speed, plus a low buffet that pulses with G-load
       const w = ctx.createBufferSource(); w.buffer = noiseBuf; w.loop = true; w.playbackRate.value = 0.83;
       const wf = ctx.createBiquadFilter(); wf.type = "bandpass"; wf.frequency.value = 500; wf.Q.value = 0.45;
@@ -459,7 +467,8 @@ export function createAudio() {
       const bg = ctx.createGain(); bg.gain.value = 0; const lfo = ctx.createOscillator(); lfo.frequency.value = 9; const lg = ctx.createGain(); lg.gain.value = 0;
       lfo.connect(lg); lg.connect(bg.gain); b.connect(bf); bf.connect(bg); bg.connect(sfxGain);
       w.start(); b.start(0, 0.7); lfo.start();
-      engine = { o, of, n, nf, g, w, wf, wg, b, bg, lfo, lg, ab: null, o2, wh, whg };
+      engine = { o, of, n, nf, g, w, wf, wg, b, bg, lfo, lg, ab: null, o2, wh, whg, wh2 };
+      nf.Q.value = 0.35;
       } catch { engine = null; }
     },
     updateEngine(throttle, cockpit, speed = 150, load = 0) {
@@ -472,10 +481,10 @@ export function createAudio() {
         // b25: pitch and body swing clearly with the throttle: idle growl -> screaming turbine
         set(engine.o.frequency, 52 + throttle * 96, 0.14);
         set(engine.o2.frequency, 30 + throttle * 44, 0.14);
-        set(engine.nf.frequency, 500 + throttle * 1700, 0.15);
+        set(engine.nf.frequency, 380 + throttle * 1300, 0.15);
         set(engine.of.frequency, (cockpit ? 200 : 320) + throttle * 520, 0.2);
         set(engine.g.gain, (cockpit ? 0.045 : 0.07) + throttle * 0.11, 0.15);
-        set(engine.wh.frequency, 700 + throttle * 2300, 0.12);
+        set(engine.wh.frequency, 700 + throttle * 2300, 0.12); if (engine.wh2) set(engine.wh2.frequency, (700 + throttle * 2300) * 1.52, 0.12);
         set(engine.whg.gain, (cockpit ? 0.004 : 0.008) + throttle * throttle * 0.02, 0.15);
         const sk = Math.max(0, Math.min(1, (speed - 100) / 260)), ld = Math.max(0, Math.min(1, load));
         set(engine.wf.frequency, 380 + sk * sk * 2400 + ld * 700, 0.15);
@@ -489,7 +498,7 @@ export function createAudio() {
       if (!engine) return;
       const e = engine; engine = null;
       try { e.g.gain.cancelScheduledValues(ctx.currentTime); e.g.gain.setTargetAtTime(0, ctx.currentTime, 0.1); } catch { /* ignore */ }
-      setTimeout(() => { try { e.o.stop(); e.o2 && e.o2.stop(); e.wh && e.wh.stop(); e.n.stop(); e.w.stop(); e.b.stop(); e.lfo.stop(); e.g.disconnect(); e.wg.disconnect(); e.bg.disconnect(); if (e.ab) { e.ab.n.stop(); e.ab.g.disconnect(); } } catch { /* ignore */ } }, 400);
+      setTimeout(() => { try { e.o.stop(); e.o2 && e.o2.stop(); e.wh && e.wh.stop(); e.wh2 && e.wh2.stop(); e.n.stop(); e.w.stop(); e.b.stop(); e.lfo.stop(); e.g.disconnect(); e.wg.disconnect(); e.bg.disconnect(); if (e.ab) { e.ab.n.stop(); e.ab.g.disconnect(); } } catch { /* ignore */ } }, 400);
     },
     gun() {
       if (!ctx || !sfxOn || ctx.state !== "running") return; const now = ctx.currentTime; gunT = now;

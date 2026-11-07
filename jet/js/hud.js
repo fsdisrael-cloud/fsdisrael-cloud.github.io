@@ -1,7 +1,7 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=341";
-import { tr } from "./i18n.js?v=341";
+import { LABEL } from "./missions.js?v=35";
+import { tr } from "./i18n.js?v=35";
 
 const ALLY = "#3dff8b";
 const COL = { boss:"#ff3b3b", bossweapon:"#ff8a40", jet: "#ff3b3b", tank: "#ff9c35", flak: "#ff9c35", sam: "#ff9c35", base: "#ff9c35", ship: "#bd6aff", pad: "#3dff8b", ring: "#ffe14d" };
@@ -73,7 +73,7 @@ export function createHud() {
     // pitch ladder + horizon (rungs every 5 deg, numbered every 10)
     const pitchDeg = P.pitch * 180 / Math.PI;
     for (let d = -40; d <= 40; d += 5) {
-      if (Math.abs(d - pitchDeg) > 34) continue;
+      if (Math.abs(d - pitchDeg) > 22 || (d % 10 !== 0)) continue;   // b35: lighter ladder (10-deg rungs only)
       const a = hp(d, -90), b = hp(d, 90), m = hp(d, 0);
       if (a.behind || b.behind || m.behind) continue;
       if (d === 0) { hline(a.x - 20 * sc, a.y, a.x + (b.x - a.x) * 0.38, a.y + (b.y - a.y) * 0.38, HG, 1.8); hline(a.x + (b.x - a.x) * 0.62, a.y + (b.y - a.y) * 0.62, b.x + 20 * sc, b.y, HG, 1.8); continue; }
@@ -144,10 +144,6 @@ export function createHud() {
     }
     // status block (bottom): weapons, fuel, G, mode - amber when there is something to warn about
     const fuelK = Math.max(0, Math.min(1, s.fuel ?? 1)), lowF = fuelK < 0.2;
-    htext(`MSL ${s.player.rockets | 0}   BOMB ${s.player.bombs | 0}   GUN ${s.overheated ? "HOT" : "RDY"}`, cx, H - 22 * sc, s.overheated ? HA : HG, 11 * sc);
-    htext(`FUEL ${(fuelK * 100) | 0}%`, xL, H - 44 * sc, lowF ? HA : HG, 11 * sc, "center");
-    htext(`G ${(s.gload || 1).toFixed(1)}`, xR, H - 44 * sc, (s.gload || 1) > 6 ? HA : HG, 11 * sc, "center");
-    htext(nvOn ? "NVG ON" : "NVG", cx - 70 * sc, 30 * sc + 30 * sc, nvOn ? HA : HG, 9 * sc);
     ctx.restore();
   }
   let nvOn = false;
@@ -228,7 +224,7 @@ export function createHud() {
       else arrows.push({ t: { kind: "ring", pos: r.pos }, d: r.pos.distanceTo(s.player.pos), pr });
     }
     arrows.sort((a, b) => a.d - b.d);
-    for (const a of arrows.slice(0, 3)) edgeArrow(a.t.pos, cam, a.t.kind === "jet" ? "#ff2a2a" : (COL[a.t.kind] || "#fff"), false, null, 1);
+    arrows.slice(0, 3).forEach((a, i) => edgeArrow(a.t.pos, cam, a.t.kind === "jet" ? "#ff2a2a" : (COL[a.t.kind] || "#fff"), false, null, i === 0 ? 1.8 : 1.25));   // b35: big nearest-target arrow
     /* b21: horizon cue line removed (read as stray streaks across the sky) */
     const boss=s.targets.find(t=>t.alive&&t.kind==="boss");
     if(boss){const pods=boss.pods.filter(t=>t.alive).length,hp=(boss.hp+boss.pods.reduce((n,t)=>n+(t.alive?t.hp:0),0))/(boss.maxHp+boss.pods.reduce((n,t)=>n+t.maxHp,0));ctx.save();ctx.fillStyle="rgba(8,12,20,.8)";ctx.fillRect(W*.2,H*.18,W*.6,30);ctx.fillStyle="#ff593e";ctx.fillRect(W*.2+3,H*.18+22,(W*.6-6)*Math.max(0,hp),5);label(W*.5,H*.18+14,`${boss.name}  |  ${pods} WEAPONS`,"#ffb28f",11);ctx.restore();}

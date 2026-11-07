@@ -14,12 +14,12 @@ const D2R = Math.PI / 180;
 export const CONTROL_CFG = {
   stickDragUpIsNoseUp: true,  // build 19 default: push the stick UP = nose UP (climb). INVERT PITCH toggle (settings) = real aircraft style
   stickRadiusPx: 56,         // drag distance for full deflection
-  tiltRangePitchDeg: 55,     // degrees of tilt for full pitch input
-  tiltRangeRollDeg: 65,      // degrees of tilt for full roll input
-  tiltDeadZoneDeg: 4,
-  tiltSmoothing: 14,         // higher = snappier
+  tiltRangePitchDeg: 32,     // degrees of tilt for full pitch input
+  tiltRangeRollDeg: 38,      // degrees of tilt for full roll input
+  tiltDeadZoneDeg: 2.5,
+  tiltSmoothing: 24,         // higher = snappier
   stickReturn: 12,           // spring-back speed of the joystick
-  lookYawPerScreen: 3.6,     // head-look: radians of view yaw for a swipe across the full screen width
+  lookYawPerScreen: 5.2,     // head-look: radians of view yaw for a swipe across the full screen width
   lookPitchPerScreen: 2.4,   // head-look: radians of view pitch for a swipe across the full screen height
   lookReturn: 3.2,           // head-look: how fast the view eases back to forward after release
 };
@@ -243,7 +243,7 @@ export function createControls() {
         if (!lk.active || id !== lk.id) return;
         const dx = x - lk.x, dy = y - lk.y; lk.x = x; lk.y = y; lk.moved = (lk.moved || 0) + Math.hypot(dx, dy);
         const tnow = performance.now(); lk.v = (lk.v || 0) * 0.6 + 0.4 * Math.hypot(dx / innerWidth, dy / innerHeight) / Math.max(0.008, (tnow - (lk.t || tnow - 16)) / 1000); lk.t = tnow;
-        const cock = lookMode === "cockpit", my = cock ? 2.4 : 3.1, mp = cock ? 1.1 : 0.95;
+        const cock = lookMode === "cockpit", my = 3.08, mp = cock ? 1.1 : 0.95;   // b35: swipe all the way behind
         look.yaw = Math.max(-my, Math.min(my, look.yaw - dx / innerWidth * C.lookYawPerScreen));
         look.pitch = Math.max(-mp, Math.min(mp, look.pitch + dy / innerHeight * C.lookPitchPerScreen * (invertLook ? -1 : 1)));
       },

@@ -55,6 +55,13 @@ export const JET_TYPES = {
   falcon: { name: "F-16 Falcon", lo: 0x303741, hi: 0x7e8894, wing: 0x4c545f, glow: 0xffb040, shape: 2 },
   tomcat: { name: "T-14 Tomcat", lo: 0x121c30, hi: 0x56688a, wing: 0x1e2c48, glow: 0x4ad0ff, shape: 1 },
   arctic: { name: "A-9 Arctic", lo: 0x566170, hi: 0xa4aebb, wing: 0x6a7584, glow: 0x7ad8ff, shape: 0 },
+  f35: { name: "F-35 Lightning II", lo: 0x3a4048, hi: 0x6e767f, wing: 0x4a5058, glow: 0xffa040, shape: 1 },
+  b21: { name: "B-21 Raider", lo: 0x0a0b0d, hi: 0x2a2d33, wing: 0x15171b, glow: 0xff7030, shape: 2 },
+  f47: { name: "F-47 NGAD", lo: 0x1c2026, hi: 0x4a525c, wing: 0x262b32, glow: 0x7ad8ff, shape: 0 },
+  tempest: { name: "GCAP Tempest", lo: 0x4a525c, hi: 0x8a939e, wing: 0x5a636e, glow: 0xffb040, shape: 0 },
+  j36: { name: "J-36", lo: 0x22262c, hi: 0x545c66, wing: 0x2e333a, glow: 0xff6a2a, shape: 2 },
+  sr71: { name: "SR-71 Blackbird", lo: 0x08090b, hi: 0x24272c, wing: 0x101215, glow: 0xff9a3a, shape: 0 },
+  a12: { name: "A-12 Archangel", lo: 0x0b0c0f, hi: 0x2c3036, wing: 0x14161a, glow: 0x7ad8ff, shape: 0 },
 };
 export const FOE_TYPES = {
   red: { name: "MiG red", lo: 0x2a1418, hi: 0x7a3a40, wing: 0x4a2a30, glass: 0xff5a4a, glow: 0xff4030, shape: 1 },
@@ -85,7 +92,7 @@ export function rollRun(rng = Math.random) {
   if (weather === "snow" && !SEASONS[season].snowOk && place.biome !== "snow") weather = "cloudy";
   else if (season === "winter" && weather === "clear" && rng() < 0.4) weather = "snow";
   if (season === "summer" && weather === "cloudy" && rng() < 0.7) weather = "clear";   // b23: summer gets clearer skies
-  const jet = pick(["viper", "raptor", "falcon", "tomcat", "arctic"], rng);
+  const jet = pick(["viper", "raptor", "falcon", "tomcat", "arctic", "f35", "b21", "f47", "tempest", "j36", "sr71", "a12"], rng);
   const foe = pick(["red", "camo", "black", "sand"], rng);
   const tgt = (place.biome === "desert" ? pick(["desert", "army"], rng) : place.biome === "snow" || season === "winter" ? pick(["arctic", "army"], rng) : pick(["army", "navy", "desert"], rng));
   // test / share hook: ?time=night&season=winter&weather=clear&jet=raptor&place=3
@@ -122,11 +129,18 @@ export function loadScene() {
 
 /** b33: pre-made title art: one image per jet, each with its own terrain / season / weather / time (the run matches the art) */
 export const TITLE_ART = {
-  viper:  { img: "title_viper.jpg",  biome: "mountains", sea: true, time: "dusk",  season: "summer", weather: "cloudy" },
-  falcon: { img: "title_falcon.jpg", biome: "snow",      sea: true, time: "night", season: "winter", weather: "snow" },
-  tomcat: { img: "title_tomcat.jpg", biome: "valley",    sea: true, time: "day",   season: "summer", weather: "clear" },
-  raptor: { img: "title_raptor.jpg", biome: "valley",    sea: false, time: "dusk", season: "autumn", weather: "storm" },
-  arctic: { img: "title_arctic.jpg", biome: "desert",    sea: null, time: "dawn",  season: "summer", weather: "clear" },
+  viper:  { img: "title_viper.jpg?v=35",  biome: "mountains", sea: true, time: "dusk",  season: "summer", weather: "cloudy" },
+  falcon: { img: "title_falcon.jpg?v=35", biome: "snow",      sea: true, time: "night", season: "winter", weather: "snow" },
+  tomcat: { img: "title_tomcat.jpg?v=35", biome: "valley",    sea: true, time: "day",   season: "summer", weather: "clear" },
+  raptor: { img: "title_raptor.jpg?v=35", biome: "valley",    sea: false, time: "dusk", season: "autumn", weather: "storm" },
+  arctic: { img: "title_arctic.jpg?v=35", biome: "desert",    sea: null, time: "dawn",  season: "summer", weather: "clear" },
+  f35:    { img: "title_f35.jpg?v=35",    biome: "mountains", sea: true, time: "dusk",  season: "summer", weather: "clear" },
+  b21:    { img: "title_b21.jpg?v=35",    biome: "desert",    sea: null, time: "night", season: "summer", weather: "clear" },
+  f47:    { img: "title_f47.jpg?v=35",    biome: "snow",      sea: null, time: "dawn",  season: "winter", weather: "cloudy" },
+  tempest:{ img: "title_tempest.jpg?v=35",biome: "valley",    sea: true, time: "dusk",  season: "summer", weather: "cloudy" },
+  j36:    { img: "title_j36.jpg?v=35",    biome: "valley",    sea: true, time: "dusk",  season: "autumn", weather: "storm" },
+  sr71:   { img: "title_sr71.jpg?v=35",   biome: "desert",    sea: null, time: "day",   season: "summer", weather: "clear" },
+  a12:    { img: "title_a12.jpg?v=35",    biome: "snow",      sea: true, time: "night", season: "winter", weather: "clear" },
 };
 export const TITLE_JETS = Object.keys(TITLE_ART);
 export function titleRun(jet) {

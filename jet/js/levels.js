@@ -11,7 +11,7 @@ export const BIOMES = {
   valley: "Green valley",
   mountains: "Mountains",
 };
-import { rollRun } from "./variety.js?v=341";
+import { rollRun } from "./variety.js?v=35";
 const P = {
   seward: { name: "Resurrection Bay, Alaska", lat: 60.05, lon: -149.4 },
   monument: { name: "Monument Valley", lat: 36.99, lon: -110.10 },
@@ -49,7 +49,9 @@ const NOUN = { jet: "enemy planes", tank: "tanks", flak: "flak guns", sam: "SAM 
 export function buildLevel(n, run0) {
   const d0 = LEVELS[Math.max(0, Math.min(LEVELS.length - 1, n - 1))];
   // every launch gets a fresh random world; the level only sets difficulty and the mission size
-  const run = run0 || rollRun();
+  let run = run0 || rollRun();
+  const nightOps = n >= 4 && n % 4 === 0;   // b35: dedicated NIGHT OPS mission every 4th level
+  if (nightOps) run = { ...run, time: "night" };
   const m = run.mix, sc = (v, k) => (v ? Math.max(1, Math.round(v * k)) : 0);
   const d = { ...d0, place: run.place, biome: run.place.biome, time: run.time, weather: run.weather, carrier: !!(d0.carrier && run.place.sea),
     tank: sc(d0.tank, m[0] * 1.6), base: sc(d0.base, m[1] * 1.15), flak: m[2] ? Math.max(d0.flak ? 1 : 0, Math.round(d0.flak * m[2] * 1.3)) : 0, sam: m[3] ? Math.round(d0.sam * m[3] * 1.4) : 0 };
@@ -62,7 +64,7 @@ export function buildLevel(n, run0) {
   objectives.push({ kind: "jet", need: d.jets, label: `Destroy ${d.jets} enemies` });
   for (const k of ["base", "tank", "flak", "sam"]) if (d[k]) objectives.push({ kind: k, need: d[k], label: `${VERB[k]} ${d[k]} ${NOUN[k]}` });
   return {
-    run, n, title: `${n}. ${d0.title}`, biome: d.biome, place: d.place, time: d.time, weather: d.weather,
+    run, n, title: nightOps ? `${n}. NIGHT OPS` : `${n}. ${d0.title}`, nightOps, biome: d.biome, place: d.place, time: d.time, weather: d.weather,
     seconds: 180, difficulty: d.diff, hostile: d.hostile, calm: false,
     seed: run.seed || ((n * 2654435761) >>> 0), objectives,
     ground: { tank: d.tank + 1, flak: d.flak, sam: d.sam, base: d.base, ship: 0 }, jets: d.jets,

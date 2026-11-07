@@ -2,8 +2,8 @@
 // Player + enemy jets: PBR-lit (metal, glossy canopy, environment reflections) with a thin illustrated outline.
 // Ground units: toon + outline. Illustrated look, readable colours.
 import * as THREE from "three";
-import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=341";
-import { patchDetail, missileTex } from "./tex.js?v=341";
+import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=35";
+import { patchDetail, missileTex } from "./tex.js?v=35";
 
 const PI = Math.PI;
 
@@ -378,6 +378,7 @@ function buildJet(kind, vk = "", variant = null) {
     const ej = new THREE.Group(); ej.position.set(0.0, 0.3, 0.95); cockpit.add(ej);
     const hz = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.014, 8, 18), pbr({ color: 0xffc400, metalness: 0.2, roughness: 0.5 })); hz.rotation.x = Math.PI / 2 - 0.6; hz.scale.setScalar(2.2); ej.add(hz);
     const hz2 = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.16, 8), pbr({ color: 0x111111, metalness: 0.2, roughness: 0.6 })); hz2.rotation.z = Math.PI / 2; hz2.position.set(0, 0.0, 0.03); ej.add(hz2);
+    stick.visible = thr.visible = quad.visible = ej.visible = gHold.visible = false;   // b35: nothing mechanical over the sky in cockpit view
     const curl = (h, c, trig, k) => {
       for (let i = 0; i < 4; i++) { const base = c + (i === 0 ? trig * 0.35 : 0) + Math.sin(k * 1.7 + i) * 0.02; h.fing[i][0].rotation.y = -(0.62 + base * 0.5); h.fing[i][1].rotation.y = -(0.95 + base * 0.45); h.fing[i][2].rotation.y = -(0.8 + base * 0.35); }
       h.thSegs[0].rotation.set(0.1, 0.5 - c * 0.2, 0.0); h.thSegs[1].rotation.x = 0.35;
@@ -456,7 +457,7 @@ function buildJet(kind, vk = "", variant = null) {
       for (const [o, sd] of stabs) L(o, "x", -c.pitch * 0.6 - sd * c.roll * 0.3);
       for (const [o, sd] of flps) L(o, "x", -sd * c.roll * 0.5 + c.flap * 0.5);
       for (const [o, sd] of ails) L(o, "x", -sd * c.roll * 0.8 + c.flap * 0.18);
-      for (const o of ruds) L(o, "y", -c.yaw * 0.5 - c.roll * 0.22);
+      for (const o of ruds) L(o, "y", -c.yaw * 0.5 + c.roll * 0.22);   // b35: coordinated rudder (right roll -> TE right)
       if (brake) L(brake, "x", -c.brake * 0.95);
       for (const o of petalsL) o.scale.setScalar(1 + c.burn * 0.16);
     },
