@@ -876,3 +876,8 @@ body.night .nv-btn { display:flex; }
 .res-count { margin-top:10px; font:800 15px/1 "Rajdhani",system-ui,sans-serif; letter-spacing:.1em; color:#ffd860; }
 #res-btn2 { margin-top:10px; }
 body:not(.in-game) #eject-handles, .results:not(.hidden) ~ #eject-handles { display:none !important; }
+/* b34: SCENE & JET row sits above TAP TO FLY, never over the plane */
+@media (orientation: portrait) {
+  #btn-reroll.reroll { top:auto !important; bottom:calc(env(safe-area-inset-bottom) + 25vh) !important; }
+  .screen.title .scene-label { top:auto !important; bottom:calc(env(safe-area-inset-bottom) + 25vh) !important; }
+}

@@ -1,17 +1,17 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=34";
-import { createHud } from "./hud.js?v=34";
-import { createControls } from "./controls.js?v=34";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=34";
-import { createAudio, trackFor } from "./audio.js?v=34";
-import { createHaptics } from "./haptics.js?v=34";
-import { createRain2D } from "./rain2d.js?v=34";
-import { createLoading } from "./loading.js?v=34";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=34";
-import { setSurreal, tickStyle } from "./surreal.js?v=34";
-import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=34";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=34";
+import { createGame } from "./game.js?v=341";
+import { createHud } from "./hud.js?v=341";
+import { createControls } from "./controls.js?v=341";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=341";
+import { createAudio, trackFor } from "./audio.js?v=341";
+import { createHaptics } from "./haptics.js?v=341";
+import { createRain2D } from "./rain2d.js?v=341";
+import { createLoading } from "./loading.js?v=341";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=341";
+import { setSurreal, tickStyle } from "./surreal.js?v=341";
+import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=341";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=341";
 
 const $ = (id) => document.getElementById(id);
 
@@ -575,3 +575,6 @@ fetch("version.json?t=" + Date.now()).then(r => r.json()).then(j => { const e = 
 // b33: hold LOOK BACK to glance behind (gentle bandit-behind cue lights it up)
 { const b = document.getElementById("btn-six"); if (b) { const on = (e) => { e.preventDefault(); e.stopPropagation(); controls.lookBack = true; }, off = () => { controls.lookBack = false; };
   b.addEventListener("pointerdown", on); b.addEventListener("touchstart", on, { passive: false }); for (const ev of ["pointerup", "pointercancel", "pointerleave", "touchend", "touchcancel"]) b.addEventListener(ev, off); } }
+
+// b34: WebGL context lost (iOS memory) -> clear message + one-tap reload instead of a black screen
+renderer.domElement.addEventListener("webglcontextlost", (e) => { e.preventDefault(); const d = document.createElement("div"); d.style.cssText = "position:fixed;inset:0;z-index:9998;display:flex;align-items:center;justify-content:center;background:#070c12;color:#ffd36a;font:800 20px system-ui;text-align:center"; d.textContent = "Graphics reset - tap to continue"; d.onclick = () => location.reload(); document.body.appendChild(d); });
