@@ -1,1 +1,796 @@
-{"title": "TESSIE FOLDER", "updated": "2026-11-01 08:36", "projects": [{"id": "tessie-shorts", "name": "TESSIE SHORTS", "icon": "ts-logo", "hue": 330, "folders": [{"id": "film-01", "name": "FULLY BOOKED", "icon": "fb-title", "item": {"id": "film-01", "short": "F1", "label": "FULLY BOOKED", "when": "2026-11-01 06:54", "title": "Film 01 - 1:36 - TESSIE PRODUCTIONS, made by Grok", "bullets": ["214 years after the rich fled the dying Earth promising 'back in five minutes', a tiny brass maitre d' still sets one table every night - until a scruffy mutant pigeon walks in without a reservation.", "Style: Velvet Ruin - handmade felt, velvet and brass stop-motion look. Voiced, with original score and sound design."], "shot": "fb-film", "shotReal": true, "link": "", "linkLabel": "PLAY HD", "linkNote": "", "links": [], "versions": [{"label": "HD", "url": "v/film01_1080.mp4"}, {"label": "LOW RES", "url": "v/film01_wa.mp4"}]}}, {"id": "film-02", "name": "PRE-LOVED", "icon": "pl-title", "item": {"id": "film-02", "short": "FI", "label": "PRE-LOVED", "when": "2026-11-01 07:43", "title": "Film 02 - 1:51 - TESSIE PRODUCTIONS, made by Grok", "bullets": ["In a decaying love-booth arcade, two lonely strangers swap confessions and trade a gold tooth and a pearl for time with their 'synthetic companions' - until the clerk reveals both have been paying to talk to each other all along.", "Style: Decadent Grotesque - photoreal, weird-faced humans in a neon-rotted futurist ruin, with a tango and bandoneon score, layered ambience and voiced dark-comic dialogue."], "shot": "pl-film", "shotReal": true, "link": "", "linkLabel": "PLAY HD", "linkNote": "", "links": [], "versions": [{"label": "HD", "url": "v/film02_1080.mp4"}, {"label": "LOW RES", "url": "v/film02_wa.mp4"}, {"label": "VERTICAL", "url": "v/film02_vertical.mp4"}]}, "hue": 320}, {"id": "film-03", "name": "עד הגל הבא", "icon": "ng-title", "item": {"id": "film-03", "short": "FI", "label": "עד הגל הבא", "when": "2026-11-01 08:40", "title": "Until the next wave - Hebrew short, 1:41", "bullets": ["A rushing dad slows down for his 9-year-old daughter's quiet fear, and they learn to live until the next wave.", "Golden Hour Realism: realistic animation with anime influence, original score"], "shot": "ng-film", "shotReal": true, "link": "", "linkLabel": "PLAY HD", "linkNote": "", "links": [], "versions": [{"label": "HD", "url": "v/film03_1080.mp4"}, {"label": "LOW RES", "url": "v/film03_wa.mp4"}]}, "hue": 200}]}, {"id": "lttm", "name": "Late To The Mic", "icon": "lttm-logo", "items": [{"id": "roadster", "short": "Roadster", "label": "Roadster short (step 1)", "when": "2026-10-31 11:53", "title": "", "bullets": ["1080p short rendered; new cast and approval frame", "Plan and cast notes written the same day"], "shot": "lttm-rd", "link": "", "linkLabel": "", "linkNote": "", "dateOnly": false}, {"id": "ep2", "short": "EP2", "label": "Episode 2: Neuralink", "when": "", "title": "", "bullets": ["Delivered in 720p and 1080p (about 3 min); waiting for feedback", "Date not recorded"], "shot": "lttm-ep2", "link": "", "linkLabel": "", "linkNote": "", "dateOnly": false}, {"id": "houston", "short": "Houston", "label": "Houston Cybercab test", "when": "", "title": "", "bullets": ["Locked voice reference for the cloned voices", "Date not recorded"], "shot": "lttm-logo", "link": "", "linkLabel": "", "linkNote": "", "dateOnly": false}, {"id": "ep1", "short": "EP1", "label": "Episode 1 (English + Hebrew)", "when": "", "title": "", "bullets": ["English version done; the first Hebrew version is the preferred one", "Date not recorded"], "shot": "lttm-ep1", "link": "", "linkLabel": "", "linkNote": "", "dateOnly": false}, {"id": "start", "short": "Start", "label": "History starts here", "when": "", "title": "", "bullets": ["Dates for episodes 1 and 2 were not recorded"], "shot": "", "link": "", "linkLabel": "", "linkNote": "", "dateOnly": false}]}, {"id": "jet-x-art", "name": "JET-X Art", "icon": "art7", "items": [{"id": "v7", "short": "v7", "label": "Logo v7 + wallpaper", "when": "2026-10-31 14:48", "title": "", "bullets": ["Logos v5, v6 and v7 (v7 is used in the game and its Home Screen icon)", "iPhone 13 wallpaper, full and small size"], "shot": "art7", "link": "a/s/art7.webp", "linkLabel": "VIEW", "linkNote": "", "dateOnly": false}, {"id": "v4", "short": "v4", "label": "v4 full-game mockup", "when": "2026-10-31 11:25", "title": "", "bullets": ["Full in-game concept image, 1920x1080"], "shot": "art4", "link": "a/s/art4.webp", "linkLabel": "VIEW", "linkNote": "", "dateOnly": false}, {"id": "v3", "short": "v3", "label": "v3 loading screen", "when": "2026-10-31 10:51", "title": "", "bullets": ["Loading-screen art, portrait and landscape"], "shot": "art3", "link": "a/s/art3.webp", "linkLabel": "VIEW", "linkNote": "", "dateOnly": false}, {"id": "v2", "short": "v2", "label": "v2 scenes + HUD", "when": "2026-10-31 10:18", "title": "", "bullets": ["Sunset-ocean and desert-dusk scenes, loading screens, HUD overlay"], "shot": "art2", "link": "a/s/art2.webp", "linkLabel": "VIEW", "linkNote": "", "dateOnly": false}, {"id": "v1", "short": "v1", "label": "v1 logo set A / B / C", "when": "2026-10-31 09:55", "title": "", "bullets": ["Three logo directions with wordmarks, X marks, app icons and opening screens"], "shot": "art1", "link": "a/s/art1.webp", "linkLabel": "VIEW", "linkNote": "", "dateOnly": false}]}, {"id": "jet-x", "name": "JET-X", "icon": "jet-logo", "url": "https://fsdisrael-cloud.github.io/jet/", "next": {"short": "B26", "label": "Build 26", "note": "Planned. Changes are being collected."}, "items": [{"id": "b25", "short": "B25", "label": "Build 25", "when": "2026-11-01 06:59", "title": "Arcade control + top-tier look", "bullets": ["Arcade controls: full stick authority, auto-level the moment you let go", "Darker polished jet, soft ground shadow, crisper cinematic grade", "Bigger, clearer enemies on ground, sea and air", "New flare button, flares eject from the tail with smoke", "Throttle-linked turbofan and deep afterburner roar", "Faster loading, smoother on iPhone"], "shot": "b25", "shotReal": true, "link": "https://fsdisrael-cloud.github.io/jet/", "linkLabel": "LAUNCH", "linkNote": ""}, {"id": "b24", "short": "B24", "label": "Build 24", "when": "2026-10-31 20:50", "title": "Full freedom + combat overhaul", "bullets": ["Full-freedom flight (rolls, loops, steep dives); auto-level almost off", "One-finger weapons (double-tap = missile, triple-tap = bomb), flares and brake buttons, buffered weapon presses", "Physical missile guidance, enemy missiles and SAMs with RWR warning, enemy jinks, breaks and flares", "3-minute levels, big LEVEL title, 7 lives, more targets, lake ships, new icon"], "shot": "jet24", "shotReal": true, "link": "https://fsdisrael-cloud.github.io/jet/", "linkLabel": "LAUNCH", "linkNote": "Older builds are not hosted separately. This opens the latest version."}, {"id": "b23", "short": "B23", "label": "Build 23", "when": "2026-10-31 16:52", "title": "Push-to-fire, multi-touch, sea units", "bullets": ["Guns fire only while held; every touch tracked separately", "TGT rocker to cycle ground targets, better weapon cam", "Warships, submarines, rain, one-time control hints, pause when app is hidden"], "shot": "jet23", "shotReal": true, "link": "https://fsdisrael-cloud.github.io/jet/", "linkLabel": "LAUNCH", "linkNote": "Older builds are not hosted separately. This opens the latest version."}, {"id": "b22", "short": "B22", "label": "Build 22", "when": "2026-10-31 16:23", "title": "Responsive steering", "bullets": ["Responsive fly-by-wire steering", "Impact flash fix, credit position"], "shot": "jet22", "shotReal": true, "link": "https://fsdisrael-cloud.github.io/jet/", "linkLabel": "LAUNCH", "linkNote": "Older builds are not hosted separately. This opens the latest version."}, {"id": "b21", "short": "B21", "label": "Build 21", "when": "2026-10-31 16:10", "title": "Hotfix + feedback round 3", "bullets": ["Pitch flip, bomb crosshair, wingtips", "Damage model, weapon cam, on-screen version label"], "shot": "jet-logo", "shotReal": false, "link": "https://fsdisrael-cloud.github.io/jet/", "linkLabel": "LAUNCH", "linkNote": "Older builds are not hosted separately. This opens the latest version."}, {"id": "b20", "short": "B20", "label": "Build 20", "when": "2026-10-31 15:43", "title": "Feedback round 2", "bullets": ["Attitude-command steering, easy mode, flares, auto-follow", "Ribbon trails, bomb lock, TESSIE credit on loading page"], "shot": "jet20", "shotReal": true, "link": "https://fsdisrael-cloud.github.io/jet/", "linkLabel": "LAUNCH", "linkNote": "Older builds are not hosted separately. This opens the latest version."}, {"id": "b19", "short": "B19", "label": "Build 19", "when": "2026-10-31 14:57", "title": "Logo v7 + easier flight", "bullets": ["Logo v7 with 3D tilt, 'Built by Grok'", "Target glow, easier flight, new gun/missile/bomb sounds, bomb visuals"], "shot": "jet19", "shotReal": true, "link": "https://fsdisrael-cloud.github.io/jet/", "linkLabel": "LAUNCH", "linkNote": "Older builds are not hosted separately. This opens the latest version."}, {"id": "b18", "short": "B18", "label": "Build 18", "when": "2026-10-31 14:28", "title": "Hotfix", "bullets": ["CONT/NEW buttons fixed", "Flight, combat, visual and audio tweaks"], "shot": "jet18", "shotReal": true, "link": "https://fsdisrael-cloud.github.io/jet/", "linkLabel": "LAUNCH", "linkNote": "Older builds are not hosted separately. This opens the latest version."}, {"id": "b17", "short": "B17", "label": "Build 17", "when": "2026-10-31 14:02", "title": "Flight assist + endless waves", "bullets": ["Flight assist with expo stick, new SFX", "Endless waves, more detailed jets, post-processing, bigger explosions, resume save"], "shot": "jet17", "shotReal": true, "link": "https://fsdisrael-cloud.github.io/jet/", "linkLabel": "LAUNCH", "linkNote": "Older builds are not hosted separately. This opens the latest version."}, {"id": "b16", "short": "B16", "label": "Build 16", "when": "2026-10-31 13:13", "title": "Graphics pass 2", "bullets": ["New sky and clouds, terrain photo detail", "Jet bump maps, music mix"], "shot": "jet16", "shotReal": true, "link": "https://fsdisrael-cloud.github.io/jet/", "linkLabel": "LAUNCH", "linkNote": "Older builds are not hosted separately. This opens the latest version."}, {"id": "b15", "short": "B15", "label": "Build 15", "when": "2026-10-31 13:03", "title": "Photoreal textures + high scores", "bullets": ["Audio stops on exit, stick pitch fix", "New techno music, photoreal textures, high-score flow"], "shot": "jet15", "shotReal": true, "link": "https://fsdisrael-cloud.github.io/jet/", "linkLabel": "LAUNCH", "linkNote": "Older builds are not hosted separately. This opens the latest version."}, {"id": "b14", "short": "B14", "label": "Build 14", "when": "2026-10-31 12:19", "title": "Ground forces + friendly fire", "bullets": ["Alien ground forces with red/green markers", "Friendly fire, high scores"], "shot": "jet14", "shotReal": true, "link": "https://fsdisrael-cloud.github.io/jet/", "linkLabel": "LAUNCH", "linkNote": "Older builds are not hosted separately. This opens the latest version."}, {"id": "b13", "short": "B13", "label": "Build 13", "when": "2026-10-31 12:03", "title": "Compact stick", "bullets": ["Compact top-down F-15 stick"], "shot": "jet13", "shotReal": true, "link": "https://fsdisrael-cloud.github.io/jet/", "linkLabel": "LAUNCH", "linkNote": "Older builds are not hosted separately. This opens the latest version."}, {"id": "b12", "short": "B12", "label": "Build 12", "when": "2026-10-31 11:53", "title": "Declutter", "bullets": ["Decluttered HUD, F-15 grip", "Throttle bottom-left, free-look easing"], "shot": "jet12", "shotReal": true, "link": "https://fsdisrael-cloud.github.io/jet/", "linkLabel": "LAUNCH", "linkNote": "Older builds are not hosted separately. This opens the latest version."}, {"id": "b11", "short": "B11", "label": "Build 11", "when": "2026-10-31 11:41", "title": "Throttle + aim assist", "bullets": ["Throttle lever, aim assist", "Combos, waves, burning wrecks"], "shot": "jet11", "shotReal": true, "link": "https://fsdisrael-cloud.github.io/jet/", "linkLabel": "LAUNCH", "linkNote": "Older builds are not hosted separately. This opens the latest version."}, {"id": "b10", "short": "B10", "label": "Build 10", "when": "2026-10-31 11:14", "title": "New logo + CONT/NEW flow", "bullets": ["New logo, CONT/NEW start flow", "Scene preview with re-roll, background save, sci-fi craft"], "shot": "jet10", "shotReal": true, "link": "https://fsdisrael-cloud.github.io/jet/", "linkLabel": "LAUNCH", "linkNote": "Older builds are not hosted separately. This opens the latest version."}, {"id": "b9", "short": "B9", "label": "Build 9", "when": "2026-10-31 10:54", "title": "Hardpoints + weapon cam", "bullets": ["Hardpoints, weapon cam, random worlds", "Night vision, techno music, v2 look"], "shot": "jet9", "shotReal": true, "link": "https://fsdisrael-cloud.github.io/jet/", "linkLabel": "LAUNCH", "linkNote": "Older builds are not hosted separately. This opens the latest version."}, {"id": "b8", "short": "B8", "label": "Build 8", "when": "2026-10-31 10:36", "title": "Checkpoint", "bullets": ["New layout, head-look, allies", "Time limit, weapon racks"], "shot": "jet8", "shotReal": true, "link": "https://fsdisrael-cloud.github.io/jet/", "linkLabel": "LAUNCH", "linkNote": "Older builds are not hosted separately. This opens the latest version."}, {"id": "b7", "short": "B7", "label": "Build 7", "when": "2026-10-31 10:08", "title": "First publish", "bullets": ["Single-jet game added at /jet/"], "shot": "jet-logo", "shotReal": false, "link": "https://fsdisrael-cloud.github.io/jet/", "linkLabel": "LAUNCH", "linkNote": "Older builds are not hosted separately. This opens the latest version."}]}, {"id": "oo8oo", "name": "OO8OO", "icon": "oo-logo", "url": "https://fsdisrael-cloud.github.io/oo8oo/", "items": [{"id": "b6", "short": "B6", "label": "Build 6 (staged)", "when": "", "title": "", "bullets": ["Newest staged build, with automatic version check and reload", "Exact date not recorded"], "shot": "oo6", "link": "https://fsdisrael-cloud.github.io/oo8oo/", "linkLabel": "LAUNCH", "linkNote": "Opens the live OO8OO game.", "dateOnly": false}, {"id": "pub", "short": "Live", "label": "Published", "when": "2026-10-10 19:19", "title": "", "bullets": ["First public release on GitHub Pages"], "shot": "oo-logo", "link": "https://fsdisrael-cloud.github.io/oo8oo/", "linkLabel": "LAUNCH", "linkNote": "Opens the live OO8OO game.", "dateOnly": false}, {"id": "start", "short": "Start", "label": "History starts here", "when": "", "title": "", "bullets": ["Earlier build dates were not kept"], "shot": "", "link": "", "linkLabel": "", "linkNote": "", "dateOnly": false}]}, {"id": "skyline", "name": "Skyline", "icon": "sky", "items": [{"id": "proto", "short": "Proto", "label": "Skyline jet prototype", "when": "", "title": "", "bullets": ["First phone flight prototype with real aircraft; led to OO8OO", "Archived, not public"], "shot": "sky", "link": "", "linkLabel": "", "linkNote": "", "dateOnly": false}, {"id": "start", "short": "Start", "label": "History starts here", "when": "", "title": "", "bullets": ["No dated versions were kept"], "shot": "", "link": "", "linkLabel": "", "linkNote": "", "dateOnly": false}]}, {"id": "bobo-nini", "name": "Bobo & Nini", "icon": "", "tile": "B&N", "items": [{"id": "rules", "short": "Rules", "label": "Character rules locked", "when": "2026-10-05", "title": "", "bullets": ["Look, outfit and image-brief rules fixed for both characters"], "shot": "", "link": "", "linkLabel": "", "linkNote": "", "dateOnly": true}, {"id": "start", "short": "Start", "label": "History starts here", "when": "", "title": "", "bullets": ["No dated image batches were recorded"], "shot": "", "link": "", "linkLabel": "", "linkNote": "", "dateOnly": false}]}, {"id": "mars", "name": "Mars", "icon": "mars", "items": [{"id": "clip", "short": "Clip", "label": "Grok Bot Build", "when": "", "title": "", "bullets": ["Finished video, music and key frames", "Production date not recorded"], "shot": "mars", "link": "", "linkLabel": "", "linkNote": "", "dateOnly": false}, {"id": "start", "short": "Start", "label": "History starts here", "when": "", "title": "", "bullets": ["Production date not recorded"], "shot": "", "link": "", "linkLabel": "", "linkNote": "", "dateOnly": false}]}]}
+{
+ "title": "TESSIE FOLDER",
+ "updated": "2026-11-07 21:37",
+ "projects": [
+  {
+   "id": "tessie-shorts",
+   "name": "TESSIE SHORTS",
+   "icon": "ts-logo",
+   "hue": 330,
+   "folders": [
+    {
+     "id": "film-01",
+     "name": "FULLY BOOKED",
+     "icon": "fb-title",
+     "item": {
+      "id": "film-01",
+      "short": "F1",
+      "label": "FULLY BOOKED",
+      "when": "2026-11-01 06:54",
+      "title": "Film 01 - 1:36 - TESSIE PRODUCTIONS, made by Grok",
+      "bullets": [
+       "214 years after the rich fled the dying Earth promising 'back in five minutes', a tiny brass maitre d' still sets one table every night - until a scruffy mutant pigeon walks in without a reservation.",
+       "Style: Velvet Ruin - handmade felt, velvet and brass stop-motion look. Voiced, with original score and sound design."
+      ],
+      "shot": "fb-film",
+      "shotReal": true,
+      "link": "",
+      "linkLabel": "PLAY HD",
+      "linkNote": "",
+      "links": [],
+      "versions": [
+       {
+        "label": "HD",
+        "url": "v/film01_1080.mp4"
+       },
+       {
+        "label": "LOW RES",
+        "url": "v/film01_wa.mp4"
+       }
+      ]
+     }
+    },
+    {
+     "id": "film-02",
+     "name": "PRE-LOVED",
+     "icon": "pl-title",
+     "item": {
+      "id": "film-02",
+      "short": "FI",
+      "label": "PRE-LOVED",
+      "when": "2026-11-01 07:43",
+      "title": "Film 02 - 1:51 - TESSIE PRODUCTIONS, made by Grok",
+      "bullets": [
+       "In a decaying love-booth arcade, two lonely strangers swap confessions and trade a gold tooth and a pearl for time with their 'synthetic companions' - until the clerk reveals both have been paying to talk to each other all along.",
+       "Style: Decadent Grotesque - photoreal, weird-faced humans in a neon-rotted futurist ruin, with a tango and bandoneon score, layered ambience and voiced dark-comic dialogue."
+      ],
+      "shot": "pl-film",
+      "shotReal": true,
+      "link": "",
+      "linkLabel": "PLAY HD",
+      "linkNote": "",
+      "links": [],
+      "versions": [
+       {
+        "label": "HD",
+        "url": "v/film02_1080.mp4"
+       },
+       {
+        "label": "LOW RES",
+        "url": "v/film02_wa.mp4"
+       },
+       {
+        "label": "VERTICAL",
+        "url": "v/film02_vertical.mp4"
+       }
+      ]
+     },
+     "hue": 320
+    },
+    {
+     "id": "film-03",
+     "name": "עד הגל הבא",
+     "icon": "ng-title",
+     "item": {
+      "id": "film-03",
+      "short": "FI",
+      "label": "עד הגל הבא",
+      "when": "2026-11-01 08:40",
+      "title": "Until the next wave - Hebrew short, 1:41",
+      "bullets": [
+       "A rushing dad slows down for his 9-year-old daughter's quiet fear, and they learn to live until the next wave.",
+       "Golden Hour Realism: realistic animation with anime influence, original score"
+      ],
+      "shot": "ng-film",
+      "shotReal": true,
+      "link": "",
+      "linkLabel": "PLAY HD",
+      "linkNote": "",
+      "links": [],
+      "versions": [
+       {
+        "label": "HD",
+        "url": "v/film03_1080.mp4"
+       },
+       {
+        "label": "LOW RES",
+        "url": "v/film03_wa.mp4"
+       }
+      ]
+     },
+     "hue": 200
+    }
+   ]
+  },
+  {
+   "id": "lttm",
+   "name": "Late To The Mic",
+   "icon": "lttm-logo",
+   "items": [
+    {
+     "id": "roadster",
+     "short": "Roadster",
+     "label": "Roadster short (step 1)",
+     "when": "2026-10-31 11:53",
+     "title": "",
+     "bullets": [
+      "1080p short rendered; new cast and approval frame",
+      "Plan and cast notes written the same day"
+     ],
+     "shot": "lttm-rd",
+     "link": "",
+     "linkLabel": "",
+     "linkNote": "",
+     "dateOnly": false
+    },
+    {
+     "id": "ep2",
+     "short": "EP2",
+     "label": "Episode 2: Neuralink",
+     "when": "",
+     "title": "",
+     "bullets": [
+      "Delivered in 720p and 1080p (about 3 min); waiting for feedback",
+      "Date not recorded"
+     ],
+     "shot": "lttm-ep2",
+     "link": "",
+     "linkLabel": "",
+     "linkNote": "",
+     "dateOnly": false
+    },
+    {
+     "id": "houston",
+     "short": "Houston",
+     "label": "Houston Cybercab test",
+     "when": "",
+     "title": "",
+     "bullets": [
+      "Locked voice reference for the cloned voices",
+      "Date not recorded"
+     ],
+     "shot": "lttm-logo",
+     "link": "",
+     "linkLabel": "",
+     "linkNote": "",
+     "dateOnly": false
+    },
+    {
+     "id": "ep1",
+     "short": "EP1",
+     "label": "Episode 1 (English + Hebrew)",
+     "when": "",
+     "title": "",
+     "bullets": [
+      "English version done; the first Hebrew version is the preferred one",
+      "Date not recorded"
+     ],
+     "shot": "lttm-ep1",
+     "link": "",
+     "linkLabel": "",
+     "linkNote": "",
+     "dateOnly": false
+    },
+    {
+     "id": "start",
+     "short": "Start",
+     "label": "History starts here",
+     "when": "",
+     "title": "",
+     "bullets": [
+      "Dates for episodes 1 and 2 were not recorded"
+     ],
+     "shot": "",
+     "link": "",
+     "linkLabel": "",
+     "linkNote": "",
+     "dateOnly": false
+    }
+   ]
+  },
+  {
+   "id": "jet-x-art",
+   "name": "JET-X Art",
+   "icon": "art7",
+   "items": [
+    {
+     "id": "v7",
+     "short": "v7",
+     "label": "Logo v7 + wallpaper",
+     "when": "2026-10-31 14:48",
+     "title": "",
+     "bullets": [
+      "Logos v5, v6 and v7 (v7 is used in the game and its Home Screen icon)",
+      "iPhone 13 wallpaper, full and small size"
+     ],
+     "shot": "art7",
+     "link": "a/s/art7.webp",
+     "linkLabel": "VIEW",
+     "linkNote": "",
+     "dateOnly": false
+    },
+    {
+     "id": "v4",
+     "short": "v4",
+     "label": "v4 full-game mockup",
+     "when": "2026-10-31 11:25",
+     "title": "",
+     "bullets": [
+      "Full in-game concept image, 1920x1080"
+     ],
+     "shot": "art4",
+     "link": "a/s/art4.webp",
+     "linkLabel": "VIEW",
+     "linkNote": "",
+     "dateOnly": false
+    },
+    {
+     "id": "v3",
+     "short": "v3",
+     "label": "v3 loading screen",
+     "when": "2026-10-31 10:51",
+     "title": "",
+     "bullets": [
+      "Loading-screen art, portrait and landscape"
+     ],
+     "shot": "art3",
+     "link": "a/s/art3.webp",
+     "linkLabel": "VIEW",
+     "linkNote": "",
+     "dateOnly": false
+    },
+    {
+     "id": "v2",
+     "short": "v2",
+     "label": "v2 scenes + HUD",
+     "when": "2026-10-31 10:18",
+     "title": "",
+     "bullets": [
+      "Sunset-ocean and desert-dusk scenes, loading screens, HUD overlay"
+     ],
+     "shot": "art2",
+     "link": "a/s/art2.webp",
+     "linkLabel": "VIEW",
+     "linkNote": "",
+     "dateOnly": false
+    },
+    {
+     "id": "v1",
+     "short": "v1",
+     "label": "v1 logo set A / B / C",
+     "when": "2026-10-31 09:55",
+     "title": "",
+     "bullets": [
+      "Three logo directions with wordmarks, X marks, app icons and opening screens"
+     ],
+     "shot": "art1",
+     "link": "a/s/art1.webp",
+     "linkLabel": "VIEW",
+     "linkNote": "",
+     "dateOnly": false
+    }
+   ]
+  },
+  {
+   "id": "jet-x",
+   "name": "JET-X",
+   "icon": "jet-logo",
+   "url": "https://fsdisrael-cloud.github.io/jet/",
+   "next": {
+    "short": "B34",
+    "label": "Build 34",
+    "note": "Planned. Changes are being collected."
+   },
+   "items": [
+    {
+     "id": "b33",
+     "short": "B33",
+     "label": "Build 33",
+     "when": "2026-11-07 21:37",
+     "title": "V 1.33: fun arcade dogfights",
+     "bullets": [
+      "Head-on jets rush past you, turn 180 and chase them in a slalom",
+      "Enemy jets need 2-3 missiles; enemy missiles and SAMs now really fly at you (yellow on radar), choppers in the fight",
+      "Hold LOOK BACK when a bandit is behind you, with a gentle cue instead of constant beeps",
+      "Boss is now a giant flying wing full of weapons; ship hits throw up water columns",
+      "Landing fixed: right stick direction, smooth glide slope, you help more near the end",
+      "Night flights with green NVG; new title art for every jet (tap SCENE & JET)",
+      "How-to: real HUD in portrait + landscape cockpit, live stick lab, new ?JX icon, no aliens"
+     ],
+     "shot": "b33",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LAUNCH",
+     "linkNote": ""
+    },
+    {
+     "id": "b25",
+     "short": "B25",
+     "label": "Build 25",
+     "when": "2026-11-01 06:59",
+     "title": "Arcade control + top-tier look",
+     "bullets": [
+      "Arcade controls: full stick authority, auto-level the moment you let go",
+      "Darker polished jet, soft ground shadow, crisper cinematic grade",
+      "Bigger, clearer enemies on ground, sea and air",
+      "New flare button, flares eject from the tail with smoke",
+      "Throttle-linked turbofan and deep afterburner roar",
+      "Faster loading, smoother on iPhone"
+     ],
+     "shot": "b25",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
+    },
+    {
+     "id": "b24",
+     "short": "B24",
+     "label": "Build 24",
+     "when": "2026-10-31 20:50",
+     "title": "Full freedom + combat overhaul",
+     "bullets": [
+      "Full-freedom flight (rolls, loops, steep dives); auto-level almost off",
+      "One-finger weapons (double-tap = missile, triple-tap = bomb), flares and brake buttons, buffered weapon presses",
+      "Physical missile guidance, enemy missiles and SAMs with RWR warning, enemy jinks, breaks and flares",
+      "3-minute levels, big LEVEL title, 7 lives, more targets, lake ships, new icon"
+     ],
+     "shot": "jet24",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
+    },
+    {
+     "id": "b23",
+     "short": "B23",
+     "label": "Build 23",
+     "when": "2026-10-31 16:52",
+     "title": "Push-to-fire, multi-touch, sea units",
+     "bullets": [
+      "Guns fire only while held; every touch tracked separately",
+      "TGT rocker to cycle ground targets, better weapon cam",
+      "Warships, submarines, rain, one-time control hints, pause when app is hidden"
+     ],
+     "shot": "jet23",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
+    },
+    {
+     "id": "b22",
+     "short": "B22",
+     "label": "Build 22",
+     "when": "2026-10-31 16:23",
+     "title": "Responsive steering",
+     "bullets": [
+      "Responsive fly-by-wire steering",
+      "Impact flash fix, credit position"
+     ],
+     "shot": "jet22",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
+    },
+    {
+     "id": "b21",
+     "short": "B21",
+     "label": "Build 21",
+     "when": "2026-10-31 16:10",
+     "title": "Hotfix + feedback round 3",
+     "bullets": [
+      "Pitch flip, bomb crosshair, wingtips",
+      "Damage model, weapon cam, on-screen version label"
+     ],
+     "shot": "jet-logo",
+     "shotReal": false,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
+    },
+    {
+     "id": "b20",
+     "short": "B20",
+     "label": "Build 20",
+     "when": "2026-10-31 15:43",
+     "title": "Feedback round 2",
+     "bullets": [
+      "Attitude-command steering, easy mode, flares, auto-follow",
+      "Ribbon trails, bomb lock, TESSIE credit on loading page"
+     ],
+     "shot": "jet20",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
+    },
+    {
+     "id": "b19",
+     "short": "B19",
+     "label": "Build 19",
+     "when": "2026-10-31 14:57",
+     "title": "Logo v7 + easier flight",
+     "bullets": [
+      "Logo v7 with 3D tilt, 'Built by Grok'",
+      "Target glow, easier flight, new gun/missile/bomb sounds, bomb visuals"
+     ],
+     "shot": "jet19",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
+    },
+    {
+     "id": "b18",
+     "short": "B18",
+     "label": "Build 18",
+     "when": "2026-10-31 14:28",
+     "title": "Hotfix",
+     "bullets": [
+      "CONT/NEW buttons fixed",
+      "Flight, combat, visual and audio tweaks"
+     ],
+     "shot": "jet18",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
+    },
+    {
+     "id": "b17",
+     "short": "B17",
+     "label": "Build 17",
+     "when": "2026-10-31 14:02",
+     "title": "Flight assist + endless waves",
+     "bullets": [
+      "Flight assist with expo stick, new SFX",
+      "Endless waves, more detailed jets, post-processing, bigger explosions, resume save"
+     ],
+     "shot": "jet17",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
+    },
+    {
+     "id": "b16",
+     "short": "B16",
+     "label": "Build 16",
+     "when": "2026-10-31 13:13",
+     "title": "Graphics pass 2",
+     "bullets": [
+      "New sky and clouds, terrain photo detail",
+      "Jet bump maps, music mix"
+     ],
+     "shot": "jet16",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
+    },
+    {
+     "id": "b15",
+     "short": "B15",
+     "label": "Build 15",
+     "when": "2026-10-31 13:03",
+     "title": "Photoreal textures + high scores",
+     "bullets": [
+      "Audio stops on exit, stick pitch fix",
+      "New techno music, photoreal textures, high-score flow"
+     ],
+     "shot": "jet15",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
+    },
+    {
+     "id": "b14",
+     "short": "B14",
+     "label": "Build 14",
+     "when": "2026-10-31 12:19",
+     "title": "Ground forces + friendly fire",
+     "bullets": [
+      "Alien ground forces with red/green markers",
+      "Friendly fire, high scores"
+     ],
+     "shot": "jet14",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
+    },
+    {
+     "id": "b13",
+     "short": "B13",
+     "label": "Build 13",
+     "when": "2026-10-31 12:03",
+     "title": "Compact stick",
+     "bullets": [
+      "Compact top-down F-15 stick"
+     ],
+     "shot": "jet13",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
+    },
+    {
+     "id": "b12",
+     "short": "B12",
+     "label": "Build 12",
+     "when": "2026-10-31 11:53",
+     "title": "Declutter",
+     "bullets": [
+      "Decluttered HUD, F-15 grip",
+      "Throttle bottom-left, free-look easing"
+     ],
+     "shot": "jet12",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
+    },
+    {
+     "id": "b11",
+     "short": "B11",
+     "label": "Build 11",
+     "when": "2026-10-31 11:41",
+     "title": "Throttle + aim assist",
+     "bullets": [
+      "Throttle lever, aim assist",
+      "Combos, waves, burning wrecks"
+     ],
+     "shot": "jet11",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
+    },
+    {
+     "id": "b10",
+     "short": "B10",
+     "label": "Build 10",
+     "when": "2026-10-31 11:14",
+     "title": "New logo + CONT/NEW flow",
+     "bullets": [
+      "New logo, CONT/NEW start flow",
+      "Scene preview with re-roll, background save, sci-fi craft"
+     ],
+     "shot": "jet10",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
+    },
+    {
+     "id": "b9",
+     "short": "B9",
+     "label": "Build 9",
+     "when": "2026-10-31 10:54",
+     "title": "Hardpoints + weapon cam",
+     "bullets": [
+      "Hardpoints, weapon cam, random worlds",
+      "Night vision, techno music, v2 look"
+     ],
+     "shot": "jet9",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
+    },
+    {
+     "id": "b8",
+     "short": "B8",
+     "label": "Build 8",
+     "when": "2026-10-31 10:36",
+     "title": "Checkpoint",
+     "bullets": [
+      "New layout, head-look, allies",
+      "Time limit, weapon racks"
+     ],
+     "shot": "jet8",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
+    },
+    {
+     "id": "b7",
+     "short": "B7",
+     "label": "Build 7",
+     "when": "2026-10-31 10:08",
+     "title": "First publish",
+     "bullets": [
+      "Single-jet game added at /jet/"
+     ],
+     "shot": "jet-logo",
+     "shotReal": false,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
+    }
+   ]
+  },
+  {
+   "id": "oo8oo",
+   "name": "OO8OO",
+   "icon": "oo-logo",
+   "url": "https://fsdisrael-cloud.github.io/oo8oo/",
+   "items": [
+    {
+     "id": "b6",
+     "short": "B6",
+     "label": "Build 6 (staged)",
+     "when": "",
+     "title": "",
+     "bullets": [
+      "Newest staged build, with automatic version check and reload",
+      "Exact date not recorded"
+     ],
+     "shot": "oo6",
+     "link": "https://fsdisrael-cloud.github.io/oo8oo/",
+     "linkLabel": "LAUNCH",
+     "linkNote": "Opens the live OO8OO game.",
+     "dateOnly": false
+    },
+    {
+     "id": "pub",
+     "short": "Live",
+     "label": "Published",
+     "when": "2026-10-10 19:19",
+     "title": "",
+     "bullets": [
+      "First public release on GitHub Pages"
+     ],
+     "shot": "oo-logo",
+     "link": "https://fsdisrael-cloud.github.io/oo8oo/",
+     "linkLabel": "LAUNCH",
+     "linkNote": "Opens the live OO8OO game.",
+     "dateOnly": false
+    },
+    {
+     "id": "start",
+     "short": "Start",
+     "label": "History starts here",
+     "when": "",
+     "title": "",
+     "bullets": [
+      "Earlier build dates were not kept"
+     ],
+     "shot": "",
+     "link": "",
+     "linkLabel": "",
+     "linkNote": "",
+     "dateOnly": false
+    }
+   ]
+  },
+  {
+   "id": "skyline",
+   "name": "Skyline",
+   "icon": "sky",
+   "items": [
+    {
+     "id": "proto",
+     "short": "Proto",
+     "label": "Skyline jet prototype",
+     "when": "",
+     "title": "",
+     "bullets": [
+      "First phone flight prototype with real aircraft; led to OO8OO",
+      "Archived, not public"
+     ],
+     "shot": "sky",
+     "link": "",
+     "linkLabel": "",
+     "linkNote": "",
+     "dateOnly": false
+    },
+    {
+     "id": "start",
+     "short": "Start",
+     "label": "History starts here",
+     "when": "",
+     "title": "",
+     "bullets": [
+      "No dated versions were kept"
+     ],
+     "shot": "",
+     "link": "",
+     "linkLabel": "",
+     "linkNote": "",
+     "dateOnly": false
+    }
+   ]
+  },
+  {
+   "id": "bobo-nini",
+   "name": "Bobo & Nini",
+   "icon": "",
+   "tile": "B&N",
+   "items": [
+    {
+     "id": "rules",
+     "short": "Rules",
+     "label": "Character rules locked",
+     "when": "2026-10-05",
+     "title": "",
+     "bullets": [
+      "Look, outfit and image-brief rules fixed for both characters"
+     ],
+     "shot": "",
+     "link": "",
+     "linkLabel": "",
+     "linkNote": "",
+     "dateOnly": true
+    },
+    {
+     "id": "start",
+     "short": "Start",
+     "label": "History starts here",
+     "when": "",
+     "title": "",
+     "bullets": [
+      "No dated image batches were recorded"
+     ],
+     "shot": "",
+     "link": "",
+     "linkLabel": "",
+     "linkNote": "",
+     "dateOnly": false
+    }
+   ]
+  },
+  {
+   "id": "mars",
+   "name": "Mars",
+   "icon": "mars",
+   "items": [
+    {
+     "id": "clip",
+     "short": "Clip",
+     "label": "Grok Bot Build",
+     "when": "",
+     "title": "",
+     "bullets": [
+      "Finished video, music and key frames",
+      "Production date not recorded"
+     ],
+     "shot": "mars",
+     "link": "",
+     "linkLabel": "",
+     "linkNote": "",
+     "dateOnly": false
+    },
+    {
+     "id": "start",
+     "short": "Start",
+     "label": "History starts here",
+     "when": "",
+     "title": "",
+     "bullets": [
+      "Production date not recorded"
+     ],
+     "shot": "",
+     "link": "",
+     "linkLabel": "",
+     "linkNote": "",
+     "dateOnly": false
+    }
+   ]
+  }
+ ]
+}
