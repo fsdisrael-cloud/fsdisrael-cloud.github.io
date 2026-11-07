@@ -1,6 +1,6 @@
 {
  "title": "TESSIE FOLDER",
- "updated": "2026-11-07 21:37",
+ "updated": "2026-11-07 22:57",
  "projects": [
   {
    "id": "tessie-shorts",
@@ -287,11 +287,29 @@
    "icon": "jet-logo",
    "url": "https://fsdisrael-cloud.github.io/jet/",
    "next": {
-    "short": "B34",
-    "label": "Build 34",
-    "note": "Planned. Changes are being collected."
+    "short": "B36",
+    "label": "Build 36",
+    "note": "Playtest feedback round"
    },
    "items": [
+    {
+     "id": "b35",
+     "short": "B35",
+     "label": "Build 35",
+     "when": "2026-11-07 22:57",
+     "title": "V 1.35 - Arcade overhaul",
+     "bullets": [
+      "Clean cockpit view, no mechanics over the sky; decluttered HUD",
+      "Auto-chase: bandit placed in front, turn-to-target, wings-level on release",
+      "7 new jets + new clean title art; realistic how-to cards & stick lab",
+      "Trance music, turbine/afterburner sound, night ops every 4th level, snappier tilt"
+     ],
+     "shot": "b35",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LAUNCH",
+     "linkNote": ""
+    },
     {
      "id": "b33",
      "short": "B33",
@@ -310,8 +328,8 @@
      "shot": "b33",
      "shotReal": true,
      "link": "https://fsdisrael-cloud.github.io/jet/",
-     "linkLabel": "LAUNCH",
-     "linkNote": ""
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
     },
     {
      "id": "b25",
