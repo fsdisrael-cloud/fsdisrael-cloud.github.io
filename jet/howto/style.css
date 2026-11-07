@@ -7,3 +7,17 @@
 .og-mode .heading{height:190px;min-height:190px;padding:0 280px 18px 0}.og-mode .heading h1{font-size:62px;margin:8px 0 12px}.og-mode .heading p{font-size:16px;line-height:1.45;margin-bottom:0}.og-mode .stage{height:435px}@media(max-width:360px){.right-lower{right:120px}.landing{font-size:6px;padding:10px 5px}}
 
 .stage.realstage{position:relative!important;display:block!important;width:min(100%,430px)!important;height:auto!important;min-height:0!important;aspect-ratio:390/844;margin:0 auto!important;padding:0!important;background:#000!important;border-radius:22px;overflow:hidden}.realstage .realhud{position:absolute;inset:0;width:100%;height:100%;display:block}.rhs{position:absolute!important;margin:0!important;padding:0!important;background:transparent!important;border:2px solid rgba(255,206,136,.55)!important;border-radius:10px!important;box-shadow:none!important;cursor:pointer;min-width:0!important;min-height:0!important;transform:none!important}.rhs i{position:absolute;right:-7px;top:-7px;width:18px;height:18px;border-radius:50%;background:#ffce88;color:#111;font:700 15px/18px sans-serif;font-style:normal;text-align:center;animation:rp 1.6s infinite}.rhs:hover,.rhs:focus-visible{background:rgba(255,206,136,.18)!important}@keyframes rp{50%{transform:scale(1.25)}}
+/* b32: game-style cards (metal plate, orange glow, real in-game crops) */
+.control-card{overflow:hidden;min-height:150px;justify-content:flex-end;padding:12px;border:2px solid #2a2f36;border-radius:12px;background:linear-gradient(180deg,#2b3038,#14181d);box-shadow:inset 0 1px 0 #ffffff22,0 0 0 1px #000,0 0 14px #ff8a1a33}
+.control-card:hover{border-color:#ff9a2e;box-shadow:0 0 18px #ff9a2e88;background:linear-gradient(180deg,#2b3038,#14181d)}
+.control-card .thumb{position:absolute;inset:0 0 38px 0;width:100%;height:calc(100% - 38px);object-fit:cover;opacity:.95;border-bottom:3px solid transparent;border-image:repeating-linear-gradient(135deg,#ffb02e 0 8px,#111 8px 16px) 3}
+.control-card .icon{display:none}
+.control-card .label{position:relative;z-index:1;font:900 15px/1.1 "Rajdhani","Barlow Condensed",Impact,system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#fff;text-shadow:0 0 6px #ffb02e,0 0 12px #ff9614aa,0 2px 0 #000}
+.control-card .plus{z-index:1;color:#ffb02e;background:#000a;border-radius:50%;width:24px;height:24px;line-height:24px;text-align:center;top:8px}
+.target-card{background-size:cover;background-position:center;border:2px solid #2a2f36;border-radius:12px;box-shadow:0 0 12px #ff8a1a33,inset 0 0 0 1px #000}
+.target-card span{font:900 13px/1.2 "Rajdhani","Barlow Condensed",Impact,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#fff;text-shadow:0 0 6px #ffb02e,0 2px 0 #000;background:#000a;border-radius:6px;padding:3px 6px;align-self:flex-start}
+[data-g=ground] .target-card,[data-g=friend] .target-card,[data-g=boss] .target-card{background-image:linear-gradient(#0003,#000a),url(assets/bg_ground.jpg)}
+[data-g=air] .target-card{background-image:linear-gradient(#0002,#0009),url(assets/bg_sky.jpg)}
+[data-g=sea] .target-card{background-image:linear-gradient(#0002,#0009),url(assets/bg_sea.jpg)}
+.gallery-group h3{font:900 22px/1 "Rajdhani","Barlow Condensed",Impact,system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;text-shadow:0 0 8px var(--group)}
+.target-card{height:auto;align-self:start}.target-card img{height:120px;aspect-ratio:auto}

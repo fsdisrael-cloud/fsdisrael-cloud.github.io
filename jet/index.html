@@ -9,7 +9,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="JET-X" />
-  <meta name="theme-color" content="#0b0a1f" />
+  <meta name="theme-color" content="#070c12" />
   <meta name="format-detection" content="telephone=no" />
   <title>JET-X</title>
   <link rel="preconnect" href="https://server.arcgisonline.com" crossorigin />
@@ -18,8 +18,8 @@
   <link rel="icon" type="image/png" sizes="192x192" href="img/icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png" />
   <link rel="preload" href="fonts/Fredoka.ttf" as="font" type="font/ttf" crossorigin />
-  <link rel="stylesheet" href="css/jet.css?v=31" />
-  <link rel="stylesheet" href="css/loading.css?v=31" />
+  <link rel="stylesheet" href="css/jet.css?v=32" />
+  <link rel="stylesheet" href="css/loading.css?v=32" />
   <script type="importmap">{ "imports": { "three": "./js/vendor/three.module.min.js" } }</script>
 <script>window.__titleArt=0;</script>
 </head>
@@ -77,11 +77,12 @@
       <div class="scene-label" id="scene-label"></div>
       <div id="menu-buttons" class="menu-buttons plates t26-sec"></div>
       <div class="sec-links" id="sec-links"></div>
-      <button type="button" class="plate reroll" id="btn-reroll" aria-label="Choose scenery"><svg viewBox="0 0 24 24" width="22" height="22"><rect x="3.5" y="3.5" width="17" height="17" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><g fill="currentColor"><circle cx="8.5" cy="8.5" r="1.5"/><circle cx="15.5" cy="15.5" r="1.5"/><circle cx="15.5" cy="8.5" r="1.5"/><circle cx="8.5" cy="15.5" r="1.5"/></g></svg><span class="no-i18n">SCENERY</span></button>
+      <button type="button" class="plate reroll" id="btn-reroll" aria-label="Choose scenery"><svg viewBox="0 0 24 24" width="22" height="22"><rect x="3.5" y="3.5" width="17" height="17" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><g fill="currentColor"><circle cx="8.5" cy="8.5" r="1.5"/><circle cx="15.5" cy="15.5" r="1.5"/><circle cx="15.5" cy="8.5" r="1.5"/><circle cx="8.5" cy="15.5" r="1.5"/></g></svg><span class="no-i18n" id="reroll-lbl">SCENE &amp; JET</span></button>
       <div class="t26-bottom">
         <button type="button" id="tap-fly" class="t26-tap"><i class="hz hz-t"></i><span class="t26-tapt">TAP TO FLY</span><i class="hz hz-b"></i></button>
         <div class="t26-by"><svg viewBox="0 0 48 48" width="26" height="26" aria-hidden="true"><path d="M5 6h38L24 44z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M15 12h18v5h-6.5v14h-5V17H15z" fill="currentColor"/></svg><span>by TESSIE</span></div>
       </div>
+      <div class="t32-ver" id="t32-ver">V 1.32</div>
       <div class="tap-prompt" id="tap-prompt" style="display:none"></div>
     </div>
     <div id="panel" class="panel hidden" role="dialog">
@@ -197,6 +198,6 @@
     </div>
   </section>
   <div id="build-tag" class="build-tag"></div>
-  <script type="module" src="js/main.js?v=31"></script>
+  <script type="module" src="js/main.js?v=32"></script>
 </body>
 </html>

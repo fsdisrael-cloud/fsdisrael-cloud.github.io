@@ -1,15 +1,15 @@
 // Ubu game world: flight model, camera, targets, AI, weapons, effects, objectives.
-import { createPost } from "./post.js?v=31";
+import { createPost } from "./post.js?v=32";
 import * as THREE from "three";
-import { buildTerrain } from "./terrain.js?v=31";
-import { createSky } from "./sky.js?v=31";
-import { createPilot, createSeat, createChute, createAirstrip, STRIP, createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createAlienWalker, createAlienTurret, createAlienSpire, createHive, createShip, createWarship, createSub, createSamSite, createRocket, createHeli, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=31";
-import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=31";
-import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=31";
-import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=31";
-import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=31";
-import { setQuality, FX as FXQ } from "./tex.js?v=31";
-import { style, patchTerrain, waveAt, createDreamShapes, onStyle, setLake } from "./surreal.js?v=31";
+import { buildTerrain } from "./terrain.js?v=32";
+import { createSky } from "./sky.js?v=32";
+import { createPilot, createSeat, createChute, createAirstrip, STRIP, createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createAlienWalker, createAlienTurret, createAlienSpire, createHive, createShip, createWarship, createSub, createSamSite, createRocket, createHeli, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=32";
+import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=32";
+import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=32";
+import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=32";
+import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=32";
+import { setQuality, FX as FXQ } from "./tex.js?v=32";
+import { style, patchTerrain, waveAt, createDreamShapes, onStyle, setLake } from "./surreal.js?v=32";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V(), tE = V();
@@ -83,7 +83,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   for (const m of [pTracers, eTracers, aTracers]) { m.count = 0; m.frustumCulled = false; scene.add(m); }
   const bullets = []; // {p, v, life, enemy}
 
-  const PUFFS = 760;
+  const PUFFS = 520;   // b32: lighter
   const puffGeo = puffGeometry();
   // smoke: soft, translucent, lit puffs (no cartoon outline) - realistic smoke trails and explosion plumes
   const smokeGeo = puffGeo.clone();
@@ -101,7 +101,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   const puffOutline = new THREE.InstancedMesh(puffGeo, outlineMaterial(0x2a2a2a, 0.55), PUFFS);
   for (const m of [puffMesh, puffOutline]) { m.count = 0; m.frustumCulled = false; scene.add(m); }
   puffOutline.visible = false; puffMesh.renderOrder = 4;
-  const puffs = [];
+  const puffs = [], puffFree = [];
   const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = V(), _c = new THREE.Color();
 
   // additive glow particles (fire, sparks, prismatic trails) - cheap, one draw call
@@ -212,8 +212,10 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
 
   // ---------- effects ----------
   function puff(p, v, s0, s1, life, color, big) {
-    if (puffs.length >= PUFFS) puffs.shift();
-    puffs.push({ p: p.clone(), v: v ? v.clone() : V(), s0, s1, life, t: 0, color, big });
+    // b32: recycle puff objects (no per-puff allocations -> fewer GC stutters)
+    const o = puffs.length >= PUFFS ? puffs.shift() : (puffFree.pop() || { p: V(), v: V() });
+    o.p.copy(p); if (v) o.v.copy(v); else o.v.set(0, 0, 0); o.s0 = s0; o.s1 = s1; o.life = life; o.t = 0; o.color = color; o.big = big;
+    puffs.push(o);
   }
   // ---------- ribbon trails: continuous soft tubes (camera-facing 3-vertex strips), never particles / beads ----------
   const RB_N = 90, rbPool = [[], []], rbLive = [], _rbA = new THREE.Vector3(), _rbB = new THREE.Vector3(), _rbS = new THREE.Vector3();
@@ -483,6 +485,41 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   // aircraft carrier: a friendly landing deck on open water
   let pad = null, landingOpen = false, landing = null;
   // b23: enemy warships (bow wake, mast, guns) and submarines that surface and dive. They count as kills but are never mission objectives.
+  let chaseOn = false;
+  function chaseTarget() {
+    if (nearPad || landing || maneuver || crashing || ops) return null;
+    let best = null, bd = 1700; const f = fwdFrom(player.yaw, player.pitch, V());
+    for (const t of targets) { if (!t.alive || t.kind !== "jet" || t.heli) continue; tA.subVectors(t.pos, player.pos); const d = tA.length(); if (d < 80 || d > bd) continue; if (tA.normalize().dot(f) < 0.8) continue; best = t; bd = d; }
+    return best;
+  }
+  function spawnQuotaShip() {
+    if (alienT) return false;
+    const c = waterSpot(player.pos.x, player.pos.z, 4200) || waterSpot(center.x, center.z, half * 0.7); if (!c) return false;
+    c.y = groundAt(c.x, c.z) + 0.5; const t = addTarget("ship", createWarship(), c, { heading: rng() * Math.PI * 2, speed: 3 + rng() * 2, hp: 12, sea: "war", quota: true }); t.objective = true;
+    events.toast?.("Enemy warship spotted!", "warn"); return true;
+  }
+  // b32: a shot-down jet falls burning and its pilot ejects under a chute
+  const wrecks = [];
+  function addWreck(t) {
+    const o = t.obj; scene.add(o);
+    const chute = new THREE.Group();
+    const canopy = new THREE.Mesh(new THREE.SphereGeometry(4.2, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0xf2f2f2, side: THREE.DoubleSide }));
+    canopy.position.y = 7; chute.add(canopy);
+    const man = new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 1.2, 3, 6), new THREE.MeshLambertMaterial({ color: 0x334422 })); chute.add(man);
+    chute.position.copy(t.pos).add(tA.set(0, 6, 0)); chute.visible = false; scene.add(chute);
+    wrecks.push({ o, v: t.vel.clone().multiplyScalar(0.6), spin: (Math.random() - 0.5) * 3, t: 0, chute, cv: V(t.vel.x * 0.2, 14, t.vel.z * 0.2) });
+  }
+  function updateWrecks(dt) {
+    for (let i = wrecks.length - 1; i >= 0; i--) {
+      const w = wrecks[i]; w.t += dt;
+      w.v.y -= 22 * dt; w.o.position.addScaledVector(w.v, dt); w.o.rotation.z += w.spin * dt; w.o.rotation.x += 0.5 * dt;
+      if (Math.random() < dt * 30) puff(w.o.position, null, 3, 12, 2.2, Math.random() < 0.4 ? 0xff8a30 : 0x2a2a2a);
+      if (w.t > 0.6) { w.chute.visible = true; w.cv.y += (-6 - w.cv.y) * Math.min(1, dt * 1.5); w.cv.x *= 0.98; w.cv.z *= 0.98; w.chute.position.addScaledVector(w.cv, dt); w.chute.rotation.z = Math.sin(w.t * 1.3) * 0.12; }
+      const g = groundAt(w.o.position.x, w.o.position.z);
+      if (w.o.visible && w.o.position.y < g + 3) { explode(w.o.position.clone(), 18, 1.4); w.o.visible = false; scene.remove(w.o); }
+      if (w.chute.position.y < groundAt(w.chute.position.x, w.chute.position.z) + 1 || w.t > 60) { scene.remove(w.chute); w.chute.traverse((m) => { m.geometry?.dispose?.(); m.material?.dispose?.(); }); wrecks.splice(i, 1); }
+    }
+  }
   function spawnSea() {
     if (alienT) return;
     const n = (L && L.n) || 1;
@@ -529,7 +566,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     const t = spawnJet(near), f = fwdFrom(player.yaw, 0, V()); f.y = 0; f.normalize();
     const a = (rng() - 0.5) * 0.6, d = chase ? 900 + rng() * 500 : 1200 + rng() * 1600, c = Math.cos(a), sn = Math.sin(a);
     const dir = V(f.x * c - f.z * sn, 0, f.x * sn + f.z * c);
-    t.pos.set(near.x + dir.x * d, 0, near.z + dir.z * d); t.pos.y = Math.max(groundAt(t.pos.x, t.pos.z) + 300, near.y + (rng() - 0.5) * 120); t.holdY = t.pos.y;
+    t.pos.set(near.x + dir.x * d, 0, near.z + dir.z * d); t.pos.y = Math.max(groundAt(t.pos.x, t.pos.z) + 550, near.y + (rng() - 0.5) * 120); t.holdY = t.pos.y;   // b32: fights stay high
     if (chase) { t.mode = "flee"; t.baseYaw = t.yaw = player.yaw; t.engageAt = 40 + rng() * 15; t.speed = THREE.MathUtils.clamp(player.speed * 0.8, 60, 140); t.jink = 1; }
     else { t.baseYaw = t.yaw = Math.atan2(dir.x, dir.z); }   // head-on toward the player
     return t;
@@ -538,7 +575,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     const a = rng() * Math.PI * 2, r = 5800 + rng() * 500;
     const p = V(near.x + Math.cos(a) * r, 0, near.z + Math.sin(a) * r);
     // Do not clamp to the map edge: that collapses distant spawns onto the player.
-    p.y = Math.max(groundAt(p.x, p.z) + 380, near.y + (rng() - 0.5) * 160);
+    p.y = Math.max(groundAt(p.x, p.z) + 550, near.y + (rng() - 0.5) * 160);
     const mode = "head", baseYaw = Math.atan2(-(near.x - p.x), -(near.z - p.z));
     const t = addTarget("jet", createEnemyJet(L.run?.foe, FOE_TYPES[L.run?.foe]), p, { yaw: Math.atan2(-(near.x - p.x), -(near.z - p.z)), pitch: 0, bank: 0, speed: (112 + L.difficulty * 40) * (assist ? 0.84 + 0.16 * skill : 1) * (1 - 0.38 * ezv()), burst: 0, mcool: 6 + rng() * 5, flyby: rng() < 0.6, off: (rng() < 0.5 ? -1 : 1) * (55 + rng() * 90), fb: 0, ct: 0 });
     t.objective = progress.jet != null;
@@ -580,7 +617,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     t.bank += (THREE.MathUtils.clamp(-yr / 0.6, -1, 1) * 0.8 - t.bank) * dt * 2.5;
     let wantPitch = THREE.MathUtils.clamp((t.holdY - t.pos.y) * 0.004 + Math.sin(t.t * 0.7 + t.ph) * 0.07, -0.3, 0.3);
     if (t.breakT > 0) wantPitch = t.pull * 0.45;
-    if (t.pos.y - groundAt(t.pos.x, t.pos.z) < 220) wantPitch = 0.4;
+    if (t.pos.y - groundAt(t.pos.x, t.pos.z) < 400) wantPitch = 0.4;
     t.pitch += (wantPitch - t.pitch) * dt * 1.2;
     const pf = fwdFrom(player.yaw, player.pitch, V()), onSix = pf.dot(tD.subVectors(t.pos, player.pos).normalize()) > 0.65 && pf.dot(fwdFrom(t.yaw, t.pitch, V())) > 0.3;
     if (onSix && dist < 1500) { const desired = THREE.MathUtils.clamp(player.speed * (dist > 600 ? 0.92 : 1.015), 105, 220); t.speed += (desired - t.speed) * Math.min(1, dt * 0.5); }
@@ -827,7 +864,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     for (let i = 0; i < 24; i++) { const a = (i / 24) * Math.PI * 2; for (const r of [0, 800, 1800]) maxH = Math.max(maxH, groundAt(sp.x + Math.cos(a) * r, sp.z + Math.sin(a) * r)); }
     sp.y = maxH + 420;
     player = { pos: sp, vel: V(), q: new THREE.Quaternion(), yaw: 0, pitch: 0, bank: 0, inverted: false, speed: 125, hp: 100, rockets: RACK, bombs: RACK, boost: 0, flares: 12 };
-    rocketCd = bombCd = 0; rocketRegen = bombRegen = 0; maneuver = null; crashing = null; lives = LIVES_MAX; ejClean(); invulnUntil = 0; heat = 0; overheated = false; lowAlt = false; voiceT = 0;
+    rocketCd = bombCd = 0; rocketRegen = bombRegen = 0; maneuver = null; crashing = null; wrecks.length = 0; lives = LIVES_MAX; ejClean(); invulnUntil = 0; heat = 0; overheated = false; lowAlt = false; voiceT = 0;
     landing = null; landingOpen = false; pad = null; baseCenters.length = 0;
     plane.visible = true;
     const zone = new THREE.Vector3(center.x, 0, center.z - 1800);
@@ -1087,7 +1124,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       }
     }
     assistDanger += (danger - assistDanger) * (1 - Math.exp(-dt * 8));
-    if (assistDanger > 0.02 && assistDanger > 0.55) { setAlert("PULL UP", 0.3); if (elapsed - rescueAt > 2.5) { rescueAt = elapsed; audio.pullUp(); } }
+    if (assistDanger > 0.85) { setAlert("PULL UP", 0.3); if (elapsed - rescueAt > 2.5) { rescueAt = elapsed; audio.pullUp(); } }
     // ---- pitch: stick = nose RATE (expo). Hard pull = extra-fast break; airbrake tightens it further
     const uP = Math.max(0, Math.abs(st.pitch) - 0.05) / 0.95;
     const sm = (a, b, x) => { const t = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
@@ -1115,7 +1152,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     // ground rescue: roll upright first if inverted, then pull
     if (assistDanger > 0.02) {
       const upr = Math.max(0, Math.cos(player.bank));
-      if (player.pitch < 0.7) pitchRate = Math.max(pitchRate, assistDanger * 1.6 * upr);
+      if (player.pitch < 0.7 && assistDanger > 0.6) pitchRate = Math.max(pitchRate, (assistDanger - 0.6) * 3 * upr);   // b32: last-moment help only
       if (assistDanger > 0.3 && player.inverted) rr += -Math.sign(player.bank || 1) * 3.2 * assistDanger;
     }
     // minimal tap-aim only (air taps); no passive steering of the nose
@@ -1186,6 +1223,11 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     // speed
     const boost = controls.boost() ? 1 : 0;
     let target = (52 + throttle * 190) * (assist ? 1 - 0.2 * ezv() : 1) + boost * 55 - Math.sin(player.pitch) * 55;   // throttle lever: 120 (slow) .. 320 (fast)
+    // b32 ARCADE CHASE: an enemy close ahead -> auto match its speed (sit ~250 m behind) and softly slide in behind it (height + line)
+    { const ct = chaseTarget(); if (ct && !boost) { const d = ct.pos.distanceTo(player.pos), want = ct.speed + THREE.MathUtils.clamp((d - 250) * 0.12, -25, 45); target += (want - target) * 0.85;
+      const sk = Math.max(0, 1 - Math.max(Math.abs(controls.stick.pitch), Math.abs(controls.stick.roll)) * 1.4);
+      player.pos.y += THREE.MathUtils.clamp(ct.pos.y - player.pos.y, -40, 40) * 0.5 * dt * sk;
+      tB.subVectors(ct.pos, player.pos); const ex = -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw); rotWorld(AY, -THREE.MathUtils.clamp(ex, -0.4, 0.4) * 0.7 * dt * sk); chaseOn = true; } else chaseOn = false; }
     target *= 1 - 0.5 * brkV; target -= 16 * Math.min(1, Math.max(Math.abs(aP), Math.abs(aR) * 0.5)) * (1 - boost);
     if (maneuver && maneuver.kind === "loop") target = Math.max(target, 140);
     if (nearPad) target = Math.min(target, 100);
@@ -1197,12 +1239,12 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     player.pos.addScaledVector(player.vel, dt);
     const g2 = groundAt(player.pos.x, player.pos.z);
     if (player.pos.y > g2 + 5000) player.pos.y = g2 + 5000; // soft ceiling
-    if (assist && !nearPad && !landing && !maneuver && player.pos.y < g2 + 18) player.pos.y = g2 + 18;   // assist: the ground is a soft floor, you cannot plough into it
+    // b32: no invisible floor - you CAN crash   // assist: the ground is a soft floor, you cannot plough into it
     const agl = player.pos.y - g2;
     // gentle terrain avoidance: easy and fun, never a surprise crash while skimming
     if (!maneuver && !nearPad && agl < 25 && player.vel.y < 0) rotBody(AX, (1 - agl / 55) * 2.2 * Math.max(0, Math.cos(player.bank)) * dt);
     // low-altitude warning (no auto-correction): < 120 m while descending, or anything below 60 m
-    lowAlt = !maneuverSafe() && !nearPad && !landing && elapsed > invulnUntil && ((agl < 120 && player.vel.y < -2) || agl < 60);
+    lowAlt = !maneuverSafe() && !nearPad && !landing && elapsed > invulnUntil && agl < 90 && player.vel.y < -6 && agl / -player.vel.y < 3.5;   // b32: PULL UP only when really about to hit
     updatePlaneTransform();
     // b26: fly low and aligned over the airstrip and the landing assist takes you down
     if (strip && !maneuver && !landing) {
@@ -1776,6 +1818,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   function kill(t, byAlly = false) {
     t.alive = false;
     scene.remove(t.obj);
+    if (t.kind === "jet" && !t.heli && !byAlly && wrecks.length < 4 && Math.random() < 0.6) addWreck(t);
     const size = t.kind === "boss" ? 75 : t.kind === "ship" ? 30 : t.kind === "jet" ? 16 : t.kind === "base" ? (t.sub === "fuel" ? 30 : 22) : 14;
     if (t.kind === "balloon") { audio.click(); for (let i = 0; i < 8; i++) puff(t.pos, tA.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(40), 2, 5, 0.6, 0xffffff); }
     else {
@@ -1793,10 +1836,11 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
 
     if (!byAlly) events.onPop?.(pts, combo, t.kind);
     if (t.kind !== "balloon" && t.kind !== "jet") fires.push({ pos: t.pos.clone(), t: 0, life: 16 + Math.random() * 12, e: 0, big: t.kind === "ship" || (t.kind === "base" && t.sub === "fuel") ? 2 : 1 });
-    if (progress[t.kind] != null) {
-      const o = L.objectives.find((x) => x.kind === t.kind);
-      progress[t.kind] = Math.min(o.need, progress[t.kind] + 1);
-      events.toast?.(byAlly ? `Ally got a ${(LABEL1[t.kind] || t.kind).toLowerCase()} ${progress[t.kind]}/${o.need}` : `${LABEL1[t.kind] || t.kind} ${progress[t.kind]}/${o.need}  +${pts}`);
+    const qk = t.kind === "ship" && t.quota ? "jet" : t.kind;   // b32: enemy warships count in the enemy quota
+    if (progress[qk] != null) {
+      const o = L.objectives.find((x) => x.kind === qk);
+      progress[qk] = Math.min(o.need, progress[qk] + 1);
+      events.toast?.(byAlly ? `Ally got a ${(LABEL1[t.kind] || t.kind).toLowerCase()} ${progress[qk]}/${o.need}` : `${LABEL1[t.kind] || t.kind} ${progress[qk]}/${o.need}  +${pts}`);
     } else events.toast?.(byAlly ? `Ally got a ${(LABEL1[t.kind] || t.kind).toLowerCase()}` : `${LABEL1[t.kind] || t.kind}  +${pts}`);
     if (lockTarget === t) lockTarget = null;
     checkDone();
@@ -2165,7 +2209,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       if (a < candA) { candA = a; cand = t; }
     }
     if (tapT > 0) { tapT -= dt; if (tapTarget?.alive) { const d = tA.subVectors(tapTarget.pos, player.pos); if (d.length() < 4200 && d.normalize().angleTo(fwd) < 0.3) cand = tapTarget; } else tapT = 0; }
-    if (cand && cand === lockCand) { lockTime += dt; if (lockTime > 0.8 && lockTarget !== cand) { lockTarget = cand; if (allowed.includes("rocket")) { audio.lock(); } } }
+    if (cand && cand === lockCand) { lockTime += dt; if (lockTime > 0.5 && lockTarget !== cand) { lockTarget = cand; if (allowed.includes("rocket")) { audio.lock(); } } }
     else { lockCand = cand; lockTime = 0; lockTarget = null; }
 
     const hardBreak = Math.abs(controls.stick.roll) > 0.86 || Math.abs(controls.stick.pitch) > 0.86;
@@ -2205,7 +2249,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     ccipLine.visible = false;   // b24: the HUD draws ONE solid guidance line + lock circle
     if (false) { const a = ccipLine.geometry.attributes.position; a.setXYZ(0, player.pos.x, player.pos.y - 4, player.pos.z); a.setXYZ(1, ccipRing.position.x, ccipRing.position.y, ccipRing.position.z); a.needsUpdate = true; }
 
-    if (player.speed < 72 && player.pos.y - groundAt(player.pos.x, player.pos.z) > 35) {
+    if (player.speed < 42 && player.pos.y - groundAt(player.pos.x, player.pos.z) > 35) {
       setAlert("STALL - ADD THROTTLE", 0.3); if ((warnTimer -= dt) < 0) { audio.pullUp(); warnTimer = 0.8; }
     }
     if (lowAlt) {
@@ -2270,7 +2314,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       pad.pos.x += Math.sin(pad.heading) * pad.speed * dt; pad.pos.z += Math.cos(pad.heading) * pad.speed * dt;
       pad.pos.y = 0.4 + Math.sin(pad.t * 0.7) * 0.25;
     }
-    updateFires(dt);
+    updateFires(dt); updateWrecks(dt);
     // endless reinforcement waves of enemy jets
     if (false && jetSpawner && !ended) {
       waveT += dt;
@@ -2306,7 +2350,8 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       if (alive < jetSpawner.atOnce && jetSpawner.remaining > 0) {
         const first = jetSpawner.n < jetSpawner.atOnce, k = jetSpawner.n++ % 3;
         // opening group: right ahead (one is a chase target); every replacement: random 360 deg bearing at the radar edge, flying in
-        if (first) (k === 2 ? spawnHeli : spawnJetAhead)(player.pos, k === 1);
+        if (!first && jetSpawner.n % 5 === 0 && spawnQuotaShip()) { /* b32: a warship joins the mix */ }
+        else if (first) (k === 2 ? spawnHeli : spawnJetAhead)(player.pos, k === 1);
         else if (k === 2) { const h = spawnHeli(player.pos), a = rng() * Math.PI * 2, r = 5600 + rng() * 600; h.pos.set(player.pos.x + Math.cos(a) * r, 0, player.pos.z + Math.sin(a) * r); h.pos.y = h.hoverY = Math.max(groundAt(h.pos.x, h.pos.z) + 90, 60); h.yaw = Math.atan2(-(player.pos.x - h.pos.x), -(player.pos.z - h.pos.z)); }
         else spawnJet(player.pos);
         jetSpawner.remaining--;
@@ -2543,7 +2588,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   }
   // b21: enemies fire far less: slower rates (x3 on levels 1-3, x2.4 at level 10, easing back to x1.3), fewer live shots at once
   // beginner levels: enemy guns / flak are basically harmless; missiles are the only real threat
-  function gunDmgK() { return ezv() >= 0.6 ? 0.03 : 0.5; }
+  function gunDmgK() { return ezv() >= 0.6 ? 0.35 : 0.6; }   // b32: enemies can really hurt you (not too hard)
   // enemy missile lock: builds slowly while the player flies straight and level at them, decays 3x faster when he turns
   function lockRamp(t, dt, cond) { t.elk = cond ? (t.elk || 0) + dt : Math.max(0, (t.elk || 0) - dt * 3); return t.elk >= (1.8 + 2.2 * ezv()); }
   function fireK() { return 1.3 + 1.7 * ezv(); }
@@ -2896,7 +2941,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     for (let i = puffs.length - 1; i >= 0; i--) {
       const p = puffs[i];
       p.t += dt;
-      if (p.t >= p.life) { puffs.splice(i, 1); continue; }
+      if (p.t >= p.life) { puffs.splice(i, 1); if (puffFree.length < 400) puffFree.push(p); continue; }
     }
     for (const p of puffs) {
       const k = p.t / p.life;

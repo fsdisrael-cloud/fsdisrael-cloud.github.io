@@ -2,8 +2,8 @@
 // Player + enemy jets: PBR-lit (metal, glossy canopy, environment reflections) with a thin illustrated outline.
 // Ground units: toon + outline. Illustrated look, readable colours.
 import * as THREE from "three";
-import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=31";
-import { patchDetail, missileTex } from "./tex.js?v=31";
+import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=32";
+import { patchDetail, missileTex } from "./tex.js?v=32";
 
 const PI = Math.PI;
 
@@ -320,7 +320,7 @@ function buildJet(kind, vk = "", variant = null) {
   const frameM = pbr({ color: 0x15181d, metalness: 0.7, roughness: 0.5 });
   const cbar = (px, py, pz, sx, sy, sz, rz = 0) => { const m = new THREE.Mesh(G.box, frameM); m.position.set(px, py, pz); m.scale.set(sx, sy, sz); m.rotation.z = rz; cockpit.add(m); };
   // b30: centre glareshield block removed (it sat in the middle of the cockpit view)
-  for (const s of [-1, 1]) cbar(s * 0.62, 0.9, -3.0, 0.07, 0.07, 3.2, -s * 0.5);
+  // b32: canopy side rails removed (the "iron bars")
   cockpit.visible = false; root.add(cockpit);
 
   // b26: gloved pilot hands (cockpit view): right on the stick, left on the throttle, eject handle between the knees
@@ -376,7 +376,7 @@ function buildJet(kind, vk = "", variant = null) {
     const lh = makeHand(true); lh.g.position.set(0, 0.33, 0); thr.add(lh.g);
     // eject handle (black/yellow hazard ring)
     const ej = new THREE.Group(); ej.position.set(0.0, 0.3, 0.95); cockpit.add(ej);
-    const hz = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.014, 8, 18), pbr({ color: 0xffc400, metalness: 0.2, roughness: 0.5 })); hz.rotation.x = Math.PI / 2 - 0.6; hz.scale.setScalar(1.4); ej.add(hz);
+    const hz = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.014, 8, 18), pbr({ color: 0xffc400, metalness: 0.2, roughness: 0.5 })); hz.rotation.x = Math.PI / 2 - 0.6; hz.scale.setScalar(2.2); ej.add(hz);
     const hz2 = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.16, 8), pbr({ color: 0x111111, metalness: 0.2, roughness: 0.6 })); hz2.rotation.z = Math.PI / 2; hz2.position.set(0, 0.0, 0.03); ej.add(hz2);
     const curl = (h, c, trig, k) => {
       for (let i = 0; i < 4; i++) { const base = c + (i === 0 ? trig * 0.35 : 0) + Math.sin(k * 1.7 + i) * 0.02; h.fing[i][0].rotation.y = -(0.62 + base * 0.5); h.fing[i][1].rotation.y = -(0.95 + base * 0.45); h.fing[i][2].rotation.y = -(0.8 + base * 0.35); }

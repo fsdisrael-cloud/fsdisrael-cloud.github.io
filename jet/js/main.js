@@ -1,17 +1,17 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=31";
-import { createHud } from "./hud.js?v=31";
-import { createControls } from "./controls.js?v=31";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun } from "./variety.js?v=31";
-import { createAudio, trackFor } from "./audio.js?v=31";
-import { createHaptics } from "./haptics.js?v=31";
-import { createRain2D } from "./rain2d.js?v=31";
-import { createLoading } from "./loading.js?v=31";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=31";
-import { setSurreal, tickStyle } from "./surreal.js?v=31";
-import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=31";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=31";
+import { createGame } from "./game.js?v=32";
+import { createHud } from "./hud.js?v=32";
+import { createControls } from "./controls.js?v=32";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun } from "./variety.js?v=32";
+import { createAudio, trackFor } from "./audio.js?v=32";
+import { createHaptics } from "./haptics.js?v=32";
+import { createRain2D } from "./rain2d.js?v=32";
+import { createLoading } from "./loading.js?v=32";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=32";
+import { setSurreal, tickStyle } from "./surreal.js?v=32";
+import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=32";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=32";
 
 const $ = (id) => document.getElementById(id);
 
@@ -59,7 +59,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPrefer
 // b25: phones render at <=1.5x (sharp, but ~45% fewer pixels than 2x) and the adaptive check below still steps down if fps dips
 const IS_TOUCH = matchMedia("(pointer: coarse)").matches;
 window.__touchDev = IS_TOUCH;
-let pixelRatio = Math.min(IS_TOUCH ? 1.5 : 2, window.devicePixelRatio || 1);
+let pixelRatio = Math.min(IS_TOUCH ? 1.3 : 2, window.devicePixelRatio || 1);   // b32: steadier frame rate on phones
 renderer.setPixelRatio(pixelRatio);
 renderer.setSize(innerWidth, innerHeight, false);
 const audio = createAudio();
@@ -542,10 +542,16 @@ window.addEventListener("jet-tap", (e) => { try { const d = e.detail; if (!(d &&
 window.addEventListener("keydown", (e) => { if (e.code === "KeyT" && !e.repeat) { try { game.lockNearest(); } catch { /* ignore */ } } });
 $("btn-eject")?.addEventListener("click", () => game.eject());
 // b30: yellow/black seat handles - hold 0.8 s to eject (any time in the air)
-{ const h = $("eject-handles"); let tm = 0; const go = (e) => { e.preventDefault(); e.stopPropagation(); h.classList.add("pull"); clearTimeout(tm); tm = setTimeout(() => { h.classList.remove("pull"); game.ejectNow?.(); }, 800); };
+{ const h = $("eject-handles"); let tm = 0; const go = (e) => { e.preventDefault(); e.stopPropagation(); h.classList.add("pull"); clearTimeout(tm); tm = setTimeout(() => { h.classList.remove("pull"); game.ejectNow?.(); }, 350); };   // b32: quick pull (0.35 s)
   const stop = () => { clearTimeout(tm); h.classList.remove("pull"); };
-  h?.addEventListener("touchstart", go, { passive: false }); h?.addEventListener("mousedown", go); for (const n of ["touchend", "touchcancel", "mouseup", "mouseleave"]) h?.addEventListener(n, stop); }
+  h?.addEventListener("touchstart", go, { passive: false, capture: true }); h?.addEventListener("pointerdown", (e) => { if (e.pointerType !== "touch") go(e); }); for (const n of ["touchend", "touchcancel", "mouseup", "mouseleave"]) h?.addEventListener(n, stop); }
 $("btn-takeoff")?.addEventListener("click", () => { controls.calibrate(); game.takeoff(); });   // b31: tilt neutral = how you hold the phone at takeoff
 $("btn-autoland")?.addEventListener("click", () => game.autoLand());
 window.addEventListener("keydown", (e) => { if (e.code === "Enter" && !e.repeat) game.takeoff(); if (e.code === "KeyL" && !e.repeat) game.autoLand(); });
 window.__ubu = { goBackground, readSave, writeSave, game, controls, audio, hud, loading, state: () => state, play, launch, levelNo: () => levelNo };
+// b32: version on title (V 1.<build>)
+fetch("version.json?t=" + Date.now()).then(r => r.json()).then(j => { const e = document.getElementById("t32-ver"); if (e && j && j.build) e.textContent = "V 1." + j.build; }).catch(() => {});
+// b32: SCENERY button = new scene + new jet; localized label
+{ const L = { en:"SCENE & JET", he:"נוף ומטוס", es:"ESCENA Y AVIÓN", fr:"DÉCOR ET AVION", de:"SZENE & JET", ar:"المشهد والطائرة", ru:"СЦЕНА И САМОЛЁТ", pt:"CENÁRIO E AVIÃO", it:"SCENA E JET" };
+  const up = () => { const e = document.getElementById("reroll-lbl"); if (e) e.textContent = L[(document.documentElement.lang || "en").slice(0, 2)] || L.en; };
+  up(); new MutationObserver(up).observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] }); }
