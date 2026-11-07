@@ -148,6 +148,8 @@ export function createControls() {
     bindTP(root, {
       down(e, id, x, y) {
         if (!enabled || joy.active) return;
+        // b29: the stick box overlaps the weapon buttons on small phones -> a touch on a weapon button is never a stick tap
+        for (const wb of document.querySelectorAll(".wbtn, .abtn, .tgt-b")) { const r = wb.getBoundingClientRect(); if (r.width && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) { wb.dispatchEvent(new CustomEvent("jet-fwd")); return; } }
         joy.active = true; joy.id = id; joy.sx = x; joy.sy = y; joy.t0 = e.timeStamp || performance.now(); joy.maxd = 0; joy.side = 0;
         say("stick");
       },
@@ -201,6 +203,9 @@ export function createControls() {
     const own = { gun: null, msl: null, bomb: null, up: null, dn: null };
     bindTP(bGun, { down(e, id) { own.gun = id; gunHeld = true; press(bGun, true); say("gun"); }, up(e, id) { if (id === own.gun) { own.gun = null; gunHeld = false; press(bGun, false); } } });
     bindTP(bMsl, { down(e, id) { own.msl = id; if (enabled) { rocketEdge = true; mslHeld = true; } press(bMsl, true); say("missile"); }, up(e, id) { if (id === own.msl) { own.msl = null; mslHeld = false; press(bMsl, false); } } });
+    bMsl.addEventListener("jet-fwd", () => { if (enabled) rocketEdge = true; press(bMsl, true); setTimeout(() => press(bMsl, false), 140); say("missile"); });
+    bBomb.addEventListener("jet-fwd", () => { bombEdge = true; press(bBomb, true); setTimeout(() => press(bBomb, false), 140); say("bomb"); });
+    bGun.addEventListener("jet-fwd", () => { gunHeld = true; setTimeout(() => { gunHeld = false; }, 250); say("gun"); });
     bindTP(bBomb, { down(e, id) { own.bomb = id; bombEdge = true; bombHeld = true; press(bBomb, true); say("bomb"); }, up(e, id) { if (id === own.bomb) { own.bomb = null; bombHeld = false; press(bBomb, false); } } });
     const bUp = root.querySelector('[data-w="tgt-up"]'), bDn = root.querySelector('[data-w="tgt-dn"]');
     if (bUp) bindTP(bUp, { down(e, id) { tgtEdge = -1; press(bUp, true); say("tgt"); }, up(e, id) { press(bUp, false); } });

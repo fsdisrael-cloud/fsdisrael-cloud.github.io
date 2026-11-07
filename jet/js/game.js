@@ -1,15 +1,15 @@
 // Ubu game world: flight model, camera, targets, AI, weapons, effects, objectives.
-import { createPost } from "./post.js?v=27";
+import { createPost } from "./post.js?v=29";
 import * as THREE from "three";
-import { buildTerrain } from "./terrain.js?v=27";
-import { createSky } from "./sky.js?v=27";
-import { createPilot, createSeat, createChute, createAirstrip, STRIP, createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createAlienWalker, createAlienTurret, createAlienSpire, createHive, createShip, createWarship, createSub, createSamSite, createRocket, createHeli, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=27";
-import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=27";
-import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=27";
-import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=27";
-import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=27";
-import { setQuality, FX as FXQ } from "./tex.js?v=27";
-import { style, patchTerrain, waveAt, createDreamShapes, onStyle, setLake } from "./surreal.js?v=27";
+import { buildTerrain } from "./terrain.js?v=29";
+import { createSky } from "./sky.js?v=29";
+import { createPilot, createSeat, createChute, createAirstrip, STRIP, createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createAlienWalker, createAlienTurret, createAlienSpire, createHive, createShip, createWarship, createSub, createSamSite, createRocket, createHeli, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=29";
+import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=29";
+import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=29";
+import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=29";
+import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=29";
+import { setQuality, FX as FXQ } from "./tex.js?v=29";
+import { style, patchTerrain, waveAt, createDreamShapes, onStyle, setLake } from "./surreal.js?v=29";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V(), tE = V();
@@ -938,7 +938,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   const maneuverSafe = () => !!(maneuver && maneuver.kind === "roll" && player.pos.y - groundAt(player.pos.x, player.pos.z) > 120);
   function startRoll(dir) {
     if (maneuver || crashing) return;
-    maneuver = { kind: "roll", dir, phase: "level", t: 0, ang: 0 };
+    maneuver = { kind: "roll", dir, phase: "level", t: 0, ang: 0 }; controls.resetLook?.();
     audio.whoosh();
     events.toast?.(dir > 0 ? "Barrel roll right!" : "Barrel roll left!");
   }
@@ -1062,10 +1062,10 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       for (let k = 1; k <= 5; k++) {
         const t = k * 0.95, px = player.pos.x + player.vel.x * t, pz = player.pos.z + player.vel.z * t, py = player.pos.y + player.vel.y * t;
         const clear = py - groundAt(px, pz);
-        danger = Math.max(danger, THREE.MathUtils.clamp((200 - clear) / 200, 0, 1) * (1 - (k - 1) * 0.1));
+        danger = Math.max(danger, THREE.MathUtils.clamp((70 - clear) / 70, 0, 1) * (1 - (k - 1) * 0.1));
       }
       const agl0 = player.pos.y - groundAt(player.pos.x, player.pos.z);
-      if (agl0 < 120) danger = Math.max(danger, 1);
+      if (agl0 < 30) danger = Math.max(danger, 1);   // b29: only a real near-ground rescue; full dive allowed
       for (const t of targets) {
         if (!t.alive || !SOLID[t.kind] || t.kind === "jet") continue;
         _vA.subVectors(t.pos, player.pos); const dd = _vA.length(); if (dd > 900 || dd < 1) continue;
@@ -1082,7 +1082,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     const sm = (a, b, x) => { const t = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
     const maxPR = (1.9 - 0.3 * ez) * (1 + 0.12 * brkV) * (1 + 0.2 * sm(0.72, 1, uP));
     let pitchRate = Math.sign(st.pitch) * Math.pow(uP, 1.3) * maxPR;
-    if (pitchRate < 0 && !player.inverted) pitchRate *= Math.max(0, 1 - assistDanger * 1.6);
+    if (pitchRate < 0 && !player.inverted && assistDanger > 0.6) pitchRate *= Math.max(0, 1 - (assistDanger - 0.6) * 2.5);
     if (pitchRate > 0 && player.inverted && assistDanger > 0.1) pitchRate *= Math.max(0, 1 - assistDanger * 1.6);
     loopT = Math.abs(st.pitch) > 0.97 ? loopT + dt : 0;
     // ---- roll: stick = roll RATE; full stick = fast barrel roll. Gentle input stops at ~80 deg bank (a clean banked turn); a firm push rolls on through
@@ -1122,7 +1122,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       if (dd > 60 && dd < 4600 && _vA.z < 0) {
         const ex = Math.atan2(_vA.x, -_vA.z), ey = Math.atan2(_vA.y, Math.hypot(_vA.x, _vA.z));
         if (Math.abs(ex) < 1.0 && Math.abs(ey) < 0.75) {
-          const w = Math.max(0.15, 0.95 - 0.6 * sp) * (0.55 + 0.45 * ez);
+          const w = Math.max(0, 0.95 - 1.6 * sp) * (0.55 + 0.45 * ez);   // b29: any real stick / tilt input = no pull
           pitchRate += THREE.MathUtils.clamp(ey * 2.2, -0.9, 0.9) * w;
           rr += THREE.MathUtils.clamp(ex * 1.4, -1, 1) * w * 1.1 * Math.max(0, 1 - Math.abs(player.bank) / 1.1);
           rotBody(AY, -THREE.MathUtils.clamp(ex * 1.8, -1, 1) * w * dt);
@@ -1189,7 +1189,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (assist && !nearPad && !landing && !maneuver && player.pos.y < g2 + 18) player.pos.y = g2 + 18;   // assist: the ground is a soft floor, you cannot plough into it
     const agl = player.pos.y - g2;
     // gentle terrain avoidance: easy and fun, never a surprise crash while skimming
-    if (!maneuver && !nearPad && agl < 55 && player.vel.y < 0) rotBody(AX, (1 - agl / 55) * 2.2 * Math.max(0, Math.cos(player.bank)) * dt);
+    if (!maneuver && !nearPad && agl < 25 && player.vel.y < 0) rotBody(AX, (1 - agl / 55) * 2.2 * Math.max(0, Math.cos(player.bank)) * dt);
     // low-altitude warning (no auto-correction): < 120 m while descending, or anything below 60 m
     lowAlt = !maneuverSafe() && !nearPad && !landing && elapsed > invulnUntil && ((agl < 120 && player.vel.y < -2) || agl < 60);
     updatePlaneTransform();
@@ -1698,7 +1698,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       camera.fov = (portrait ? 80 : 60) + Math.max(0, player.speed - 140) * 0.1 + (camSurge - 0.35) * 9;
       const dist = (portrait ? 27 : 19) + (camSurge - 0.35) * 9;   // b26: arcade chase cam, closer; full throttle the jet surges ahead in frame, low throttle it drifts back
       // chase camera lives in the jet's own (smoothed) frame -> follows loops, rolls and inverted flight
-      camQ.slerp(player.q, snap ? 1 : 1 - Math.exp(-dt * (assist ? 3.6 : 4.5)));
+      camQ.slerp(player.q, snap ? 1 : 1 - Math.exp(-dt * ((maneuver && maneuver.kind === "roll") || Math.abs(controls.stick.roll) > 0.35 ? 16 : (assist ? 3.6 : 4.5))));   // b29: rolls - chase cam stays locked behind the jet, no swing
       const el = 0.17 - look.pitch, az = look.yaw, ce = Math.cos(el); // look: +yaw = view turns left, +pitch = view tilts up
       tA.set(Math.sin(az) * ce, Math.sin(el), Math.cos(az) * ce).multiplyScalar(dist).applyQuaternion(camQ);
       camera.position.copy(player.pos).add(tA);

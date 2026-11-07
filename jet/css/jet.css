@@ -775,3 +775,4 @@ body.tp-a .t26-lang, body.on-title .t26-lang { visibility:visible !important; op
 .t26-langlist { z-index:170; }
 .t26-langlist.float { position:fixed; top:70px; right:12px; left:auto; transform:none; }
 #btn-lang2 span { font-size:7px; }
+.weapons, .aux { z-index:6; position:absolute; } .stick { z-index:5; }

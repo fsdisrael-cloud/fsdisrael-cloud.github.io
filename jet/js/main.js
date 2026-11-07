@@ -1,17 +1,17 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=27";
-import { createHud } from "./hud.js?v=27";
-import { createControls } from "./controls.js?v=27";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun } from "./variety.js?v=27";
-import { createAudio, trackFor } from "./audio.js?v=27";
-import { createHaptics } from "./haptics.js?v=27";
-import { createRain2D } from "./rain2d.js?v=27";
-import { createLoading } from "./loading.js?v=27";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=27";
-import { setSurreal, tickStyle } from "./surreal.js?v=27";
-import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=27";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=27";
+import { createGame } from "./game.js?v=29";
+import { createHud } from "./hud.js?v=29";
+import { createControls } from "./controls.js?v=29";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun } from "./variety.js?v=29";
+import { createAudio, trackFor } from "./audio.js?v=29";
+import { createHaptics } from "./haptics.js?v=29";
+import { createRain2D } from "./rain2d.js?v=29";
+import { createLoading } from "./loading.js?v=29";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=29";
+import { setSurreal, tickStyle } from "./surreal.js?v=29";
+import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=29";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=29";
 
 const $ = (id) => document.getElementById(id);
 
@@ -75,6 +75,7 @@ initLogo3d();
 const loading = createLoading($("loading"));
 let lastProg = 0, lastText = "";
 const flashEl = (id) => { const f = $(id); f.style.transition = "none"; f.style.opacity = "1"; void f.offsetWidth; f.style.transition = "opacity .45s ease-out"; f.style.opacity = "0"; };
+window.__jet = { controls };
 const game = createGame({
   renderer, audio, controls, haptics,
   events: {
@@ -247,6 +248,7 @@ initLang();
 }
 buildMenu(); applyDom(); watchDom();
 game.attachWeaponCam($("wcam-c"));
+window.__jet.game = game;
 
 // ---------- start / levels ----------
 async function launch(n, fromTap, sv) {

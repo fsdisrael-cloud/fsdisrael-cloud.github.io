@@ -2,8 +2,8 @@
 // Surreal = pastel hue-shifting palette, gently wavy/melting terrain, soft outlines,
 // floating dream shapes and a cheap CSS glow. All GPU-cheap: a few shader lines + 4 draw calls.
 import * as THREE from "three";
-import { noiseTex, FX, terrainPhotos, BUMP_GLSL } from "./tex.js?v=27";
-import { outlineUniforms, toonMaterial, PartBuilder, G, outlineMaterial } from "./toon.js?v=27";
+import { noiseTex, FX, terrainPhotos, BUMP_GLSL } from "./tex.js?v=29";
+import { outlineUniforms, toonMaterial, PartBuilder, G, outlineMaterial } from "./toon.js?v=29";
 
 const KEY = "jet-style";
 export const style = {
