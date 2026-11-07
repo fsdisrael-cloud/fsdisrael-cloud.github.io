@@ -1,17 +1,17 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=32";
-import { createHud } from "./hud.js?v=32";
-import { createControls } from "./controls.js?v=32";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun } from "./variety.js?v=32";
-import { createAudio, trackFor } from "./audio.js?v=32";
-import { createHaptics } from "./haptics.js?v=32";
-import { createRain2D } from "./rain2d.js?v=32";
-import { createLoading } from "./loading.js?v=32";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=32";
-import { setSurreal, tickStyle } from "./surreal.js?v=32";
-import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=32";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=32";
+import { createGame } from "./game.js?v=33";
+import { createHud } from "./hud.js?v=33";
+import { createControls } from "./controls.js?v=33";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=33";
+import { createAudio, trackFor } from "./audio.js?v=33";
+import { createHaptics } from "./haptics.js?v=33";
+import { createRain2D } from "./rain2d.js?v=33";
+import { createLoading } from "./loading.js?v=33";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=33";
+import { setSurreal, tickStyle } from "./surreal.js?v=33";
+import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=33";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=33";
 
 const $ = (id) => document.getElementById(id);
 
@@ -275,7 +275,7 @@ async function launch(n, fromTap, sv) {
   $("hud-world").textContent = runLabel(L.run);
   document.body.classList.remove("on-title"); document.body.classList.add("in-game");
   $("screen-title").classList.add("hidden");
-  audio.playTrack("techno", { seed: L.run?.seed, alien: L.run?.planetKey !== "earth" });
+  audio.playTrack("techno", { seed: L.run?.seed });
   controls.calibrate(); controls.resetLook(); controls.setEnabled(true);
   try { const sv0 = localStorage.getItem("jet-view"); if ((sv0 === "cockpit" || sv0 === "chase") && sv0 !== game.view() && !L.lockView) game.setView(sv0); } catch { /* ignore */ }
   window.__applyThrottle?.(parseFloat(document.getElementById('thr').style.getPropertyValue('--t')) || 0.35);
@@ -488,7 +488,10 @@ requestAnimationFrame(frame);
   const p0 = startPreload(levelNo, forced ? undefined : titleRun());
   p0.promise.then((ok) => { preloadReady = ok; });
   const t0 = performance.now();
-  const setLabel = () => { const r = preload?.level?.run; $("scene-label").textContent = r ? `${runLabel(r)}  //  ${JET_TYPES[r.jet]?.name || ""}`.toUpperCase() : ""; };
+  function setArtFor(jet) { const A = TITLE_ART[jet] || TITLE_ART.viper, s = document.documentElement.style, u = `url("${new URL("img/art/" + A.img, location.href).href}")`; s.setProperty("--title-p", u, "important"); s.setProperty("--title-l", u, "important"); }   // b33
+  setArtFor("viper"); setTimeout(() => { for (const k of TITLE_JETS) { const im = new Image(); im.src = "img/art/" + TITLE_ART[k].img; } }, 2500);
+  $("scene-label")?.addEventListener("click", (e) => { e.stopPropagation(); reroll(1); });
+  const setLabel = () => { const r = preload?.level?.run; if (r) setArtFor(r.jet); $("scene-label").textContent = r ? `${runLabel(r)}  //  ${JET_TYPES[r.jet]?.name || ""}`.toUpperCase() : ""; };
   // dir 0 / 1: a new random scene; -1: step back to the previous scene; swiping left/right on the menu calls this
   async function reroll(dir = 0) {
     if (state !== "title" || body.classList.contains("rolling")) return;
@@ -496,7 +499,7 @@ requestAnimationFrame(frame);
     if (dir < 0) { if (sceneIdx <= 0) return; sceneIdx--; run0 = sceneHist[sceneIdx]; }
     else if (sceneIdx < sceneHist.length - 1) { sceneIdx++; run0 = sceneHist[sceneIdx]; }
     body.classList.add("rolling"); previewOn = false; preloadReady = false;
-    game.quit(); const p = startPreload(levelNo, run0);
+    game.quit(); const cj = preload?.level?.run?.jet, nj = TITLE_JETS[(TITLE_JETS.indexOf(cj) + 1) % TITLE_JETS.length]; const p = startPreload(levelNo, run0 || titleRun(nj));   // b33: each tap = next jet + its scene + its art
     const ok0 = await Promise.all([p.promise, new Promise((r) => setTimeout(r, 700))]);
     if (state !== "title") return;
     preloadReady = !!ok0[0];
@@ -506,8 +509,7 @@ requestAnimationFrame(frame);
   }
   // Art variants follow scene changes; never reveal the rejected live/plain menu.
   let art = window.__titleArt ?? 0;   // b30: ONE art per session, chosen in <head> before first paint
-  const setArt = () => { const s = document.documentElement.style, u = `url("${new URL("img/art/title30.jpg", location.href).href}")`; s.setProperty("--title-p", u); s.setProperty("--title-l", u); };   // b30: ONE fixed opening image
-  setArt();
+
   $("tap-fly").addEventListener("click", (e) => { e.stopPropagation(); if (preloadReady && state === "title") { clearSave(); play(); } });
   $("btn-reroll").addEventListener("pointerdown", (e) => e.stopPropagation());
   $("btn-reroll").addEventListener("click", (e) => { e.stopPropagation(); reroll(1); });
@@ -555,3 +557,6 @@ fetch("version.json?t=" + Date.now()).then(r => r.json()).then(j => { const e = 
 { const L = { en:"SCENE & JET", he:"נוף ומטוס", es:"ESCENA Y AVIÓN", fr:"DÉCOR ET AVION", de:"SZENE & JET", ar:"المشهد والطائرة", ru:"СЦЕНА И САМОЛЁТ", pt:"CENÁRIO E AVIÃO", it:"SCENA E JET" };
   const up = () => { const e = document.getElementById("reroll-lbl"); if (e) e.textContent = L[(document.documentElement.lang || "en").slice(0, 2)] || L.en; };
   up(); new MutationObserver(up).observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] }); }
+// b33: hold LOOK BACK to glance behind (gentle bandit-behind cue lights it up)
+{ const b = document.getElementById("btn-six"); if (b) { const on = (e) => { e.preventDefault(); e.stopPropagation(); controls.lookBack = true; }, off = () => { controls.lookBack = false; };
+  b.addEventListener("pointerdown", on); b.addEventListener("touchstart", on, { passive: false }); for (const ev of ["pointerup", "pointercancel", "pointerleave", "touchend", "touchcancel"]) b.addEventListener(ev, off); } }

@@ -2,13 +2,13 @@
 // Player + enemy jets: PBR-lit (metal, glossy canopy, environment reflections) with a thin illustrated outline.
 // Ground units: toon + outline. Illustrated look, readable colours.
 import * as THREE from "three";
-import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=32";
-import { patchDetail, missileTex } from "./tex.js?v=32";
+import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=33";
+import { patchDetail, missileTex } from "./tex.js?v=33";
 
 const PI = Math.PI;
 
 // Look of enemy ground targets for this run (set by the game at load).
-const TSTYLE = { army: null, desert: { color: 0xe6cf9a }, arctic: { color: 0xdfe8f4 }, navy: { color: 0x9fb2c8 }, alien: { color: 0xc89cff, emissive: 0x2a0c5a } };
+const TSTYLE = { army: null, desert: { color: 0xe6cf9a }, arctic: { color: 0xdfe8f4 }, navy: { color: 0x9fb2c8 } };
 let targetStyle = "army";
 export function setTargetStyle(s) { targetStyle = TSTYLE[s] !== undefined ? s : "army"; }
 const tm = (geo, o = {}, ally = false) => {
@@ -453,10 +453,10 @@ function buildJet(kind, vk = "", variant = null) {
     bodyMeshes: body0, setGear, gearK: () => gearK, gearLen: 2.15,
     ctl(c) {
       const L = (o, key, v) => { o.rotation[key] += (v - o.rotation[key]) * 0.28; };
-      for (const [o, sd] of stabs) L(o, "x", -c.pitch * 0.42 - sd * c.roll * 0.22);
-      for (const [o, sd] of flps) L(o, "x", -sd * c.roll * 0.35 + c.flap * 0.5);
-      for (const [o, sd] of ails) L(o, "x", -sd * c.roll * 0.6 + c.flap * 0.18);
-      for (const o of ruds) L(o, "y", -c.yaw * 0.4 - c.roll * 0.06);
+      for (const [o, sd] of stabs) L(o, "x", -c.pitch * 0.6 - sd * c.roll * 0.3);
+      for (const [o, sd] of flps) L(o, "x", -sd * c.roll * 0.5 + c.flap * 0.5);
+      for (const [o, sd] of ails) L(o, "x", -sd * c.roll * 0.8 + c.flap * 0.18);
+      for (const o of ruds) L(o, "y", -c.yaw * 0.5 - c.roll * 0.22);
       if (brake) L(brake, "x", -c.brake * 0.95);
       for (const o of petalsL) o.scale.setScalar(1 + c.burn * 0.16);
     },
@@ -777,100 +777,6 @@ export function puffGeometry() {
 }
 export { toonMaterial };
 
-// ---------- ALIEN ground forces (organic / bio-mechanical, glowing pods) ----------
-const ALN = { dark: 0x3a2258, flesh: 0x8a3fb0, bone: 0xc9b6e0, lime: 0xb8ff3a, mag: 0xff3fd8, cyan: 0x3dffe0, rust: 0x7a2c58 };
-const alienModel = (geo) => toonModel(geo, { outlineScale: 1.05, detail: { kind: "skin", s: 0.22, k: 0.8 } });
-const pod = (g, color, x, y, z, size) => { const s = glowSprite(color, size, 0.9); s.position.set(x, y, z); g.add(s); return s; };
-
-export function createAlienWalker(small = false) {
-  const geo = cached(small ? "aw-small" : "aw", () => {
-    const b = new PartBuilder();
-    b.add(G.sphere, ALN.flesh, { pos: [0, 1.5, 0], scale: [1.25, 0.8, 2.0] });                  // thorax
-    b.add(G.sphere, ALN.dark, { pos: [0, 1.75, -1.9], scale: [0.8, 0.6, 0.9] });                 // head
-    b.add(G.sphere, ALN.mag, { pos: [0, 1.85, -2.6], scale: [0.35, 0.35, 0.25] });               // eye
-    for (const s of [-1, 1]) {
-      b.add(G.cone, ALN.bone, { pos: [s * 0.45, 1.5, -2.8], rot: [-PI / 2, 0, 0], scale: [0.14, 1.3, 0.14] }); // mandible spikes
-      for (const z of [-1.1, 0, 1.1]) {                                                          // insect legs
-        b.add(G.capsule, ALN.dark, { pos: [s * 1.5, 1.05, z], rot: [0, 0, s * 0.95], scale: [0.14, 0.8, 0.14] });
-        b.add(G.capsule, ALN.dark, { pos: [s * 2.35, 0.4, z], rot: [0, 0, -s * 0.35], scale: [0.11, 0.7, 0.11] });
-      }
-    }
-    for (let i = 0; i < 4; i++) b.add(G.sphere, ALN.lime, { pos: [(i % 2 - 0.5) * 0.9, 2.2 + (i > 1 ? 0.25 : 0), 0.4 + Math.floor(i / 2) * 0.9], scale: [0.3, 0.3, 0.3] }); // glowing pods
-    b.add(G.cone, ALN.bone, { pos: [0, 1.9, 2.6], rot: [PI / 2 + 0.5, 0, 0], scale: [0.25, 1.5, 0.25] }); // tail spike
-    return b.build();
-  });
-  const g = alienModel(geo);
-  pod(g, ALN.lime, 0, 2.4, 0.8, 2.6); pod(g, ALN.mag, 0, 1.9, -2.6, 1.4);
-  g.scale.setScalar(small ? 3.6 : 4.8);
-  g.userData.radius = small ? 10 : 13;
-  return g;
-}
-
-export function createAlienTurret() {
-  const baseGeo = cached("at-base", () => {
-    const b = new PartBuilder();
-    b.add(G.sphere, ALN.rust, { pos: [0, 0.4, 0], scale: [3.6, 1.2, 3.6] });                     // fleshy mound
-    for (let i = 0; i < 7; i++) { const a = i / 7 * PI * 2; b.add(G.cone, ALN.bone, { pos: [Math.cos(a) * 3.3, 0.9, Math.sin(a) * 3.3], rot: [0, 0, 0], scale: [0.35, 1.6, 0.35] }); }
-    b.add(G.cyl, ALN.flesh, { pos: [0, 1.8, 0], scale: [1.0, 2.6, 1.0] });                       // stalk
-    return b.build();
-  });
-  const headGeo = cached("at-head", () => {
-    const b = new PartBuilder();
-    b.add(G.sphere, ALN.flesh, { pos: [0, 0, 0], scale: [1.5, 1.2, 1.7] });
-    b.add(G.sphere, ALN.cyan, { pos: [0, 0.15, -1.45], scale: [0.5, 0.5, 0.3] });                // eye
-    for (const x of [-0.7, 0.7]) b.add(G.capsule, ALN.bone, { pos: [x, -0.1, -2.5], rot: [PI / 2, 0, 0], scale: [0.2, 1.3, 0.2] });
-    for (const x of [-0.7, 0.7]) b.add(G.sphere, ALN.lime, { pos: [x, 0.9, 0.3], scale: [0.4, 0.4, 0.4] });
-    return b.build();
-  });
-  const g = new THREE.Group();
-  g.add(alienModel(baseGeo));
-  const pivot = new THREE.Group(); pivot.position.y = 4.2; pivot.add(alienModel(headGeo)); g.add(pivot);
-  pod(pivot, ALN.cyan, 0, 0.2, -1.5, 2.4); pod(g, ALN.lime, 0, 1.2, 0, 3);
-  g.scale.setScalar(2.4);
-  g.userData = { pivot, radius: 10 };
-  return g;
-}
-
-export function createAlienSpire() {
-  const baseGeo = cached("as-base", () => {
-    const b = new PartBuilder();
-    b.add(G.sphere, ALN.rust, { pos: [0, 0.2, 0], scale: [4.2, 1.0, 4.2] });
-    b.add(G.cone, ALN.flesh, { pos: [0, 4.2, 0], scale: [1.9, 8.0, 1.9] });                       // horn tower
-    b.add(G.cone, ALN.bone, { pos: [2.6, 2.0, 1.2], rot: [0, 0, -0.4], scale: [0.7, 4.0, 0.7] });
-    b.add(G.cone, ALN.bone, { pos: [-2.5, 1.8, -1.0], rot: [0, 0, 0.45], scale: [0.6, 3.6, 0.6] });
-    return b.build();
-  });
-  const lnGeo = cached("as-launcher", () => {
-    const b = new PartBuilder();
-    b.add(G.sphere, ALN.dark, { pos: [0, 0, 0], scale: [1.5, 1.0, 1.5] });
-    for (let i = 0; i < 5; i++) { const a = i / 5 * PI * 2; b.add(G.sphere, ALN.mag, { pos: [Math.cos(a) * 1.1, 0.6, Math.sin(a) * 1.1], scale: [0.45, 0.6, 0.45] }); }
-    return b.build();
-  });
-  const g = new THREE.Group();
-  g.add(alienModel(baseGeo));
-  const launcher = alienModel(lnGeo); launcher.position.y = 8.6; g.add(launcher);
-  pod(launcher, ALN.mag, 0, 0.6, 0, 4);
-  g.scale.setScalar(2.6);
-  g.userData = { launcher, radius: 12 };
-  return g;
-}
-
-export function createHive(sub = "hangar") {
-  const key = "hive-" + sub;
-  const geo = cached(key, () => {
-    const b = new PartBuilder();
-    const big = sub === "hangar" || sub === "barracks";
-    b.add(G.sphere, ALN.rust, { pos: [0, 0.5, 0], scale: [big ? 12 : 8, big ? 7 : 5, big ? 12 : 8] });   // brood dome
-    for (let i = 0; i < 6; i++) { const a = i / 6 * PI * 2 + 0.3, r = big ? 9 : 6; b.add(G.cone, ALN.flesh, { pos: [Math.cos(a) * r, 2.2, Math.sin(a) * r], rot: [Math.sin(a) * 0.3, 0, -Math.cos(a) * 0.3], scale: [1.4, big ? 7 : 5, 1.4] }); }
-    b.add(G.cone, ALN.bone, { pos: [0, big ? 9 : 6, 0], scale: [2.2, big ? 8 : 6, 2.2] });
-    for (let i = 0; i < 5; i++) { const a = i / 5 * PI * 2; b.add(G.sphere, ALN.lime, { pos: [Math.cos(a) * (big ? 6 : 4), 3 + (i % 2) * 1.5, Math.sin(a) * (big ? 6 : 4)], scale: [0.9, 0.9, 0.9] }); }
-    return b.build();
-  });
-  const g = alienModel(geo);
-  pod(g, ALN.lime, 0, 6, 0, 14); pod(g, ALN.mag, 0, 12, 0, 8);
-  g.userData.radius = sub === "hangar" || sub === "barracks" ? 14 : 10;
-  return g;
-}
 
 
 /** b23: enemy warship (destroyer / frigate): long grey hull, bow gun, mast + radar, CIWS, missile cells, bow wake. */

@@ -1,7 +1,7 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=32";
-import { tr } from "./i18n.js?v=32";
+import { LABEL } from "./missions.js?v=33";
+import { tr } from "./i18n.js?v=33";
 
 const ALLY = "#3dff8b";
 const COL = { boss:"#ff3b3b", bossweapon:"#ff8a40", jet: "#ff3b3b", tank: "#ff9c35", flak: "#ff9c35", sam: "#ff9c35", base: "#ff9c35", ship: "#bd6aff", pad: "#3dff8b", ring: "#ffe14d" };
@@ -160,7 +160,7 @@ export function createHud() {
     ctx.clearRect(0, 0, W, H);
     const eb = el("btn-eject"); if (eb) { eb.classList.toggle("hidden", !(s.critical > 0)); if (s.critical > 0) el("eject-count").textContent = Math.ceil(s.critical); }
     const cockpitView = s.viewMode === "cockpit";
-    if (cockpitView !== document.body.classList.contains("cockpit")) { document.body.classList.toggle("cockpit", cockpitView); if (!cockpitView) { hmdK = 0; if (nvOn) setNV(false); } }
+    if (cockpitView !== document.body.classList.contains("cockpit")) { document.body.classList.toggle("cockpit", cockpitView); if (!cockpitView) { hmdK = 0; } }
     if (!s.player) return;
     const cam = s.camera;
     if (cockpitView) { try { drawHMD(s); } catch (e) { /* never break the frame */ } }
@@ -503,8 +503,10 @@ export function createHud() {
           $n("btn-takeoff").classList.toggle("hidden", mode !== "ready");
         }
       }
+      if (s.night && !s._nvA && !window.__nvAuto) { window.__nvAuto = 1; setNV(true); } if (!s.night) window.__nvAuto = 0; document.body.classList.toggle("night", !!s.night);
+      { const sx = $n("btn-six"); if (sx) sx.classList.toggle("warn", !!s.six); }
       const al = $n("btn-autoland");
-      if (al) { const approach = mode === "app" || mode === "final", can = s.hasStrip && (!mode || approach) && !s.crashing && !s.landing; al.classList.toggle("hidden", !can); al.classList.toggle("urgent", approach || can && fv < 0.25); al.textContent = approach ? "CANCEL LANDING" : "▼ AUTO LAND"; }
+      if (al) { const approach = mode === "app" || mode === "final", can = s.hasStrip && (approach || !mode && (fv < 0.35 || (s.player.bombs ?? 9) + (s.player.missiles ?? 9) <= 2)) && !s.crashing && !s.landing; /* b33: only when low fuel/ammo or on approach */ al.classList.toggle("hidden", !can); al.classList.toggle("urgent", approach || can && fv < 0.25); al.textContent = approach ? "CANCEL LANDING" : "▼ AUTO LAND"; }
     }
     dom.spd.textContent = Math.round(s.player.speed * 3.6); if (dom.thr) dom.thr.textContent = dom.spd.textContent;
     dom.alt.textContent = Math.round(s.player.pos.y); if (dom.fl) dom.fl.textContent = s.player.flares ?? 0; if (dom.trk) dom.trk.classList.toggle("on", !!s.track);

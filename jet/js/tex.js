@@ -109,7 +109,7 @@ export function terrainPhotos() {
 const PV = `#include <common>\nvarying vec3 vDOP; varying vec3 vDON;`;
 const PB = `#include <begin_vertex>\nvDOP = position; vDON = normal;`;
 const cache = new WeakSet();
-// kind "panel" = riveted aircraft skin, "skin" = organic mottling (alien). s = texture repeats per world unit.
+// kind "panel" = riveted aircraft skin, "skin" = organic mottling. s = texture repeats per world unit.
 export function patchDetail(mat, { kind = "panel", s = 0.17, k = 0.9 } = {}) {
   if (cache.has(mat)) return mat;
   cache.add(mat);

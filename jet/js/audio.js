@@ -148,11 +148,10 @@ export function createAudio() {
   function startTechno(o = {}) {
     stopTechno();
     const r = mulberry(((o.seed || 0) ^ ((Math.random() * 4294967295) >>> 0)) >>> 0);
-    const alien = !!o.alien;
     const bpm = 138 + Math.floor(r() * 22);                       // 138 - 159 bpm
     const step = 60 / bpm / 4;
     const root = 31 + Math.floor(r() * 9);                        // low bass root
-    const scales = alien ? [[0, 1, 4, 5, 7, 8, 11], [0, 2, 3, 6, 7, 8, 11], [0, 1, 3, 7, 8, 10, 12]] : [[0, 2, 3, 5, 7, 8, 10], [0, 1, 3, 5, 7, 8, 10], [0, 2, 3, 5, 7, 9, 10]];
+    const scales = [[0, 2, 3, 5, 7, 8, 10], [0, 1, 3, 5, 7, 8, 10], [0, 2, 3, 5, 7, 9, 10]];
     const sc = scales[Math.floor(r() * scales.length)];
     const prog = [[0, 0, 5, 3], [0, 3, 5, 4], [0, 0, 3, 6], [0, 5, 3, 4]][Math.floor(r() * 4)]; // scale degrees per bar
     const deg = (d) => sc[((d % 7) + 7) % 7] + 12 * Math.floor(d / 7);

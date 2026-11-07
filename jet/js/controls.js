@@ -25,6 +25,7 @@ export const CONTROL_CFG = {
 };
 
 export function createControls() {
+  let LB = false;   // b33 look-back hold
   const C = CONTROL_CFG;
   const stick = { pitch: 0, roll: 0, yaw: 0 };
   const look = { yaw: 0, pitch: 0 };
@@ -293,11 +294,13 @@ export function createControls() {
     stick.pitch += (p - stick.pitch) * k;
     stick.roll += (r - stick.roll) * k;
     // head-look eases back to forward when released
+    if (LB) { look.yaw += (Math.PI * 0.97 - look.yaw) * Math.min(1, dt * 9); look.pitch *= 0.8; } else   // b33: hold LOOK BACK
     if (!lk.active) { const far = Math.min(1.5, Math.hypot(look.yaw, look.pitch) / 1.2); const kk = Math.exp(-dt * C.lookReturn * (0.7 + far + (lk.rel || 0))); look.yaw *= kk; look.pitch *= kk; if (Math.abs(look.yaw) < 1e-3) look.yaw = 0; if (Math.abs(look.pitch) < 1e-3) look.pitch = 0; }
     paintStick();
   }
 
   return {
+    set lookBack(v) { LB = !!v; }, get lookBack() { return LB; },
     stick, look, update, mountStick, bindWeapons, bindAux, bindLookSurface, bindLoops() {},
     setEnabled(v) { enabled = v; if (!v) { gunHeld = false; brakeHeld = false; joy.active = false; lk.active = false; joy.x = joy.y = 0; } },
     setLookMode(m) { lookMode = m; }, resetLook() { look.yaw = 0; look.pitch = 0; },

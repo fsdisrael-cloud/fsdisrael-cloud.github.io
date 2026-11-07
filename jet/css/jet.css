@@ -841,3 +841,24 @@ html, body { background:#070c12 !important; }
 #btn-reroll.reroll { white-space:nowrap; }
 @media (orientation: landscape) { .screen.title .scene-label { max-width:30vw; } }
 #btn-reroll.reroll { min-height:44px; padding:8px 14px !important; font:900 15px/1 "Rajdhani","Barlow Condensed",Impact,system-ui,sans-serif !important; letter-spacing:.1em; color:#fff !important; border:2px solid #ff9a2e !important; box-shadow:0 0 12px rgba(255,140,20,.55), inset 0 1px 0 #ffffff33 !important; text-shadow:0 0 6px #ffb02e, 0 1px 0 #000; }
+/* b33: look-back */
+.six-btn { position:absolute; z-index:20; left:calc(env(safe-area-inset-left) + 10px); top:calc(env(safe-area-inset-top) + 272px); padding:6px 9px; border-radius:10px; border:2px solid #556; background:rgba(10,14,20,.7); color:#cdd; font:800 11px/1 "Rajdhani",system-ui,sans-serif; letter-spacing:.08em; touch-action:none; }
+.six-btn.warn { border-color:#ffcf40; color:#fff3c0; box-shadow:0 0 12px rgba(255,200,40,.6); animation:sixp 1.4s ease-in-out infinite; }
+.six-btn.warn::after { content:"BANDIT BEHIND"; position:absolute; left:0; top:100%; margin-top:4px; white-space:nowrap; font-size:10px; color:#ffd860; text-shadow:0 1px 2px #000; }
+@keyframes sixp { 50% { box-shadow:0 0 4px rgba(255,200,40,.3); } }
+@media (orientation: landscape) { .six-btn { top:auto; left:auto; right:calc(env(safe-area-inset-right) + 110px); bottom:calc(env(safe-area-inset-bottom) + 160px); } }
+/* b33: realistic single yellow/black ejection loop, smaller; landscape centred between the legs */
+#eject-handles.ej-h { width:66px !important; height:34px !important; }
+#eject-handles.ej-h i:nth-child(2) { display:none; }
+#eject-handles.ej-h i:first-child { left:8px; right:8px; width:auto; height:26px; top:0; border-width:5px; border-radius:16px 16px 6px 6px; border-bottom-width:0; box-shadow:0 2px 3px rgba(0,0,0,.6); }
+#eject-handles.ej-h span { top:auto; bottom:0; font-size:8px; letter-spacing:.14em; }
+#eject-handles.ej-h em { display:none; }
+#eject-handles.ej-h::before { inset:-16px -14px; }
+@media (orientation: landscape) { #eject-handles.ej-h { left:50% !important; transform:translateX(-50%) !important; bottom:calc(env(safe-area-inset-bottom) + 106px) !important; } }
+/* b33: night flights: green NVG on the 3D view (both views); HUD markers stay coloured on top */
+body.nv.in-game canvas#game-canvas { filter: grayscale(1) brightness(2.1) contrast(1.2) sepia(1) hue-rotate(68deg) saturate(3); }
+body.night .nv-btn { display:flex; }
+/* b33: one row under the logo: caption LEFT of the SCENE & JET button (never over the plane); both are tappable */
+#btn-reroll.reroll { top:calc(env(safe-area-inset-top) + 212px) !important; }
+.screen.title .scene-label { top:calc(env(safe-area-inset-top) + 212px) !important; right:calc(env(safe-area-inset-right) + 168px) !important; left:calc(env(safe-area-inset-left) + 10px) !important; max-width:none !important; min-height:44px; display:flex !important; align-items:center; justify-content:flex-end; font-size:11px !important; cursor:pointer; pointer-events:auto; }
+@media (orientation: landscape) { #btn-reroll.reroll { top:calc(env(safe-area-inset-top) + 172px) !important; } .screen.title .scene-label { left:auto !important; top:calc(env(safe-area-inset-top) + 226px) !important; right:calc(env(safe-area-inset-right) + 14px) !important; max-width:30vw !important; } }

@@ -21,3 +21,27 @@
 [data-g=sea] .target-card{background-image:linear-gradient(#0002,#0009),url(assets/bg_sea.jpg)}
 .gallery-group h3{font:900 22px/1 "Rajdhani","Barlow Condensed",Impact,system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;text-shadow:0 0 8px var(--group)}
 .target-card{height:auto;align-self:start}.target-card img{height:120px;aspect-ratio:auto}
+/* b33: game-style practice lab */
+.lab33{display:flex;flex-direction:column;gap:10px;min-width:0}
+#lab-hint{font:900 15px/1.25 "Rajdhani","Barlow Condensed",Impact,system-ui,sans-serif;letter-spacing:.06em;color:#ffd23a;text-shadow:0 0 8px #ffb02e88,0 2px 0 #000;text-transform:uppercase;min-height:38px;transition:opacity .3s}
+.lab-row{display:flex;gap:10px;align-items:stretch}
+.lab33 #practice-stick{position:relative;flex:0 0 150px;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle at 50% 45%,#3a3f46 0 34%,#24282e 35% 58%,#15181c 59% 66%,#2b3036 67% 72%,#0c0e11 73%);box-shadow:inset 0 2px 0 #ffffff22,inset 0 -6px 14px #000c,0 8px 18px #000a;border:3px solid #0b0d10;touch-action:none;cursor:grab}
+.lab33 #practice-stick .ring{position:absolute;inset:16px;border-radius:50%;border:2px dashed #ffffff18}
+.lab33 #knob{position:absolute;left:50%;top:50%;width:64px;height:76px;margin:-38px 0 0 -32px;border-radius:30px 30px 24px 24px;background:radial-gradient(circle at 40% 28%,#6b717a,#2c3036 55%,#14171a);box-shadow:0 10px 14px #000b,inset 0 2px 0 #ffffff33;transition:transform .12s}
+.lab33 #knob i{position:absolute;left:50%;top:12px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff8a7a,#d01d10 60%,#5a0700);box-shadow:0 0 8px #ff3a2a}
+.lab33 .sky{position:relative;flex:1;min-width:0;height:150px;border-radius:12px;overflow:hidden;border:2px solid #2a2f36;background:linear-gradient(#1d3b5e,#5f86a8 70%,#a7b98e 71%,#6f7d52);box-shadow:inset 0 0 0 1px #000,0 0 12px #ff8a1a33}
+.lab33 #lab-cv{position:absolute;inset:0;width:100%;height:100%}
+.lab33 #lab-jet{position:absolute;left:50%;top:50%;width:120px;margin:-40px 0 0 -60px;filter:drop-shadow(0 8px 6px #0008);transition:transform .08s linear;pointer-events:none}
+.lab33 .demo-actions{display:flex;gap:8px}.lab33 .demo-actions button{flex:1;font:900 13px/1 "Rajdhani",Impact,system-ui,sans-serif;letter-spacing:.1em;color:#fff;background:linear-gradient(#2b3038,#14181d);border:2px solid #ff9a2e;border-radius:10px;padding:10px 4px;box-shadow:0 0 10px #ff8a1a55;text-shadow:0 0 6px #ffb02e}
+@media(max-width:650px){.lab33 #practice-stick{flex-basis:124px;width:124px;height:124px}.lab33 .sky{height:124px}.lab33 #lab-jet{width:96px;margin:-32px 0 0 -48px}}
+/* b33: enemy cards: plain terrain / sea / sky, model with a glowing outline in the category colour */
+[data-g=ground] .target-card,[data-g=boss] .target-card{background:radial-gradient(ellipse at 50% 70%,#7b6a45 0,#4e4a2e 55%,#2c2c1c 100%)!important}
+[data-g=sea] .target-card,[data-g=friend] .target-card{background:radial-gradient(ellipse at 50% 60%,#2f6f95 0,#15466a 55%,#0a2238 100%)!important}
+[data-g=air] .target-card{background:linear-gradient(#173659,#4f7fa8 75%,#9cb7cc)!important}
+.target-card{border-color:var(--group)!important;box-shadow:0 0 12px color-mix(in srgb,var(--group) 45%,transparent),inset 0 0 0 1px #000!important}
+.target-card img{height:132px!important;object-fit:contain;filter:drop-shadow(0 0 1.5px var(--group)) drop-shadow(0 0 1.5px var(--group)) drop-shadow(0 0 8px var(--group)) brightness(1.25) contrast(1.08)!important;transform:scale(1.12)}
+.realstage.land{aspect-ratio:844/390;width:min(100%,900px)!important;border-radius:16px;margin-top:8px!important}
+.rs-cap{font:900 16px/1 "Rajdhani",Impact,system-ui,sans-serif;letter-spacing:.14em;color:#ffb02e;text-align:center;margin:26px 0 6px;text-shadow:0 0 8px #ff8a1a88}
+.lab33,.lab33 .lab-row{width:100%}.lab33 .sky{flex:1 1 180px!important;min-width:170px}
+@media(min-width:651px){.practice{grid-template-columns:1fr minmax(340px,1.2fr)!important}}
+.lab33 #lab-jet{width:160px!important;margin:-54px 0 0 -80px!important}

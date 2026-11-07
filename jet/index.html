@@ -18,8 +18,8 @@
   <link rel="icon" type="image/png" sizes="192x192" href="img/icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png" />
   <link rel="preload" href="fonts/Fredoka.ttf" as="font" type="font/ttf" crossorigin />
-  <link rel="stylesheet" href="css/jet.css?v=32" />
-  <link rel="stylesheet" href="css/loading.css?v=32" />
+  <link rel="stylesheet" href="css/jet.css?v=33" />
+  <link rel="stylesheet" href="css/loading.css?v=33" />
   <script type="importmap">{ "imports": { "three": "./js/vendor/three.module.min.js" } }</script>
 <script>window.__titleArt=0;</script>
 </head>
@@ -82,7 +82,7 @@
         <button type="button" id="tap-fly" class="t26-tap"><i class="hz hz-t"></i><span class="t26-tapt">TAP TO FLY</span><i class="hz hz-b"></i></button>
         <div class="t26-by"><svg viewBox="0 0 48 48" width="26" height="26" aria-hidden="true"><path d="M5 6h38L24 44z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M15 12h18v5h-6.5v14h-5V17H15z" fill="currentColor"/></svg><span>by TESSIE</span></div>
       </div>
-      <div class="t32-ver" id="t32-ver">V 1.32</div>
+      <div class="t32-ver" id="t32-ver">V 1.33</div>
       <div class="tap-prompt" id="tap-prompt" style="display:none"></div>
     </div>
     <div id="panel" class="panel hidden" role="dialog">
@@ -142,6 +142,7 @@
     <div id="stick" class="stick"></div>
     <div id="aux" class="aux"><button type="button" class="abtn a-brake" data-w="brake" aria-label="Airbrake"><em>BRAKE</em></button><button type="button" class="abtn a-flare" data-w="flare" aria-label="Flares"><svg class="fe" viewBox="0 0 48 48" width="30" height="30" aria-hidden="true"><defs><radialGradient id="fg" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="#ffd36a"/><stop offset="1" stop-color="#ff6a1a" stop-opacity="0"/></radialGradient></defs><g stroke="#ffb23a" stroke-width="2.4" stroke-linecap="round" fill="none"><path d="M24 24 L7 10"/><path d="M24 24 L7 38"/><path d="M24 24 L4 24"/></g><circle cx="24" cy="24" r="9" fill="url(#fg)"/><circle cx="24" cy="24" r="3.2" fill="#fff"/><path d="M33 17 l9 -5 M33 31 l9 5" stroke="#8a929c" stroke-width="2.2" stroke-linecap="round"/></svg><em>FLARES</em></button></div>
     <div id="lvl-title" class="lvl-title"><small>MISSION</small><b></b><em></em></div>
+    <button type="button" id="btn-six" class="six-btn" aria-label="Look back">👀 <b>LOOK BACK</b></button>
     <button type="button" id="eject-handles" class="ej-h" aria-label="Eject: hold"><i></i><i></i><span>EJECT</span><em>HOLD</em></button>
     <button type="button" id="btn-eject" class="hidden" aria-label="Emergency eject">⚠ EJECT <b id="eject-count">5</b></button>
     <div id="alert" class="alert hidden"></div>
@@ -198,6 +199,6 @@
     </div>
   </section>
   <div id="build-tag" class="build-tag"></div>
-  <script type="module" src="js/main.js?v=32"></script>
+  <script type="module" src="js/main.js?v=33"></script>
 </body>
 </html>
