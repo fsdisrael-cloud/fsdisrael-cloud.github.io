@@ -11,7 +11,7 @@ export const BIOMES = {
   valley: "Green valley",
   mountains: "Mountains",
 };
-import { rollRun } from "./variety.js?v=30";
+import { rollRun } from "./variety.js?v=31";
 const P = {
   seward: { name: "Resurrection Bay, Alaska", lat: 60.05, lon: -149.4 },
   monument: { name: "Monument Valley", lat: 36.99, lon: -110.10 },

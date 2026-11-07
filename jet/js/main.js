@@ -1,17 +1,17 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=30";
-import { createHud } from "./hud.js?v=30";
-import { createControls } from "./controls.js?v=30";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun } from "./variety.js?v=30";
-import { createAudio, trackFor } from "./audio.js?v=30";
-import { createHaptics } from "./haptics.js?v=30";
-import { createRain2D } from "./rain2d.js?v=30";
-import { createLoading } from "./loading.js?v=30";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=30";
-import { setSurreal, tickStyle } from "./surreal.js?v=30";
-import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=30";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=30";
+import { createGame } from "./game.js?v=31";
+import { createHud } from "./hud.js?v=31";
+import { createControls } from "./controls.js?v=31";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun } from "./variety.js?v=31";
+import { createAudio, trackFor } from "./audio.js?v=31";
+import { createHaptics } from "./haptics.js?v=31";
+import { createRain2D } from "./rain2d.js?v=31";
+import { createLoading } from "./loading.js?v=31";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=31";
+import { setSurreal, tickStyle } from "./surreal.js?v=31";
+import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=31";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=31";
 
 const $ = (id) => document.getElementById(id);
 
@@ -191,7 +191,7 @@ function writeSave() {
 }
 function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ } }
 const MENU_BUTTONS = [
-  { id: "cont", label: "CONT", sub: "RESUME SORTIE", run: () => { const sv = readSave(); if (sv) play(sv); } },
+  { id: "cont", label: "CONTINUE", sub: "", run: () => { const sv = readSave(); if (sv) play(sv); } },
   { id: "new", label: "NEW", sub: "NEW SORTIE", primary: true, run: () => { clearSave(); play(); } },
 ];
 const SEC_LINKS = [
@@ -211,7 +211,8 @@ function buildMenu() {
     const off = b.id === "cont" && !sv;
     if (off || b.id === "new") continue;   // b26: TAP TO FLY starts a new sortie; CONT only shows when there is a save
     el.type = "button"; el.className = "plate" + (b.primary ? " go" : "") + (off ? " off" : ""); el.disabled = off;
-    el.innerHTML = `<i class="led"></i><span class="pt">${b.label}</span><em class="ps">${off ? "NO SAVE" : b.sub}</em>`;
+    if (b.id === "cont") { el.className = "t26-cont"; el.innerHTML = `<span>${b.label}</span>`; }   // b31: same style as the TAP TO FLY plate
+    else el.innerHTML = `<i class="led"></i><span class="pt">${b.label}</span><em class="ps">${off ? "NO SAVE" : b.sub}</em>`;
     el.addEventListener("click", (e) => { e.stopPropagation(); b.run(); });
     box.appendChild(el);
   }
@@ -544,7 +545,7 @@ $("btn-eject")?.addEventListener("click", () => game.eject());
 { const h = $("eject-handles"); let tm = 0; const go = (e) => { e.preventDefault(); e.stopPropagation(); h.classList.add("pull"); clearTimeout(tm); tm = setTimeout(() => { h.classList.remove("pull"); game.ejectNow?.(); }, 800); };
   const stop = () => { clearTimeout(tm); h.classList.remove("pull"); };
   h?.addEventListener("touchstart", go, { passive: false }); h?.addEventListener("mousedown", go); for (const n of ["touchend", "touchcancel", "mouseup", "mouseleave"]) h?.addEventListener(n, stop); }
-$("btn-takeoff")?.addEventListener("click", () => game.takeoff());
+$("btn-takeoff")?.addEventListener("click", () => { controls.calibrate(); game.takeoff(); });   // b31: tilt neutral = how you hold the phone at takeoff
 $("btn-autoland")?.addEventListener("click", () => game.autoLand());
 window.addEventListener("keydown", (e) => { if (e.code === "Enter" && !e.repeat) game.takeoff(); if (e.code === "KeyL" && !e.repeat) game.autoLand(); });
 window.__ubu = { goBackground, readSave, writeSave, game, controls, audio, hud, loading, state: () => state, play, launch, levelNo: () => levelNo };

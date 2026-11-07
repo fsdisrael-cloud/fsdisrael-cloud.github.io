@@ -85,7 +85,7 @@ function wpick(table, r) {
 /** Roll one run. `rng` defaults to Math.random (a new world every restart). */
 export function rollRun(rng = Math.random) {
   // scene mix: ~70% Earth daylight, ~15% Earth dusk / night / bad weather, ~15% alien worlds
-  const rs = rng(), kind = rs < 0.15 ? "alien" : rs < 0.30 ? "variant" : "day";
+  const rs = rng(), kind = rs < 0.18 ? "variant" : "day";   // b31: no alien worlds
   const planetKey = kind === "alien" ? pick(["mars", "ice", "toxic", "violet", "lava"], rng) : "earth";
   const planet = PLANETS[planetKey];
   const place = pick(EARTH_PLACES, rng);
@@ -104,7 +104,7 @@ export function rollRun(rng = Math.random) {
   // test / share hook: ?time=night&planet=lava&season=winter&weather=clear&jet=raptor&place=3
   try {
     const q = new URLSearchParams(location.search);
-    if (q.get("planet") && PLANETS[q.get("planet")]) { var qp = q.get("planet"); }
+    var qp = null;   // b31: alien planets removed
     var ov = { time: q.get("time"), season: q.get("season"), weather: q.get("weather"), jet: q.get("jet"), foe: q.get("foe"), tgt: q.get("tgt"), place: q.get("place") };
   } catch { var ov = {}; }
   const R = { planetKey, planet, place, time, season, weather, jet, foe, tgt, mix: [0.6 + rng() * 0.9, 0.6 + rng() * 0.9, rng() < 0.2 ? 0 : 0.6 + rng() * 0.9, rng() < 0.2 ? 0 : 0.6 + rng() * 0.9], seed: (rng() * 4294967295) >>> 0 };
@@ -127,7 +127,7 @@ export function saveScene(run) {
 }
 export function loadScene() {
   try {
-    const o = JSON.parse(localStorage.getItem(SCENE_KEY)); if (!o || !PLANETS[o.planetKey]) return null;
+    const o = JSON.parse(localStorage.getItem(SCENE_KEY)); if (!o || o.planetKey !== "earth" || !PLANETS[o.planetKey]) return null;
     const place = EARTH_PLACES.find((p) => p.name === o.place) || EARTH_PLACES[0];
     return { planetKey: o.planetKey, planet: PLANETS[o.planetKey], place, time: o.time, season: o.season, weather: o.weather, jet: o.jet, foe: o.foe, tgt: o.tgt, mix: o.mix, seed: o.seed };
   } catch { return null; }

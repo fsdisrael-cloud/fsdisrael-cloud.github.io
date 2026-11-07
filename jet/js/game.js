@@ -1,15 +1,15 @@
 // Ubu game world: flight model, camera, targets, AI, weapons, effects, objectives.
-import { createPost } from "./post.js?v=30";
+import { createPost } from "./post.js?v=31";
 import * as THREE from "three";
-import { buildTerrain } from "./terrain.js?v=30";
-import { createSky } from "./sky.js?v=30";
-import { createPilot, createSeat, createChute, createAirstrip, STRIP, createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createAlienWalker, createAlienTurret, createAlienSpire, createHive, createShip, createWarship, createSub, createSamSite, createRocket, createHeli, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=30";
-import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=30";
-import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=30";
-import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=30";
-import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=30";
-import { setQuality, FX as FXQ } from "./tex.js?v=30";
-import { style, patchTerrain, waveAt, createDreamShapes, onStyle, setLake } from "./surreal.js?v=30";
+import { buildTerrain } from "./terrain.js?v=31";
+import { createSky } from "./sky.js?v=31";
+import { createPilot, createSeat, createChute, createAirstrip, STRIP, createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createAlienWalker, createAlienTurret, createAlienSpire, createHive, createShip, createWarship, createSub, createSamSite, createRocket, createHeli, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=31";
+import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=31";
+import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=31";
+import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=31";
+import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=31";
+import { setQuality, FX as FXQ } from "./tex.js?v=31";
+import { style, patchTerrain, waveAt, createDreamShapes, onStyle, setLake } from "./surreal.js?v=31";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V(), tE = V();
@@ -1110,7 +1110,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (dK > 0 && assistDanger < 0.05 && !loopPull_) {
       const bk = player.bank;
       rr -= THREE.MathUtils.clamp(bk * 2.6, -2.4, 2.4) * dK;          // roll upright by the short way
-      if (Math.abs(bk) < 1.9 && !controls.gyroActive?.()) pitchRate -= THREE.MathUtils.clamp(player.pitch * 1.9, -1.1, 1.1) * dK * Math.max(0, 1 - Math.abs(bk) / 1.9);
+      if (Math.abs(bk) < 1.9) pitchRate -= THREE.MathUtils.clamp(player.pitch * 1.9, -1.1, 1.1) * dK * Math.max(0, 1 - Math.abs(bk) / 1.9);
     }
     // ground rescue: roll upright first if inverted, then pull
     if (assistDanger > 0.02) {

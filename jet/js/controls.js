@@ -14,9 +14,9 @@ const D2R = Math.PI / 180;
 export const CONTROL_CFG = {
   stickDragUpIsNoseUp: true,  // build 19 default: push the stick UP = nose UP (climb). INVERT PITCH toggle (settings) = real aircraft style
   stickRadiusPx: 56,         // drag distance for full deflection
-  tiltRangePitchDeg: 22,     // degrees of tilt for full pitch input
-  tiltRangeRollDeg: 26,      // degrees of tilt for full roll input
-  tiltDeadZoneDeg: 5,
+  tiltRangePitchDeg: 55,     // degrees of tilt for full pitch input
+  tiltRangeRollDeg: 65,      // degrees of tilt for full roll input
+  tiltDeadZoneDeg: 4,
   tiltSmoothing: 14,         // higher = snappier
   stickReturn: 12,           // spring-back speed of the joystick
   lookYawPerScreen: 3.6,     // head-look: radians of view yaw for a swipe across the full screen width

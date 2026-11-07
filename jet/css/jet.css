@@ -801,3 +801,12 @@ body.in-game .ej-h { display:block; }
 .ej-h { bottom:calc(var(--safe-b, 0px) + 206px); }
 .autoland { bottom:calc(var(--safe-b, 0px) + 244px) !important; }
 @media (orientation: landscape) { .ej-h { bottom:calc(var(--safe-b, 0px) + 8px); } }
+
+/* b31: CONTINUE = a smaller twin of the TAP TO FLY plate (dark plate, glowing orange frame, bold italic white) */
+.t26-cont { position:relative; display:block; padding:9px 30px; border:2px solid #ff9a2a; border-radius:10px; background:linear-gradient(180deg, rgba(38,28,20,.94), rgba(14,10,8,.96)); box-shadow:0 0 10px rgba(255,140,30,.85), 0 0 22px rgba(255,120,20,.45), inset 0 0 8px rgba(255,150,40,.35); cursor:pointer; touch-action:manipulation; }
+.t26-cont span { font:italic 900 clamp(18px, 5vw, 26px)/1 "Rajdhani", "Barlow Condensed", Impact, system-ui, sans-serif; letter-spacing:.06em; color:#fff; text-shadow:0 2px 0 #000, 0 0 6px rgba(255,170,60,.6); }
+.t26-cont:active { transform:scale(.97); }
+/* b31: language list anchored under the pill, left-aligned, always fully on screen */
+.t26 .t26-lang .t26-langlist:not(.float) { left:0 !important; right:auto !important; transform:none !important; top:calc(100% + 6px) !important; width:min(280px, calc(100vw - 24px - env(safe-area-inset-left, 0px))) !important; max-height:min(60vh, calc(100vh - 80px - env(safe-area-inset-top, 0px))) !important; overflow-y:auto !important; }
+.t26-langlist.float { width:min(280px, calc(100vw - 24px)) !important; max-height:min(60vh, calc(100vh - 90px)) !important; }
+#resume .menu-buttons { display:flex !important; flex-direction:column !important; gap:14px !important; align-items:center; position:static !important; transform:none !important; }
