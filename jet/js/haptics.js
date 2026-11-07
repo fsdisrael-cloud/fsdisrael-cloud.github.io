@@ -21,11 +21,7 @@ export function createHaptics() {
       try { localStorage.setItem("jet-haptics", on ? "1" : "0"); } catch { /* ignore */ }
     },
     /** Tiny tick for button presses (Android vibrate; iOS 18+ switch trick, best effort). */
-    crash() {
-      if (!on) return;
-      try { navigator.vibrate?.([120, 60, 220, 80, 120]); } catch { /* ignore */ }
-      if (label && input) { [0, 140, 320].forEach((d) => setTimeout(() => { try { label.click(); } catch { /* ignore */ } }, d)); }
-    },
+    crash() {},
     /** b24: no haptics for your own weapons or hits on targets; only crash() and hit() (YOU are hit) vibrate */
     lock() {}, bomb() {}, boom() {}, tick() {}, pulse() {},
     hit() {

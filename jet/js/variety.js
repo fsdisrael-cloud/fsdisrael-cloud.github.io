@@ -136,7 +136,7 @@ export function loadScene() {
 /** b26: the opening-screen scene is a curated cinematic one: golden-hour sea coast, big lit clouds */
 export function titleRun() {
   const R = rollRun();
-  const coast = EARTH_PLACES.filter((p) => p.sea && p.biome !== "snow" && p.biome !== "mountains");
+  const coast = EARTH_PLACES.filter((p) => p.sea && ["Norwegian fjords", "Lofoten islands", "Kauai coast", "Amalfi coast", "Cape Town coast"].includes(p.name));
   R.planetKey = "earth"; R.planet = PLANETS.earth;
   R.place = coast[Math.floor(Math.random() * coast.length)] || R.place;
   R.time = "dusk"; R.weather = "cloudy"; R.season = "summer";

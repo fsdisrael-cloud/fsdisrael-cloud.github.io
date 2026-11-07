@@ -30,12 +30,13 @@ export function createControls() {
   const look = { yaw: 0, pitch: 0 };
   const keys = new Set();
   let gyroOn = false, gotGyroEvent = false, tiltPref = false, permOk = false; try { tiltPref = localStorage.getItem("jet-tilt-v2") === "1"; } catch { /* ignore */ }
+  let invertLook = false; try { invertLook = localStorage.getItem("jet-look-invert") === "1"; } catch {}
   let invertPitch = false; try { invertPitch = localStorage.getItem("jet-invert-v3") === "1"; } catch { /* ignore */ }
   let rawPitch = 0, rawRoll = 0, smPitch = 0, smRoll = 0;
   let zeroPitch = 35, zeroRoll = 0, wantCal = true, calAt = 0;
   let tgtEdge = 0, mslHeld = false, bombHeld = false, gunHeld = false, rocketEdge = false, bombEdge = false, viewEdge = false, boostKey = false, flareEdge = false, brakeHeld = false, brakeKey = false;
   // b24 one-finger mode: double-tap the stick = missile, triple-tap = bomb (short taps with almost no deflection, so they never move the jet)
-  let tapN = 0, tapLast = 0, tapTO = 0;
+  let tapN = 0, tapLast = 0, tapTO = 0, rollEdge = 0, flickDir = 0, flickAt = -1000;
   const joy = { x: 0, y: 0, active: false, id: null, sx: 0, sy: 0 };
   const lk = { active: false, id: null, x: 0, y: 0 };
   let lookMode = "chase";
@@ -147,7 +148,7 @@ export function createControls() {
     bindTP(root, {
       down(e, id, x, y) {
         if (!enabled || joy.active) return;
-        joy.active = true; joy.id = id; joy.sx = x; joy.sy = y; joy.t0 = e.timeStamp || performance.now(); joy.maxd = 0;
+        joy.active = true; joy.id = id; joy.sx = x; joy.sy = y; joy.t0 = e.timeStamp || performance.now(); joy.maxd = 0; joy.side = 0;
         say("stick");
       },
       move(e, id, x, y) {
@@ -157,18 +158,25 @@ export function createControls() {
         if (m > 1) { dx /= m; dy /= m; }
         const dist = Math.hypot(x - joy.sx, y - joy.sy), over = dist - C.stickRadiusPx * 1.6;
         if (over > 0) { const k = over / dist; joy.sx += (x - joy.sx) * k; joy.sy += (y - joy.sy) * k; }
+        if (Math.abs(dx) > 0.72 && Math.abs(dy) < 0.45) joy.side = Math.sign(dx);
         joy.x = dx; joy.y = dy; joy.maxd = Math.max(joy.maxd || 0, m);
       },
-      up(e, id) {
+      up(e, id, eventType) {
         if (!(joy.active && id === joy.id)) return;
         joy.active = false; joy.id = null;
         const now = e.timeStamp || performance.now();   // input time, not handler time: robust when a frame is slow
+        if (eventType === "pointercancel" || eventType === "touchcancel") { clearTimeout(tapTO); tapN = 0; joy.x = joy.y = 0; return; }
+        if (joy.maxd > 0.5) { clearTimeout(tapTO); tapN = 0; }
+        if (enabled && joy.side && now - joy.t0 < 250) {
+          if (joy.side === flickDir && now - flickAt < 480) { rollEdge = joy.side * 2; flickAt = -1000; say("roll"); }
+          else { flickDir = joy.side; flickAt = now; }
+        }
         if (enabled && now - (joy.t0 || 0) < 230 && (joy.maxd || 0) < 0.32) {
           if (now - tapLast > 340) tapN = 0;
           tapLast = now; tapN++;
           clearTimeout(tapTO);
-          if (tapN >= 3) { tapN = 0; bombEdge = true; say("bomb"); joy.x = joy.y = 0; }
-          else if (tapN === 2) { tapTO = setTimeout(() => { tapN = 0; if (enabled) { rocketEdge = true; say("missile"); } }, 300); }
+          if (tapN >= 2) { tapN = 0; bombEdge = true; say("bomb"); joy.x = joy.y = 0; }
+          else if (tapN === 1) { tapTO = setTimeout(() => { tapN = 0; if (enabled) { rocketEdge = true; say("missile"); } }, 300); }
         } else tapN = 0;
       },
     });
@@ -205,7 +213,7 @@ export function createControls() {
     window.addEventListener("touchstart", (e) => {
       if (!enabled) return;
       for (const t of e.changedTouches) for (const [b, fn] of fat) {
-        if (!b || (e.target && b.contains(e.target))) continue;
+        if (!b || e.target?.closest?.("button, #thr, #stick, #aux")) continue;
         const r = b.getBoundingClientRect(); if (!r.width) continue;
         if (t.clientX >= r.left - 12 && t.clientX <= r.right + 12 && t.clientY >= r.top - 12 && t.clientY <= r.bottom + 12) fn();
       }
@@ -229,7 +237,7 @@ export function createControls() {
         const tnow = performance.now(); lk.v = (lk.v || 0) * 0.6 + 0.4 * Math.hypot(dx / innerWidth, dy / innerHeight) / Math.max(0.008, (tnow - (lk.t || tnow - 16)) / 1000); lk.t = tnow;
         const cock = lookMode === "cockpit", my = cock ? 2.4 : 3.1, mp = cock ? 1.1 : 0.95;
         look.yaw = Math.max(-my, Math.min(my, look.yaw - dx / innerWidth * C.lookYawPerScreen));
-        look.pitch = Math.max(-mp, Math.min(mp, look.pitch - dy / innerHeight * C.lookPitchPerScreen));
+        look.pitch = Math.max(-mp, Math.min(mp, look.pitch + dy / innerHeight * C.lookPitchPerScreen * (invertLook ? -1 : 1)));
       },
       up(e, id, type) {
         if (!lk.active || id !== lk.id) return;
@@ -261,7 +269,7 @@ export function createControls() {
       const dz = C.tiltDeadZoneDeg;
       dp = Math.abs(dp) < dz ? 0 : dp - Math.sign(dp) * dz;
       dr = Math.abs(dr) < dz ? 0 : dr - Math.sign(dr) * dz;
-      tp = (dp / C.tiltRangePitchDeg) * (invertPitch ? -1 : 1);   // top of phone up (pitch angle falls) = nose up (flipped by INVERT)
+      tp = -dp / C.tiltRangePitchDeg * (invertPitch ? -1 : 1);   // top of phone up (pitch angle falls) = nose up (flipped by INVERT)
       tr = dr / C.tiltRangeRollDeg;
     }
     // joystick (spring back when released)
@@ -289,7 +297,7 @@ export function createControls() {
     gunHeld: () => gunHeld,
     consumeRocket() { const v = rocketEdge || mslHeld; rocketEdge = false; return v; },
     consumeBomb() { const v = bombEdge || bombHeld; bombEdge = false; return v; },
-    consumeLoop() { return 0; },
+    consumeLoop() { const n = rollEdge; rollEdge = 0; return n; },
     consumeFlare() { const v = flareEdge; flareEdge = false; return v; },
     brake: () => brakeHeld || brakeKey,
     consumeTgt() { const v = tgtEdge; tgtEdge = 0; return v; },
@@ -316,6 +324,8 @@ export function createControls() {
       } catch { return false; }
     },
     calibrate() { wantCal = true; },
+    invertLookOn: () => invertLook,
+    setInvertLook(v) { invertLook = !!v; try { localStorage.setItem("jet-look-invert", invertLook ? "1" : "0"); } catch {} },
     invertOn: () => invertPitch,
     setInvert(v) { invertPitch = !!v; try { localStorage.setItem("jet-invert-v3", invertPitch ? "1" : "0"); } catch { /* ignore */ } },
     _joy(x, y) { if (x == null) { joy.active = false; return; } joy.active = true; joy.x = x; joy.y = y; },

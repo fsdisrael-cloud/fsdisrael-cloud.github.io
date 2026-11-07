@@ -2,8 +2,8 @@
 // Surreal = pastel hue-shifting palette, gently wavy/melting terrain, soft outlines,
 // floating dream shapes and a cheap CSS glow. All GPU-cheap: a few shader lines + 4 draw calls.
 import * as THREE from "three";
-import { noiseTex, FX, terrainPhotos, BUMP_GLSL } from "./tex.js?v=26";
-import { outlineUniforms, toonMaterial, PartBuilder, G, outlineMaterial } from "./toon.js?v=26";
+import { noiseTex, FX, terrainPhotos, BUMP_GLSL } from "./tex.js?v=27";
+import { outlineUniforms, toonMaterial, PartBuilder, G, outlineMaterial } from "./toon.js?v=27";
 
 const KEY = "jet-style";
 export const style = {
@@ -101,7 +101,7 @@ export function patchTerrain(mat) {
           diffuseColor.rgb = mix(base, vec3(lum) * vec3(1.0, 0.95, 0.88) * 0.95, rock * 0.35);
           float phd = wat ? 0.0 : mix(pg, pr, clamp(rock * 1.6, 0.0, 1.0));
           ubuH = phd;
-          diffuseColor.rgb *= 1.0 + (wat ? (n1.r - 0.5) * 0.08 : det * 0.55 * (1.0 + rock * 0.6) + phd * 1.25);
+          diffuseColor.rgb *= 1.0 + (wat ? (n1.r - 0.5) * 0.08 : det * 0.40 * (1.0 + rock * 0.6) + phd * 0.72);
           if (wat) {
             vec2 q1 = vWP.xz * 0.011 + vec2(uT2 * 0.012, uT2 * 0.006);
             vec2 q2 = vWP.xz * 0.037 - vec2(uT2 * 0.02, -uT2 * 0.01);

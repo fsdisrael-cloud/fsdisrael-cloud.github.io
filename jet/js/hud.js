@@ -1,10 +1,10 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=26";
-import { tr } from "./i18n.js?v=26";
+import { LABEL } from "./missions.js?v=27";
+import { tr } from "./i18n.js?v=27";
 
 const ALLY = "#3dff8b";
-const COL = { jet: "#ff3b3b", tank: "#ff5a48", flak: "#ff4636", sam: "#ff3a2a", base: "#ff6a58", ship: "#ff5a48", pad: "#3dff8b", ring: "#ffe14d" };
+const COL = { boss:"#ff3b3b", bossweapon:"#ff8a40", jet: "#ff3b3b", tank: "#ff9c35", flak: "#ff9c35", sam: "#ff9c35", base: "#ff9c35", ship: "#bd6aff", pad: "#3dff8b", ring: "#ffe14d" };
 const v = new THREE.Vector3();
 
 export function createHud() {
@@ -158,6 +158,7 @@ export function createHud() {
   function draw(s, dt) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
+    const eb = el("btn-eject"); if (eb) { eb.classList.toggle("hidden", !(s.critical > 0)); if (s.critical > 0) el("eject-count").textContent = Math.ceil(s.critical); }
     const cockpitView = s.viewMode === "cockpit";
     if (cockpitView !== document.body.classList.contains("cockpit")) { document.body.classList.toggle("cockpit", cockpitView); if (!cockpitView) { hmdK = 0; if (nvOn) setNV(false); } }
     if (!s.player) return;
@@ -178,13 +179,13 @@ export function createHud() {
       const pr = project(t.pos, cam);
       const color = COL[t.kind] || "#fff";
       if (pr.on && d < 9000) {
-        const air = t.kind === "jet";
+        const air = t.kind === "jet" || t.kind === "boss" || t.kind === "bossweapon";
         if (t === s.lockTarget) {
           const R = Math.max(16, Math.min(46, 2600 / Math.max(d, 1) * (t.radius / 8) + 10)), pu = 1 + 0.06 * Math.sin(s.elapsed * 8);
-          if (air) diamond(pr.x, pr.y, R * pu * 1.15, "rgba(255,70,70,0.42)"); else brackets(pr.x, pr.y, R * pu * 1.15, "rgba(255,70,70,0.42)", 1.1);
-          label(pr.x, pr.y + R * pu + 15, `${air ? "AIR" : "GND"} ${d < 1000 ? Math.round(d) + "m" : (d / 1000).toFixed(1) + "km"}`, "rgba(255,208,208,0.55)", 11);
+          if (air) diamond(pr.x, pr.y, R * pu * 1.15, "rgba(255,95,55,0.85)"); else brackets(pr.x, pr.y, R * pu * 1.15, "rgba(255,95,55,0.85)", 1.1);
+          label(pr.x, pr.y + R * pu + 15, `${air ? "AIR" : t.kind === "ship" ? "SEA" : "GND"} ${d < 1000 ? Math.round(d) + "m" : (d / 1000).toFixed(1) + "km"}`, "rgba(255,225,200,0.9)", 11);
         } else {
-          if (t === s.lockCand && s.lockTime > 0) { const R = 24 - s.lockTime * 60; if (R > 8) circle(pr.x, pr.y, R, "rgba(255,80,80,0.35)", 1.1); }
+          if (t === s.lockCand && s.lockTime > 0) { const R = 28 - Math.min(1, s.lockTime / 0.8) * 18; if (R > 8) circle(pr.x, pr.y, R, "rgba(255,80,80,0.35)", 1.1); }
           // tiny subtle tick above the model (never covers it): chevron for air, dot for ground
           const ty = pr.y - Math.max(12, Math.min(30, 1800 / Math.max(d, 1) * (t.radius / 8) + 8));
           ctx.save(); ctx.fillStyle = air ? "rgba(255,70,60,0.22)" : "rgba(255,160,70,0.2)"; ctx.strokeStyle = "rgba(0,0,0,0.12)"; ctx.lineWidth = 1; ctx.beginPath();
@@ -193,6 +194,13 @@ export function createHud() {
         }
       } else if (t.kind === "jet") arrows.push({ t, d: d * 0.6, dist: d, pr });
       else if (t.objective) arrows.push({ t, d, pr });
+    }
+    // A soft lead/pursuit cue rewards aiming ahead instead of magnetically snapping shots.
+    const pursuit = s.lockTarget || s.lockCand;
+    if (pursuit?.kind === "jet" && pursuit.alive) {
+      v.copy(pursuit.pos).addScaledVector(pursuit.vel, Math.min(1.2, pursuit.pos.distanceTo(s.player.pos) / 650));
+      const lead = project(v, cam), target = project(pursuit.pos, cam);
+      if (lead.on && target.on) { ctx.save(); ctx.strokeStyle = "rgba(125,230,220,.65)"; ctx.lineWidth = 1; ctx.setLineDash([3,5]); ctx.beginPath(); ctx.moveTo(target.x,target.y); ctx.lineTo(lead.x,lead.y); ctx.stroke(); ctx.setLineDash([]); circle(lead.x, lead.y, 6, "#8fe7d7", 1.3); ctx.restore(); }
     }
     // friendly forces: small green diamond markers (never targetable)
     for (const a of s.allies || []) {
@@ -221,6 +229,9 @@ export function createHud() {
     arrows.sort((a, b) => a.d - b.d);
     for (const a of arrows.slice(0, 3)) edgeArrow(a.t.pos, cam, a.t.kind === "jet" ? "#ff2a2a" : (COL[a.t.kind] || "#fff"), false, null, 1);
     /* b21: horizon cue line removed (read as stray streaks across the sky) */
+    const boss=s.targets.find(t=>t.alive&&t.kind==="boss");
+    if(boss){const pods=boss.pods.filter(t=>t.alive).length,hp=(boss.hp+boss.pods.reduce((n,t)=>n+(t.alive?t.hp:0),0))/(boss.maxHp+boss.pods.reduce((n,t)=>n+t.maxHp,0));ctx.save();ctx.fillStyle="rgba(8,12,20,.8)";ctx.fillRect(W*.2,H*.18,W*.6,30);ctx.fillStyle="#ff593e";ctx.fillRect(W*.2+3,H*.18+22,(W*.6-6)*Math.max(0,hp),5);label(W*.5,H*.18+14,`${boss.name}  |  ${pods} WEAPONS`,"#ffb28f",11);ctx.restore();}
+    if(s.landingGuide){const g=s.landingGuide,cx=W*.5,cy=H*.43;ctx.save();ctx.strokeStyle="rgba(220,245,240,.6)";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(cx-42,cy);ctx.lineTo(cx+42,cy);ctx.moveTo(cx,cy-32);ctx.lineTo(cx,cy+32);ctx.stroke();const ex=Math.max(-32,Math.min(32,-g.x*.5)),ey=Math.max(-24,Math.min(24,g.dy*.6));ctx.strokeStyle="#ffb34b";ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(cx+ex,cy-25);ctx.lineTo(cx+ex,cy+25);ctx.moveTo(cx-32,cy+ey);ctx.lineTo(cx+32,cy+ey);ctx.stroke();label(cx,cy+48,g.carrier?"CARRIER APPROACH":"RUNWAY APPROACH","#ffce8b",10);ctx.restore();}
     // incoming missiles
     for (const m of s.missiles) if (m.active) { const pr = project(m.p, cam); if (pr.on) { circle(pr.x, pr.y, 10, "#ff2222", 3); label(pr.x, pr.y - 18, "MISSILE", "#ff4444", 11); } else edgeArrow(m.p, cam, "#ff2222", true); }
     // CCIP marker
@@ -297,7 +308,7 @@ export function createHud() {
     ctx.lineWidth = 3.5; ctx.strokeStyle = "#000"; ctx.lineJoin = "round"; ctx.stroke();
     ctx.fillStyle = color; ctx.fill(); ctx.restore();
     if (warn) label(x, y + 24, "!", color, 16);
-    if (text) label(x - Math.cos(ang) * 34, y - Math.sin(ang) * 26 + 4, text, "rgba(255,208,208,0.55)", 11);
+    if (text) label(x - Math.cos(ang) * 34, y - Math.sin(ang) * 26 + 4, text, "rgba(255,225,200,0.9)", 11);
   }
 
   // ---------- round radar (top left) ----------
@@ -401,15 +412,15 @@ export function createHud() {
     }
     // ground targets: orange squares (flak / SAM slightly redder)
     for (const t of s.targets) {
-      if (!t.alive || t.kind === "jet") continue;
+      if (!t.alive || ["jet","boss","bossweapon"].includes(t.kind)) continue;
       const q = toScope(t.pos), z = (t.kind === "base" ? 2.6 : 3.6) * u;
       rctx.beginPath(); rctx.rect(q.x - z, q.y - z, z * 2, z * 2);
-      rctx.fillStyle = t.kind === "sam" || t.kind === "flak" ? "#ff3a2a" : "#ff5a48"; rctx.fill(); outline(1.2);
+      rctx.fillStyle = t.kind === "ship" ? "#bd6aff" : "#ff9c35"; rctx.fill(); outline(1.2);
     }
     for (const m of s.missiles) if (m.active) { const q = toScope(m.p); rctx.beginPath(); rctx.arc(q.x, q.y, (3.2 + 1.2 * Math.sin(sweep * 4)) * u, 0, 7); rctx.fillStyle = "#ff2a2a"; rctx.fill(); outline(1); rctx.strokeStyle = "rgba(255,60,60,.7)"; rctx.lineWidth = 1.2 * u; rctx.beginPath(); rctx.arc(q.x, q.y, (6 + 2 * Math.sin(sweep * 4)) * u, 0, 7); rctx.stroke(); }
     // enemy planes: red triangles pointing along their heading
     for (const t of s.targets) {
-      if (!t.alive || t.kind !== "jet") continue;
+      if (!t.alive || !["jet","boss","bossweapon"].includes(t.kind)) continue;
       const q = toScope(t.pos);
       const hx = -Math.sin(t.yaw), hz = -Math.cos(t.yaw);
       const rx = hx * cs - hz * sn, rz = hx * sn + hz * cs;
@@ -467,6 +478,7 @@ export function createHud() {
       const html = `<div class="tally"><span class="air${cn.air ? "" : " zero"}">AIR<b>${cn.air}</b></span><span class="gnd${cn.gnd ? "" : " zero"}">GND<b>${cn.gnd}</b></span><span class="sea${cn.sea ? "" : " zero"}">SEA<b>${cn.sea}</b></span></div><div class="tally"><span>MISSION<b>${got}/${need}</b></span></div>`;
       if (html !== dom._tally) { dom._tally = html; dom.obj.innerHTML = html; }
     }
+    { const hp = Math.round(Math.max(0, Math.min(100, s.hull ?? 100))), bar = el("hud-hull"); if (bar) { bar.style.width = hp + "%"; bar.classList.toggle("critical", hp < 30); bar.parentElement.setAttribute("aria-valuenow", hp); el("hud-hull-value").textContent = hp + "%"; } }
     {   // b24: 7 life squares
       const lv = Math.max(0, Math.min(s.livesMax || 5, s.lives ?? 5)), sq = dom.hp.children; dom.hp.style.setProperty("--hull", String(Math.round(Math.max(0, Math.min(100, s.hull ?? 100)))) + "%");
       for (let i = 0; i < sq.length; i++) sq[i].classList.toggle("off", i >= lv);
@@ -488,7 +500,7 @@ export function createHud() {
         }
       }
       const al = $n("btn-autoland");
-      if (al) { const can = s.hasStrip && !mode && !s.crashing && !s.landing; al.classList.toggle("hidden", !can); al.classList.toggle("urgent", can && fv < 0.25); }
+      if (al) { const approach = mode === "app" || mode === "final", can = s.hasStrip && (!mode || approach) && !s.crashing && !s.landing; al.classList.toggle("hidden", !can); al.classList.toggle("urgent", approach || can && fv < 0.25); al.textContent = approach ? "CANCEL LANDING" : "▼ AUTO LAND"; }
     }
     dom.spd.textContent = Math.round(s.player.speed * 3.6); if (dom.thr) dom.thr.textContent = dom.spd.textContent;
     dom.alt.textContent = Math.round(s.player.pos.y); if (dom.fl) dom.fl.textContent = s.player.flares ?? 0; if (dom.trk) dom.trk.classList.toggle("on", !!s.track);

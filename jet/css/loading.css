@@ -22,3 +22,9 @@
 .loading.live .ld-bg { opacity: 0; }
 .loading.live .ld-shade { background: linear-gradient(180deg, rgba(5,3,20,.5) 0%, rgba(5,3,20,.1) 30%, rgba(5,3,20,.1) 60%, rgba(5,3,20,.7) 100%); }
 .loading.live { background: transparent; }
+/* b27: keep approved art through every loading stage, including live preloads. */
+.loading, .loading.live { background:#070c12 var(--title-p) center / contain no-repeat !important; }
+.loading .ld-bg, .loading .ld-top { display:none !important; }
+.loading .ld-shade { background:linear-gradient(transparent 65%,rgba(0,0,0,.85)) !important; }
+.loading .ld-bottom { bottom:12px; background:rgba(0,0,0,.7); padding:10px; border-radius:8px; }
+@media (orientation:landscape) { .loading, .loading.live { background-image:var(--title-l) !important; } }

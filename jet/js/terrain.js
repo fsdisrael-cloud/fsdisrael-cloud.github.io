@@ -77,7 +77,7 @@ function gradeCrop(m, mxA, mxB, myBot, myTop, size) {
   for (let i = 0; i < d.length; i += 4) {
     let r = d[i], g = d[i + 1], b = d[i + 2];
     const l = 0.3 * r + 0.59 * g + 0.11 * b;
-    r = l + (r - l) * 1.35; g = l + (g - l) * 1.35; b = l + (b - l) * 1.35; // saturation
+    r = l + (r - l) * 1.02; g = l + (g - l) * 1.02; b = l + (b - l) * 1.02; // saturation
     r = 255 * Math.pow(Math.max(0, r) / 255, 0.8); g = 255 * Math.pow(Math.max(0, g) / 255, 0.8); b = 255 * Math.pow(Math.max(0, b) / 255, 0.78); // lift shadows (dark sea)
     r = (r - 128) * 1.05 + 134; g = (g - 128) * 1.05 + 134; b = (b - 128) * 1.05 + 136;
     d[i] = r; d[i + 1] = g; d[i + 2] = b;

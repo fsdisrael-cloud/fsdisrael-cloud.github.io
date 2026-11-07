@@ -2,8 +2,8 @@
 // Player + enemy jets: PBR-lit (metal, glossy canopy, environment reflections) with a thin illustrated outline.
 // Ground units: toon + outline. Illustrated look, readable colours.
 import * as THREE from "three";
-import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=26";
-import { patchDetail, missileTex } from "./tex.js?v=26";
+import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=27";
+import { patchDetail, missileTex } from "./tex.js?v=27";
 
 const PI = Math.PI;
 
@@ -212,12 +212,12 @@ function roundelTex() {
 function buildJet(kind, vk = "", variant = null) {
   const pal = { ...PAL[kind], ...(variant || {}) }, g = jetGeometry(kind, vk, pal), lean = kind === "enemy";
   const root = new THREE.Group();
-  const eK = kind === "ally" ? 1.0 : 1.05;
-  const body = pbr({ vertexColors: true, metalness: 0.62, roughness: 0.3, emissive: 0x10151c, emissiveIntensity: 0.35, envMapIntensity: eK }, { kind: "panel", s: 0.2, k: 0.5 });
-  const wingM = pbr({ color: pal.wing, metalness: 0.62, roughness: 0.32, emissive: 0x10151c, emissiveIntensity: 0.3, envMapIntensity: eK }, { kind: "panel", s: 0.26, k: 0.5 });
+  const eK = kind === "ally" ? 0.82 : 0.78;
+  const body = pbr({ vertexColors: true, metalness: 0.76, roughness: 0.34, emissive: 0x10151c, emissiveIntensity: 0.35, envMapIntensity: eK }, { kind: "panel", s: 0.2, k: 0.5 });
+  const wingM = pbr({ color: pal.wing, metalness: 0.72, roughness: 0.36, emissive: 0x10151c, emissiveIntensity: 0.3, envMapIntensity: eK }, { kind: "panel", s: 0.26, k: 0.5 });
   const darkM = pbr({ color: pal.dark, metalness: 0.7, roughness: 0.5 });
   const metalM = pbr({ color: 0x3b4047, metalness: 0.95, roughness: 0.36, flatShading: true, envMapIntensity: 1.1 });
-  const glassM = pbr({ color: pal.glass, metalness: 1, roughness: 0.05, envMapIntensity: 2.0, transparent: true, opacity: 0.9 });
+  const glassM = pbr({ color: pal.glass, metalness: 1, roughness: 0.05, envMapIntensity: 1.25, transparent: true, opacity: 0.96 });
   const accentM = new THREE.MeshStandardMaterial({ color: pal.glow, emissive: pal.glow, emissiveIntensity: 0.3, metalness: 0.2, roughness: 0.5 });
   const glowM = new THREE.MeshBasicMaterial({ color: pal.glow, toneMapped: false, fog: false });
   const add = (geo, mat, o = {}) => {
@@ -736,23 +736,25 @@ export function createSamSite() {
 }
 
 export function createRocket(color = 0xe6e9ec, tip = 0x2b3036) {
-  const key = "rocket2" + color + tip;
+  const key = "rocket27" + color + tip;
   const geo = cached(key, () => {
     const b = new PartBuilder();
-    b.add(G.capsule, color, { rot: [PI / 2, 0, 0], scale: [0.17, 0.8, 0.17] });
-    b.add(G.cone, tip, { pos: [0, 0, -1.55], rot: [-PI / 2, 0, 0], scale: [0.17, 0.75, 0.17] });
-    b.add(G.cyl, 0xc23a2e, { pos: [0, 0, -0.5], rot: [PI / 2, 0, 0], scale: [0.18, 0.12, 0.18] });
-    for (const r of [0, PI / 2]) b.add(G.box, tip, { pos: [0, 0, 1.0], rot: [0, 0, r], scale: [0.9, 0.04, 0.45] });
-    for (const r of [0, PI / 2]) b.add(G.box, tip, { pos: [0, 0, -0.55], rot: [0, 0, r], scale: [0.5, 0.03, 0.22] });
-    b.add(G.cyl, 0x1a1c20, { pos: [0, 0, 1.32], rot: [PI / 2, 0, 0], scale: [0.14, 0.18, 0.14] });
+    b.add(G.capsule, color, { rot: [PI / 2, 0, 0], scale: [0.09, 0.8, 0.09] });
+    b.add(G.cone, tip, { pos: [0, 0, -1.55], rot: [-PI / 2, 0, 0], scale: [0.09, 0.75, 0.09] });
+    b.add(G.cyl, 0xc23a2e, { pos: [0, 0, -0.5], rot: [PI / 2, 0, 0], scale: [0.10, 0.12, 0.10] });
+    for (const r of [0, PI / 2]) b.add(G.box, tip, { pos: [0, 0, 1.0], rot: [0, 0, r], scale: [0.64, 0.025, 0.45] });
+    for (const r of [0, PI / 2]) b.add(G.box, tip, { pos: [0, 0, -0.55], rot: [0, 0, r], scale: [0.38, 0.025, 0.22] });
+    b.add(G.cyl, 0x1a1c20, { pos: [0, 0, 1.32], rot: [PI / 2, 0, 0], scale: [0.085, 0.18, 0.085] });
     return b.build();
   });
   const g = toonModel(geo, { outlineScale: 0.5, detail: { kind: "panel", s: 1.6, k: 0.8 } });
-  const fl = new THREE.Mesh(G.cone, new THREE.MeshBasicMaterial({ color: 0xffa030, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
-  fl.rotation.x = PI / 2; fl.position.z = 2.4; fl.scale.set(0.2, 1.6, 0.2);
+  const exhaust = new THREE.ShaderMaterial({ transparent:true, depthWrite:false, side:THREE.DoubleSide, blending:THREE.AdditiveBlending,
+    vertexShader:"varying vec2 vU; void main(){ vU=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }",
+    fragmentShader:"varying vec2 vU; void main(){ float a=pow(1.-vU.y,1.7)*.8; gl_FragColor=vec4(mix(vec3(2.8,2.,.8),vec3(1.5,.28,.03),vU.y),a); }" });
+  const fl = new THREE.Mesh(flameGeo, exhaust); fl.position.z = 1.32; fl.scale.set(.32,.32,3.0);
   const glw = glowSprite(0xffc070, 2.6, 0.9); glw.position.z = 1.8;
   g.add(fl, glw);
-  g.scale.setScalar(1.7);
+  g.scale.setScalar(1.4);
   return g;
 }
 

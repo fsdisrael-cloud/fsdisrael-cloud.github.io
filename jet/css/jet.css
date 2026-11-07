@@ -718,3 +718,49 @@ body.nv::before { content: ""; position: fixed; inset: 0; pointer-events: none; 
 .hs-btn, .hs-tab { border-radius: 3px !important; font-family: var(--mil) !important; letter-spacing: .14em; background: linear-gradient(180deg, #4a525e, #1a1e24) !important; color: #dfe6ee !important; border: 1px solid #04060a !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 3px 0 #05060a !important; }
 .hs-btn.go { background: linear-gradient(180deg, #ffd27a, #ff9a1f 55%, #a85a00) !important; color: #2a1400 !important; }
 .settings *, .objectives *, button, select, input { font-family: var(--mil), sans-serif; }
+
+/* b27: persistent settings, scrollable language picker, separated landing control. */
+body.on-title .settings, body.tp-a .settings { display:flex !important; visibility:visible !important; opacity:1 !important; animation:none !important; }
+.settings { z-index:140; pointer-events:auto; }
+.settings .gear { flex-shrink:0; min-width:46px; min-height:46px; }
+.settings.open .toggles { max-width:min(320px,calc(100vw - 76px)); overflow-x:auto; touch-action:pan-x; }
+.toggles .tgl { flex-shrink:0; }
+#lang-list { touch-action:pan-y; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+body.on-title .settings .toggles { background:rgba(3,9,15,.88); }
+body.tp-a #game-canvas, body.rolling #game-canvas { visibility:hidden; }
+.autoland { left:calc(var(--safe-l) + 12px); bottom:calc(var(--safe-b) + 190px); transform:none; max-width:140px; font-size:12px; z-index:12; }
+@media (orientation:portrait) { .autoland { left:calc(var(--safe-l) + 10px); bottom:calc(var(--safe-b) + 290px); max-width:128px; font-size:11px; } }
+/* b27: designed artwork from the approved visual target, never a live/plain frame. */
+:root { --title-p:url('../img/art/title27-p0.jpg'); --title-l:url('../img/art/title27-l0.jpg'); }
+body.on-title { background:#070c12; }
+body.on-title #game-canvas, body.on-title #hud-canvas { visibility:hidden !important; }
+body.on-title .screen.title, body.preview.rolling .screen.title, body.preview .screen.title { background-color:#070c12 !important; background-image:var(--title-p) !important; background-size:contain !important; background-position:center !important; background-repeat:no-repeat !important; }
+.t26 .t26-plate, .t26 .t26-by { visibility:hidden !important; }
+.t26 .t26-tap { position:fixed; left:20%; top:79%; width:60%; height:13%; opacity:0 !important; pointer-events:auto !important; }
+.t26 .t26-lang { position:fixed; left:12px; top:12px; right:auto; z-index:145; }
+.t26 .t26-langbtn { background:rgba(5,10,17,.9); font-size:12px; padding:8px; }
+.t26 .scene-label { position:fixed; left:12px; bottom:12px; top:auto; max-width:60vw; font-size:9px; }
+.t26 .plate.reroll { width:126px; gap:7px; padding:0 8px; bottom:12px; right:12px; font:700 11px system-ui; animation:none !important; }
+body.on-title .settings { top:12px; right:12px; }
+body.on-title .settings.open .toggles { position:absolute; right:0; top:50px; width:230px; max-width:calc(100vw - 24px); flex-wrap:wrap; padding:8px; border:1px solid #697585; }
+body.on-title .settings .gear { background:rgba(5,10,17,.9); }
+@media (orientation:landscape) {
+ body.on-title .screen.title, body.preview.rolling .screen.title, body.preview .screen.title { background-image:var(--title-l) !important; }
+ .t26 .t26-tap { left:6%; top:65%; width:34%; height:20%; }
+ .t26 .t26-lang { top:12px; left:12px; }
+}
+@media (orientation:portrait) { .t26 .scene-label { max-width:56vw; bottom:12px; } }
+/* Readable hull health, separate from the five aircraft and gun temperature. */
+.hull-row { gap:5px; }
+.hull-meter { flex:1; height:7px; border:1px solid #04070b; border-radius:2px; overflow:hidden; background:rgba(10,16,24,.85); box-shadow:0 0 0 1px #ffffff35; }
+.hull-meter i { display:block; width:100%; height:100%; background:linear-gradient(#7ce7c0,#248d70); transition:width .15s; }
+.hull-meter i.critical { background:#ff5b42; animation:lifeBlink .6s infinite alternate; }
+#hud-hull-value { width:31px; font:700 10px system-ui; color:#c8f7e7; }
+.lives::after { display:none; }
+#btn-eject { position:fixed; z-index:35; left:50%; transform:translateX(-50%); bottom:calc(var(--safe-b) + 200px); background:repeating-linear-gradient(135deg,#2c1210 0 10px,#5c2113 10px 20px); color:#ffe38c; border:2px solid #ff8244; border-radius:9px; padding:14px 22px; box-shadow:0 0 24px #ff360080; font:900 18px system-ui; animation:lifeBlink .4s infinite alternate; pointer-events:auto; touch-action:manipulation; }
+#btn-eject.hidden { display:none; }
+@media(orientation:landscape) { #btn-eject { bottom:24px; } }
+/* Keep auxiliary controls off the designed logo and TESSIE credit. */
+.t26 .sec-links { position:fixed !important; left:auto !important; right:12px !important; top:65px !important; bottom:auto !important; display:flex; flex-direction:column; gap:7px; z-index:13; }
+.t26 .scene-label { left:auto !important; right:12px !important; bottom:65px !important; max-width:44vw; text-align:right; }
+@media(orientation:portrait) { .t26 .sec-links { top:68px !important; } .t26 .scene-label { max-width:52vw; font-size:8px; } }

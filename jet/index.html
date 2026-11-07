@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="ubu-build" content="26" />
+  <meta name="ubu-build" content="27" />
   <meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -18,8 +18,8 @@
   <link rel="icon" type="image/png" sizes="192x192" href="img/icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="img/icon-180.png" />
   <link rel="preload" href="fonts/Fredoka.ttf" as="font" type="font/ttf" crossorigin />
-  <link rel="stylesheet" href="css/jet.css?v=26" />
-  <link rel="stylesheet" href="css/loading.css?v=26" />
+  <link rel="stylesheet" href="css/jet.css?v=27" />
+  <link rel="stylesheet" href="css/loading.css?v=27" />
   <script type="importmap">{ "imports": { "three": "./js/vendor/three.module.min.js" } }</script>
 </head>
 <body class="on-title tp-a">
@@ -31,7 +31,7 @@
   <canvas id="hud-canvas"></canvas>
 
   <!-- ===== Settings (top right): gear + Music / Effects toggles. Open on the opening screen, tap the gear to open in play ===== -->
-  <div id="settings" class="settings open">
+  <div id="settings" class="settings">
     <div id="toggles" class="toggles">
       <button type="button" class="tgl" id="btn-music" aria-label="Music on/off">
         <svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="18" r="2.6" fill="currentColor"/><circle cx="17" cy="16" r="2.6" fill="currentColor"/><path class="slash" d="M3 3 21 21" stroke="#ff4d4d" stroke-width="2.6" stroke-linecap="round"/></svg><span>Music</span>
@@ -75,7 +75,7 @@
       <div class="scene-label" id="scene-label"></div>
       <div id="menu-buttons" class="menu-buttons plates t26-sec"></div>
       <div class="sec-links" id="sec-links"></div>
-      <button type="button" class="plate reroll" id="btn-reroll" aria-label="New scene"><svg viewBox="0 0 24 24" width="22" height="22"><rect x="3.5" y="3.5" width="17" height="17" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><g fill="currentColor"><circle cx="8.5" cy="8.5" r="1.5"/><circle cx="15.5" cy="15.5" r="1.5"/><circle cx="15.5" cy="8.5" r="1.5"/><circle cx="8.5" cy="15.5" r="1.5"/></g></svg></button>
+      <button type="button" class="plate reroll" id="btn-reroll" aria-label="Choose scenery"><svg viewBox="0 0 24 24" width="22" height="22"><rect x="3.5" y="3.5" width="17" height="17" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><g fill="currentColor"><circle cx="8.5" cy="8.5" r="1.5"/><circle cx="15.5" cy="15.5" r="1.5"/><circle cx="15.5" cy="8.5" r="1.5"/><circle cx="8.5" cy="15.5" r="1.5"/></g></svg><span class="no-i18n">SCENERY</span></button>
       <div class="t26-bottom">
         <button type="button" id="tap-fly" class="t26-tap"><i class="hz hz-t"></i><span class="t26-tapt">TAP TO FLY</span><i class="hz hz-b"></i></button>
         <div class="t26-by"><svg viewBox="0 0 48 48" width="26" height="26" aria-hidden="true"><path d="M5 6h38L24 44z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M15 12h18v5h-6.5v14h-5V17H15z" fill="currentColor"/></svg><span>by TESSIE</span></div>
@@ -120,6 +120,7 @@
     <div id="hud-track" class="hud-track">TRACK</div>
     <div id="hud-obj" class="objectives"></div>
     <div class="stats" id="stats">
+      <div class="statrow hull-row"><span>HULL</span><div class="hull-meter" role="meter" aria-label="Aircraft health" aria-valuemin="0" aria-valuemax="100"><i id="hud-hull"></i></div><b id="hud-hull-value">100%</b></div>
       <div class="statrow"><span>LIFE</span><div class="lives" id="hud-lives"><i></i><i></i><i></i><i></i><i></i></div></div>
       <div class="statrow heat"><span id="hud-heat-label">GUN</span><div class="bar"><i id="hud-heat"></i></div></div>
       <div class="nums"><span><b id="hud-spd">0</b> km/h</span><span><b id="hud-alt">0</b> m</span><span class="fl-c"><b id="hud-fl">12</b> flares</span><span class="kl-c"><b id="hud-kl">0</b> kills</span></div>
@@ -138,6 +139,7 @@
     <div id="stick" class="stick"></div>
     <div id="aux" class="aux"><button type="button" class="abtn a-brake" data-w="brake" aria-label="Airbrake"><em>BRAKE</em></button><button type="button" class="abtn a-flare" data-w="flare" aria-label="Flares"><svg class="fe" viewBox="0 0 48 48" width="30" height="30" aria-hidden="true"><defs><radialGradient id="fg" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="#ffd36a"/><stop offset="1" stop-color="#ff6a1a" stop-opacity="0"/></radialGradient></defs><g stroke="#ffb23a" stroke-width="2.4" stroke-linecap="round" fill="none"><path d="M24 24 L7 10"/><path d="M24 24 L7 38"/><path d="M24 24 L4 24"/></g><circle cx="24" cy="24" r="9" fill="url(#fg)"/><circle cx="24" cy="24" r="3.2" fill="#fff"/><path d="M33 17 l9 -5 M33 31 l9 5" stroke="#8a929c" stroke-width="2.2" stroke-linecap="round"/></svg><em>FLARES</em></button></div>
     <div id="lvl-title" class="lvl-title"><small>MISSION</small><b></b><em></em></div>
+    <button type="button" id="btn-eject" class="hidden" aria-label="Emergency eject">⚠ EJECT <b id="eject-count">5</b></button>
     <div id="alert" class="alert hidden"></div>
     <div id="toasts" class="toasts"></div>
     <div id="low-alt" class="low-alt">PULL UP</div>
@@ -192,6 +194,6 @@
     </div>
   </section>
   <div id="build-tag" class="build-tag"></div>
-  <script type="module" src="js/main.js?v=26"></script>
+  <script type="module" src="js/main.js?v=27"></script>
 </body>
 </html>

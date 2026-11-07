@@ -411,6 +411,7 @@ export function createAudio() {
     try { const n = ctx.currentTime; v.g.gain.cancelScheduledValues(n); v.g.gain.setTargetAtTime(0, n, 0.03); v.src.stop(n + 0.2); } catch { /* ignore */ }
   }
 
+  let seekerNode = null;
   return {
     hold, release, isHeld: () => held,
     async unlock() {
@@ -516,6 +517,12 @@ export function createAudio() {
     hitFar() { if (!gate("hitfar", 380)) return; play("hit", { gain: 0.1, rate: 0.7 + Math.random() * 0.2, lp: 2200, prio: 0 }); },
     hit() { if (!gate("hit", 140)) return; play("hit", { gain: 0.3, rate: 0.85 + Math.random() * 0.4, prio: 0 }); },
     hurt() { if (!gate("hurt", 450)) return; noise({ dur: 0.28, peak: 0.28, type: "lowpass", f0: 600, f1: 250, a: 0.012 }); tone({ f0: 120, f1: 70, dur: 0.22, peak: 0.12, a: 0.015 }); },
+    acquire() { tone({ f0: 1080, dur: 0.045, peak: 0.023, a: 0.008 }); },
+    seeker(on) {
+      if (!ctx || held || ctx.state !== "running") return;
+      if (!seekerNode) { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = "sine"; o.frequency.value = 960; g.gain.value = 0; o.connect(g); g.connect(sfxGain); o.start(); seekerNode = { o, g }; }
+      seekerNode.g.gain.setTargetAtTime(on && sfxOn ? 0.025 : 0, ctx.currentTime, 0.035);
+    },
     lock() { if (!gate("lock", 900)) return; tone({ f0: 880, dur: 0.2, peak: 0.045, a: 0.03 }); },
     rwr(v = 0.05, f = 900) { tone({ f0: f, dur: 0.07, peak: Math.min(0.1, v * 0.9), type: "square", a: 0.004, prio: 2 }); },
     /** b24: steady radar-lock growl (enemy radar has you); off when nothing locks you */

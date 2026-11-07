@@ -111,7 +111,7 @@ export function createPost(renderer, opts = {}) {
     // composite
     const u = comp.uniforms;
     u.tS.value = sceneRT.texture; u.tB.value = mips[0].texture;
-    u.uBloom.value = p.bloom ?? 0.55; u.uBlur.value = p.blur || 0; u.uTime.value = (p.time || 0) % 100; u.uVig.value = p.vig ?? 0.5; u.uAsp.value = W / H; u.uHurt.value = p.hurt || 0;
+    u.uBloom.value = p.bloom ?? 0.36; u.uBlur.value = p.blur || 0; u.uTime.value = (p.time || 0) % 100; u.uVig.value = p.vig ?? 0.5; u.uAsp.value = W / H; u.uHurt.value = p.hurt || 0;
     u.uNV.value = p.nv ? 1 : 0; u.uWhite.value = p.white || 0; if (p.whiteCol) u.uWhiteCol.value.set(p.whiteCol.r, p.whiteCol.g, p.whiteCol.b);
     if (p.haze) u.uHaze.value.set(p.haze.x, p.haze.y, p.haze.z); else u.uHaze.value.z = 0;
     // sun position on screen
