@@ -764,3 +764,14 @@ body.on-title .settings .gear { background:rgba(5,10,17,.9); }
 .t26 .sec-links { position:fixed !important; left:auto !important; right:12px !important; top:65px !important; bottom:auto !important; display:flex; flex-direction:column; gap:7px; z-index:13; }
 .t26 .scene-label { left:auto !important; right:12px !important; bottom:65px !important; max-width:44vw; text-align:right; }
 @media(orientation:portrait) { .t26 .sec-links { top:68px !important; } .t26 .scene-label { max-width:52vw; font-size:8px; } }
+
+/* b28: language pill always visible + tappable on the opening screen; gear always tappable */
+body.tp-a .t26-lang, body.on-title .t26-lang { visibility:visible !important; opacity:1 !important; animation:none !important; pointer-events:auto !important; }
+.t26 .t26-lang { z-index:150; }
+.t26-langbtn { min-width:0; border-radius:999px; padding:9px 16px; background:rgba(5,10,17,.9); border:1.5px solid #f3b61f; box-shadow:0 3px 10px rgba(0,0,0,.7); touch-action:manipulation; }
+.t26-langbtn::after { display:none; }
+#settings, #settings * { touch-action:manipulation; }
+#settings { z-index:160 !important; pointer-events:auto !important; }
+.t26-langlist { z-index:170; }
+.t26-langlist.float { position:fixed; top:70px; right:12px; left:auto; transform:none; }
+#btn-lang2 span { font-size:7px; }

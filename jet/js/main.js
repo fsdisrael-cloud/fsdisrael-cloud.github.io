@@ -158,7 +158,11 @@ lookBtn.addEventListener("click", () => { controls.setInvertLook(!controls.inver
 {
   const st = $("settings"); let tm = 0;
   const setOpen = (v) => { st.classList.toggle("open", v); clearTimeout(tm); if (v && document.body.classList.contains("in-game")) tm = setTimeout(() => st.classList.remove("open"), 6000); };
-  $("btn-settings").addEventListener("click", () => setOpen(!st.classList.contains("open")));
+  // b28: iOS sometimes swallows the synthetic click over the 3D canvas -> act on touchend/pointerup directly (deduped)
+  let lastT = 0; const gearTap = (e) => { e.stopPropagation(); if (e.cancelable) e.preventDefault(); const n = performance.now(); if (n - lastT < 350) return; lastT = n; setOpen(!st.classList.contains("open")); };
+  const gb = $("btn-settings"); gb.addEventListener("touchend", gearTap, { passive: false }); gb.addEventListener("click", gearTap);
+  gb.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
+  $("btn-lang2")?.addEventListener("click", (e) => { e.stopPropagation(); setOpen(false); window.__langOpen?.(true, true); });
   for (const id of ["btn-music", "btn-sfx", "btn-tilt", "btn-invert", "btn-assist"]) $(id).addEventListener("click", () => setOpen(true));
   window.__settingsOpen = setOpen;
 }
@@ -221,7 +225,7 @@ initLang();
 {
   const btn = $("lang-btn"), list = $("lang-list"), cur = $("lang-cur");
   const render = () => {
-    cur.textContent = langInfo()[1];
+    cur.textContent = langInfo()[1]; const l2 = document.querySelector("#btn-lang2 span"); if (l2) l2.textContent = langInfo()[1];
     list.innerHTML = "";
     for (const [code, name, flag] of LANGS) {
       const b = document.createElement("button");
@@ -230,14 +234,14 @@ initLang();
       list.appendChild(b);
     }
   };
-  const open = (v) => { list.classList.toggle("hidden", !v); btn.setAttribute("aria-expanded", v ? "true" : "false"); if (v) { const on = list.querySelector(".on"); if (on) list.scrollTop = Math.max(0, on.offsetTop - 60); } };
+  const open = (v, fromSettings) => { list.classList.toggle("float", !!(v && fromSettings)); if (v && fromSettings) document.body.appendChild(list); else if (list.parentNode !== btn.parentNode) btn.parentNode.appendChild(list); list.classList.toggle("hidden", !v); btn.setAttribute("aria-expanded", v ? "true" : "false"); if (v) { const on = list.querySelector(".on"); if (on) list.scrollTop = Math.max(0, on.offsetTop - 60); } };
   btn.addEventListener("click", (e) => { e.stopPropagation(); window.__langTapGuard?.(); open(list.classList.contains("hidden")); });
   list.addEventListener("click", (e) => {
     e.stopPropagation(); window.__langTapGuard?.();
     const b = e.target.closest("button[data-code]"); if (!b) return;
     setLang(b.dataset.code); render(); open(false); audio.click?.();
   });
-  document.addEventListener("pointerdown", (e) => { if (!list.classList.contains("hidden") && !e.target.closest("#lang-list, #lang-btn")) { open(false); window.__langTapGuard?.(); } }, true);
+  document.addEventListener("pointerdown", (e) => { if (!list.classList.contains("hidden") && !e.target.closest("#lang-list, #lang-btn, #btn-lang2")) { open(false); window.__langTapGuard?.(); } }, true);
   render();
   window.__langRender = render; window.__langOpen = open;
 }
