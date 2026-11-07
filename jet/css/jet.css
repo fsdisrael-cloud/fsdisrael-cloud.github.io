@@ -259,7 +259,7 @@ body.in-game .build-tag { display: none; }
    ===================================================================== */
 .nv { position: fixed; inset: 0; z-index: 8; pointer-events: none; display: none; }
 body.nv-on.in-game .nv { display: block; }
-body.nv-on.in-game canvas#game-canvas { filter: grayscale(1) brightness(2.3) contrast(1.25) sepia(1) hue-rotate(68deg) saturate(3.4); }
+/* b34: removed CSS filter on WebGL canvas (iOS blank/freeze) */
 .nv i { position: absolute; inset: 0; display: block; }
 .nv-vig { background: radial-gradient(ellipse at 50% 50%, rgba(0,40,10,0) 45%, rgba(0,18,4,.78) 100%); box-shadow: inset 0 0 90px rgba(0,30,8,.9); }
 .nv-scan { background: repeating-linear-gradient(180deg, rgba(0,0,0,0) 0 2px, rgba(0,20,6,.22) 2px 3px); mix-blend-mode: multiply; }
@@ -856,9 +856,23 @@ html, body { background:#070c12 !important; }
 #eject-handles.ej-h::before { inset:-16px -14px; }
 @media (orientation: landscape) { #eject-handles.ej-h { left:50% !important; transform:translateX(-50%) !important; bottom:calc(env(safe-area-inset-bottom) + 106px) !important; } }
 /* b33: night flights: green NVG on the 3D view (both views); HUD markers stay coloured on top */
-body.nv.in-game canvas#game-canvas { filter: grayscale(1) brightness(2.1) contrast(1.2) sepia(1) hue-rotate(68deg) saturate(3); }
+body.nv.in-game::after { content:""; position:fixed; inset:0; z-index:4; pointer-events:none; background:rgba(40,255,110,.16); }   /* b34: no CSS filter on the WebGL canvas (froze iPhone) */
 body.night .nv-btn { display:flex; }
 /* b33: one row under the logo: caption LEFT of the SCENE & JET button (never over the plane); both are tappable */
 #btn-reroll.reroll { top:calc(env(safe-area-inset-top) + 212px) !important; }
 .screen.title .scene-label { top:calc(env(safe-area-inset-top) + 212px) !important; right:calc(env(safe-area-inset-right) + 168px) !important; left:calc(env(safe-area-inset-left) + 10px) !important; max-width:none !important; min-height:44px; display:flex !important; align-items:center; justify-content:flex-end; font-size:11px !important; cursor:pointer; pointer-events:auto; }
 @media (orientation: landscape) { #btn-reroll.reroll { top:calc(env(safe-area-inset-top) + 172px) !important; } .screen.title .scene-label { left:auto !important; top:calc(env(safe-area-inset-top) + 226px) !important; right:calc(env(safe-area-inset-right) + 14px) !important; max-width:30vw !important; } }
+/* b34: 3D animated level banner + results */
+.lvl-banner { position:fixed; left:0; right:0; top:28%; z-index:70; text-align:center; pointer-events:none; perspective:600px; }
+.lvl-banner b { display:block; font:900 clamp(44px,13vw,86px)/1 "Rajdhani","Barlow Condensed",Impact,system-ui,sans-serif; letter-spacing:.06em; color:#fff3d6; background:linear-gradient(180deg,#fff 0%,#ffd36a 45%,#ff8a1a 55%,#ffe1a0 100%); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; filter:drop-shadow(0 4px 0 #3a1a00) drop-shadow(0 0 18px rgba(255,140,20,.8)); }
+.lvl-banner span { display:inline-block; margin-top:8px; padding:6px 14px; font:800 clamp(13px,3.6vw,18px)/1.2 "Rajdhani",Impact,system-ui,sans-serif; letter-spacing:.12em; color:#fff; background:rgba(6,10,14,.72); border:2px solid #ff9a2e; border-radius:10px; box-shadow:0 0 14px rgba(255,140,20,.5); }
+.lvl-banner.go b { animation:lvlIn 1s cubic-bezier(.2,1.6,.4,1) both, lvlOut .6s 3.5s ease-in both; }
+.lvl-banner.go span { animation:lvlIn .8s .35s cubic-bezier(.2,1.6,.4,1) both, lvlOut .6s 3.5s ease-in both; }
+@keyframes lvlIn { from { transform:rotateX(80deg) scale(2.4); opacity:0; } to { transform:none; opacity:1; } }
+@keyframes lvlOut { to { transform:translateY(-40px) scale(.8); opacity:0; } }
+.results .res-title { font:900 clamp(38px,11vw,72px)/1 "Rajdhani",Impact,system-ui,sans-serif !important; letter-spacing:.05em; background:linear-gradient(180deg,#fff,#ffd36a 45%,#ff8a1a 55%,#ffe1a0); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; filter:drop-shadow(0 4px 0 #3a1a00) drop-shadow(0 0 16px rgba(255,140,20,.7)); animation:lvlIn .9s cubic-bezier(.2,1.6,.4,1) both; }
+.results.lost .res-title { background:linear-gradient(180deg,#fff,#ff9a8a 45%,#e0281a 55%,#ffb0a0); -webkit-background-clip:text; background-clip:text; }
+.results .res-stars { font-size:44px; color:#ffcf40; text-shadow:0 0 14px #ffb02e; animation:lvlIn .8s .4s both; }
+.res-count { margin-top:10px; font:800 15px/1 "Rajdhani",system-ui,sans-serif; letter-spacing:.1em; color:#ffd860; }
+#res-btn2 { margin-top:10px; }
+body:not(.in-game) #eject-handles, .results:not(.hidden) ~ #eject-handles { display:none !important; }

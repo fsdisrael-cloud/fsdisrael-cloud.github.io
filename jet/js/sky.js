@@ -1,8 +1,8 @@
 // Time of day + weather: sky dome, sun/moon, stars, lights, fog, toon clouds, rain/snow, lightning.
-import { FX } from "./tex.js?v=33";
+import { FX } from "./tex.js?v=34";
 import * as THREE from "three";
-import { PartBuilder, G, getGradientMap, outlineMaterial } from "./toon.js?v=33";
-import { style, skyHueChunk } from "./surreal.js?v=33";
+import { PartBuilder, G, getGradientMap, outlineMaterial } from "./toon.js?v=34";
+import { style, skyHueChunk } from "./surreal.js?v=34";
 
 export const TIMES = ["dawn", "day", "dusk", "night"];
 export const WEATHERS = ["clear", "cloudy", "rain", "fog", "snow", "storm"];

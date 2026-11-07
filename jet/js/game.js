@@ -1,15 +1,15 @@
 // Ubu game world: flight model, camera, targets, AI, weapons, effects, objectives.
-import { createPost } from "./post.js?v=33";
+import { createPost } from "./post.js?v=34";
 import * as THREE from "three";
-import { buildTerrain } from "./terrain.js?v=33";
-import { createSky } from "./sky.js?v=33";
-import { createPilot, createSeat, createChute, createAirstrip, STRIP, createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createShip, createWarship, createSub, createSamSite, createRocket, createHeli, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=33";
-import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=33";
-import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=33";
-import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=33";
-import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=33";
-import { setQuality, FX as FXQ } from "./tex.js?v=33";
-import { style, patchTerrain, waveAt, createDreamShapes, onStyle, setLake } from "./surreal.js?v=33";
+import { buildTerrain } from "./terrain.js?v=34";
+import { createSky } from "./sky.js?v=34";
+import { createPilot, createSeat, createChute, createAirstrip, STRIP, createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createShip, createWarship, createSub, createSamSite, createRocket, createHeli, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=34";
+import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=34";
+import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=34";
+import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=34";
+import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=34";
+import { setQuality, FX as FXQ } from "./tex.js?v=34";
+import { style, patchTerrain, waveAt, createDreamShapes, onStyle, setLake } from "./surreal.js?v=34";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V(), tE = V();
@@ -397,7 +397,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   function addTarget(kind, obj, pos, extra = {}) {
     obj.position.copy(pos);
     scene.add(obj);
-    const gsc = { tank: 3.0, base: 2.2, flak: 2.7, sam: 2.7, ship: 2.3, jet: 2.0 }[kind] || 1;
+    const gsc = { tank: 3.4, base: 2.4, flak: 3.0, sam: 3.0, ship: 2.8, jet: 3.0 }[kind] || 1;   // b34: bigger, clearly visible enemies
     if (gsc !== 1) { obj.scale.multiplyScalar(gsc); obj.userData.radius = (obj.userData.radius || 10) * gsc; }
     const t = { kind, obj, pos: obj.position, vel: V(), hp: HP[kind] || 5, alive: true, radius: obj.userData.radius || 10, objective: progress[kind] != null, heading: rng() * Math.PI * 2, cool: 2 + rng() * 4, t: rng() * 10, ...extra };
     targets.push(t); addGlow(t);

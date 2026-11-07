@@ -1,17 +1,17 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=33";
-import { createHud } from "./hud.js?v=33";
-import { createControls } from "./controls.js?v=33";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=33";
-import { createAudio, trackFor } from "./audio.js?v=33";
-import { createHaptics } from "./haptics.js?v=33";
-import { createRain2D } from "./rain2d.js?v=33";
-import { createLoading } from "./loading.js?v=33";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=33";
-import { setSurreal, tickStyle } from "./surreal.js?v=33";
-import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=33";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=33";
+import { createGame } from "./game.js?v=34";
+import { createHud } from "./hud.js?v=34";
+import { createControls } from "./controls.js?v=34";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=34";
+import { createAudio, trackFor } from "./audio.js?v=34";
+import { createHaptics } from "./haptics.js?v=34";
+import { createRain2D } from "./rain2d.js?v=34";
+import { createLoading } from "./loading.js?v=34";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=34";
+import { setSurreal, tickStyle } from "./surreal.js?v=34";
+import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=34";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=34";
 
 const $ = (id) => document.getElementById(id);
 
@@ -285,6 +285,9 @@ async function launch(n, fromTap, sv) {
   if (sv?.snap) { try { game.restoreSnap(sv.snap); } catch { /* ignore */ } }
   window.__settingsOpen?.(false);
   game.start();
+  { const b = $("lvl-banner"), lv = game.level?.() || {}, ob = (lv.objectives || []).map((o) => o.label).filter(Boolean)[0] || "Destroy the enemy";   // b34: clear level goal
+    $("lvl-b1").textContent = `LEVEL ${n}`; $("lvl-b2").textContent = ob.toUpperCase() + ((n % 5 === 0) ? " · BOSS!" : "");
+    b.classList.remove("hidden", "go"); void b.offsetWidth; b.classList.add("go"); clearTimeout(window.__lvlB); window.__lvlB = setTimeout(() => b.classList.add("hidden"), 4200); }
   { const lt = $("lvl-title"); lt.querySelector("b").textContent = `LEVEL ${n}`; lt.querySelector("em").textContent = (game.level().title || "").replace(/^\d+\.\s*/, "").toUpperCase(); lt.classList.remove("show"); void lt.offsetWidth; lt.classList.add("show"); }
   state = "playing";
   liveLoad = false; $("loading").classList.remove("live");
@@ -316,8 +319,20 @@ function onLevelEnd(r) {
   $("res-btn-label").textContent = won ? "NEXT LEVEL" : "NEW GAME";
   $("res-btn").onclick = () => launch(next);
   setTimeout(() => { if (state === "results" && !preload) startPreload(next); }, 1800);
-  if (won) $("results").classList.remove("hidden");
-  else {
+  // b34 arcade flow: level complete auto-advances; game over offers instant CONTINUE on the same level
+  clearInterval(window.__resCd); const cdEl = $("res-count"), b2 = $("res-btn2"); b2.hidden = true; cdEl.textContent = "";
+  $("results").classList.toggle("won", won); $("results").classList.toggle("lost", !won);
+  if (won) { $("results").classList.remove("hidden"); let c = 6; cdEl.textContent = `Next level in ${c}`; window.__resCd = setInterval(() => { if (state !== "results") return clearInterval(window.__resCd); if (--c <= 0) { clearInterval(window.__resCd); launch(next); } else cdEl.textContent = `Next level in ${c}`; }, 1000); return; }
+  if (!won) {
+    $("results").classList.remove("hidden"); $("res-title").textContent = "SHOT DOWN";
+    $("res-btn-label").textContent = `CONTINUE ▶ LEVEL ${n}`; carryLives = 5; carryScore = 0;
+    $("res-btn").onclick = () => { clearInterval(window.__resCd); saveLevelNo(n); launch(n); };
+    b2.hidden = false; $("res-btn2-label").textContent = "SAVE SCORE";
+    b2.onclick = () => { clearInterval(window.__resCd); $("results").classList.add("hidden"); showHighScores(r.score, () => { $("results").classList.remove("hidden"); $("res-btn-label").textContent = "NEW GAME"; $("res-btn").onclick = () => launch(1); b2.hidden = true; }); };
+    let c = 9; cdEl.textContent = `Continue? ${c}`; window.__resCd = setInterval(() => { if (state !== "results") return clearInterval(window.__resCd); if (--c <= 0) { clearInterval(window.__resCd); cdEl.textContent = ""; } else cdEl.textContent = `Continue? ${c}`; }, 1000);
+    return;
+  }
+  {
     $("results").classList.remove("hidden"); $("res-btn-label").textContent = "ENTER HIGH SCORE";
     $("res-btn").onclick = () => { $("results").classList.add("hidden"); showHighScores(r.score, () => { $("results").classList.remove("hidden"); $("res-btn-label").textContent = "NEW GAME"; $("res-btn").onclick = () => launch(1); }, n); };
   }
