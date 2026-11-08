@@ -1,17 +1,17 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=38";
-import { createHud } from "./hud.js?v=38";
-import { createControls } from "./controls.js?v=38";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=38";
-import { createAudio, trackFor } from "./audio.js?v=38";
-import { createHaptics } from "./haptics.js?v=38";
-import { createRain2D } from "./rain2d.js?v=38";
-import { createLoading } from "./loading.js?v=38";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=38";
-import { setSurreal, tickStyle } from "./surreal.js?v=38";
-import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=38";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=38";
+import { createGame } from "./game.js?v=39";
+import { createHud } from "./hud.js?v=39";
+import { createControls } from "./controls.js?v=39";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=39";
+import { createAudio, trackFor } from "./audio.js?v=39";
+import { createHaptics } from "./haptics.js?v=39";
+import { createRain2D } from "./rain2d.js?v=39";
+import { createLoading } from "./loading.js?v=39";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=39";
+import { setSurreal, tickStyle } from "./surreal.js?v=39";
+import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=39";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=39";
 
 const $ = (id) => document.getElementById(id);
 
@@ -29,7 +29,7 @@ try {
   for (let i = 0; i < 500; i++) { w.fillStyle = `rgba(${rn() < 0.5 ? "255,255,255" : "0,0,0"},${0.03 + rn() * 0.08})`; w.fillRect(rn() * 256, rn() * 256, 1 + rn() * 2, 1 + rn() * 2); }
   document.documentElement.style.setProperty("--worn", `url(${wc.toDataURL("image/png")})`);
 } catch (e) { /* plain gradients if canvas is unavailable */ }
-const BUILD = 27;
+const BUILD = 39;
 { const t = $("build-tag"); if (t) t.textContent = "JET-X b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;
@@ -196,12 +196,38 @@ const MENU_BUTTONS = [
 ];
 const SEC_LINKS = [
   { label: "HOW TO", run: () => showPanel("How to", HOW_HTML + `<p style="text-align:center;margin-top:14px"><a class="t26-cont" style="display:inline-block;text-decoration:none" href="howto/" target="_blank" rel="noopener"><span>OPEN FULL HOW-TO GUIDE</span></a></p>`) },    // PLACEHOLDER (function pending)
-  { label: "LEVELS", run: () => showPanel("Levels", levelsHtml()) },        // PLACEHOLDER (function pending)
+  { label: "LEVELS", run: () => { showPanel("Levels", levelsHtml()); const f = document.getElementById("lv-jump"); f?.addEventListener("submit", (e) => { e.preventDefault(); const n = Math.max(1, Math.min(999, parseInt(document.getElementById("lv-num").value, 10) || 1)); levelNo = n; saveLevelNo(n); $("panel").classList.add("hidden"); document.body.classList.remove("panel-open"); clearSave(); play(); }); } },
 ];
 function levelsHtml() {
-  const d = LEVELS[Math.min(levelNo, LEVELS.length) - 1];
-  const dots = LEVELS.map((_, i) => `<div class="dot ${i + 1 < levelNo ? "done" : i + 1 === levelNo ? "now" : ""}">${i + 1}</div>`).join("");
-  return `<div>Level <b>${levelNo}</b>: ${d.title}<br><small>${BIOMES[d.biome]}</small></div><div class="dots">${dots}</div>`;
+  const d = buildLevel(Math.max(1, Math.min(999, levelNo)));
+  return `<div>Mission <b>${levelNo}</b> of 999<br><small>${d.title}</small></div><form id="lv-jump" class="lv-jump"><label>MISSION <input id="lv-num" inputmode="numeric" min="1" max="999" value="${levelNo}"></label><button type="submit">GO</button></form><p>Type any mission from 1 to 999. A boss waits on every 5th mission. Missions 4, 9, 14… land on the carrier only.</p>`;
+}
+function starTotal(add = 0) {
+  let n = 0; try { n = parseInt(localStorage.getItem("jet-stars") || "0", 10) || 0; } catch { /* ignore */ }
+  if (add) { n += add; try { localStorage.setItem("jet-stars", String(n)); } catch { /* ignore */ } }
+  return n;
+}
+function showCelebration(opt, done) {
+  const box = $("celebrate"); box.classList.remove("hidden");
+  $("cel-title").textContent = opt.giant ? "MISSION 999" : "BOSS CLEAR";
+  $("cel-stars").textContent = "★".repeat(opt.stars) + "☆".repeat(5 - opt.stars) + `   ${opt.total} STARS`;
+  const trophy = $("cel-trophy");
+  const hues = ["#ffd36a", "#9ad7ff", "#ff8a6a", "#d7ffa0", "#e0b0ff", "#fff6d0"];
+  trophy.style.setProperty("--th", hues[(opt.total || 1) % hues.length]);
+  trophy.dataset.kind = String((opt.total || 1) % 6);
+  const cv = $("cel-cv"), ctx = cv.getContext("2d");
+  let raf; const t0 = performance.now();
+  const frame = (now) => {
+    const t = (now - t0) / 1000; cv.width = innerWidth; cv.height = innerHeight; ctx.clearRect(0, 0, cv.width, cv.height);
+    for (let i = 0; i < 48; i++) { const x = (i * 97 + t * 90) % cv.width, y = (i * 53 + t * 160) % cv.height; ctx.fillStyle = hues[i % hues.length]; ctx.fillRect(x, y, 6, 9); }
+    const phase = Math.min(1, Math.max(0, (t - 1.2) / 1.3));
+    const cx = cv.width / 2 + Math.sin(t * 5) * (1 - phase) * 90, cy = cv.height * 0.46;
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(phase * Math.PI); ctx.fillStyle = "#e7eef6";
+    ctx.beginPath(); ctx.moveTo(0, -16); ctx.lineTo(36, 10); ctx.lineTo(8, 4); ctx.lineTo(0, 18); ctx.lineTo(-8, 4); ctx.lineTo(-36, 10); ctx.closePath(); ctx.fill(); ctx.restore();
+    raf = requestAnimationFrame(frame);
+  };
+  raf = requestAnimationFrame(frame);
+  $("cel-next").onclick = () => { cancelAnimationFrame(raf); box.classList.add("hidden"); done(); };
 }
 function buildMenu() {
   const box = $("menu-buttons"); box.innerHTML = "";
@@ -308,7 +334,8 @@ function onLevelEnd(r) {
   const n = levelNo;
   const won = r.reason === "complete";   // survived the 3 minutes
   $("res-title").textContent = won ? `WIN LEVEL ${n}` : "GAME OVER";
-  $("res-stars").textContent = won ? "★".repeat(r.stars) + "☆".repeat(3 - r.stars) : "";
+  const stars = won ? Math.max(1, Math.min(5, r.stars || 1)) : 0;
+  $("res-stars").textContent = won ? "★".repeat(stars) + "☆".repeat(5 - stars) : "";
   $("res-sub").textContent = won ? `Score ${r.score} · next: level ${n + 1}` : `Score ${r.score} · reached level ${n}`;
   const k = r.stats.kills || {};
   const rows = Object.entries(k).map(([a, c]) => `${c} ${a === "jet" ? "planes" : a === "base" ? "base buildings" : a + "s"}`);
@@ -322,6 +349,12 @@ function onLevelEnd(r) {
   // b34 arcade flow: level complete auto-advances; game over offers instant CONTINUE on the same level
   clearInterval(window.__resCd); const cdEl = $("res-count"), b2 = $("res-btn2"); b2.hidden = true; cdEl.textContent = "";
   $("results").classList.toggle("won", won); $("results").classList.toggle("lost", !won);
+  if (won && (n % 5 === 0 || n >= 999)) {
+    const total = starTotal(stars);
+    $("results").classList.add("hidden");
+    showCelebration({ giant: n >= 999, stars, total }, () => { if (n >= 999) showHighScores(r.score, () => launch(1), n); else launch(next); });
+    return;
+  }
   if (won) { $("results").classList.remove("hidden"); let c = 6; cdEl.textContent = `Next level in ${c}`; window.__resCd = setInterval(() => { if (state !== "results") return clearInterval(window.__resCd); if (--c <= 0) { clearInterval(window.__resCd); launch(next); } else cdEl.textContent = `Next level in ${c}`; }, 1000); return; }
   if (!won) {
     $("results").classList.remove("hidden"); $("res-title").textContent = "SHOT DOWN";
@@ -345,6 +378,7 @@ function loadScores() { try { const v = JSON.parse(localStorage.getItem(SCORE_KE
 // then the list scrolls to your rank and highlights it. TOP jumps to #1, HOME returns to the starting page.
 function showHighScores(score, done, lv = 1) {
   const box = $("hs"), card = box.querySelector(".hs-card"), data = loadScores(), wrap = $("hs-wrap");
+  const hsTitle = box.querySelector(".hs-title"); if (hsTitle) hsTitle.innerHTML = `<small>JET-X COMMAND · ${starTotal()} STARS</small>HIGH SCORES`;
   const entering = score > 0;
   if (!entering && !data.list.length) { done(); return; }
   let mine = null;
@@ -485,7 +519,7 @@ function frame(now) {
     }
   } else if (state === "title" && previewOn) {
     // Designed title art stays static; save mobile GPU and battery.
-    // game.titleFrame(dt);
+    game.titleFrame(dt);
   } else if (state === "loading" && liveLoad) {
     game.render();
   } else if (state === "paused" || state === "results") {
@@ -558,10 +592,16 @@ setInterval(() => { if (state === "playing" && !document.hidden) writeSave(); },
 window.addEventListener("jet-tap", (e) => { try { const d = e.detail; if (!(d && typeof d.x === "number" && game.tapSelect(d.x, d.y))) game.lockNearest(); } catch { /* ignore */ } });
 window.addEventListener("keydown", (e) => { if (e.code === "KeyT" && !e.repeat) { try { game.lockNearest(); } catch { /* ignore */ } } });
 $("btn-eject")?.addEventListener("click", () => game.eject());
-// b30: yellow/black seat handles - hold 0.8 s to eject (any time in the air)
-{ const h = $("eject-handles"); let tm = 0; const go = (e) => { e.preventDefault(); e.stopPropagation(); h.classList.add("pull"); clearTimeout(tm); tm = setTimeout(() => { h.classList.remove("pull"); game.ejectNow?.(); }, 350); };   // b32: quick pull (0.35 s)
-  const stop = () => { clearTimeout(tm); h.classList.remove("pull"); };
-  h?.addEventListener("touchstart", go, { passive: false, capture: true }); h?.addEventListener("pointerdown", (e) => { if (e.pointerType !== "touch") go(e); }); for (const n of ["touchend", "touchcancel", "mouseup", "mouseleave"]) h?.addEventListener(n, stop); }
+{ const h = $("eject-handles"); let tm = 0, held = false;
+  const go = (e) => { e.preventDefault(); e.stopPropagation(); held = true; h.classList.add("pull"); try { h.setPointerCapture(e.pointerId); } catch { /* ignore */ } clearTimeout(tm); tm = setTimeout(() => { if (!held) return; held = false; h.classList.remove("pull"); game.ejectNow?.(); }, 1000); };
+  const stop = () => { held = false; clearTimeout(tm); h.classList.remove("pull"); };
+  h?.addEventListener("pointerdown", go); h?.addEventListener("pointerup", stop); h?.addEventListener("pointercancel", stop);
+}
+$("btn-moab")?.addEventListener("click", (e) => { e.stopPropagation(); game.dropMoab?.(); });
+$("btn-shield")?.addEventListener("click", (e) => { e.stopPropagation(); game.armShield?.(); });
+$("btn-exit")?.addEventListener("click", (e) => { e.stopPropagation(); $("exit-ask").classList.remove("hidden"); });
+$("exit-no")?.addEventListener("click", () => $("exit-ask").classList.add("hidden"));
+$("exit-yes")?.addEventListener("click", () => location.reload());
 $("btn-takeoff")?.addEventListener("click", () => { controls.calibrate(); game.takeoff(); });   // b31: tilt neutral = how you hold the phone at takeoff
 $("btn-autoland")?.addEventListener("click", () => game.autoLand());
 window.addEventListener("keydown", (e) => { if (e.code === "Enter" && !e.repeat) game.takeoff(); if (e.code === "KeyL" && !e.repeat) game.autoLand(); });

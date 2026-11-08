@@ -10,7 +10,7 @@
 /* b32: game-style cards (metal plate, orange glow, real in-game crops) */
 .control-card{overflow:hidden;min-height:150px;justify-content:flex-end;padding:12px;border:2px solid #2a2f36;border-radius:12px;background:linear-gradient(180deg,#2b3038,#14181d);box-shadow:inset 0 1px 0 #ffffff22,0 0 0 1px #000,0 0 14px #ff8a1a33}
 .control-card:hover{border-color:#ff9a2e;box-shadow:0 0 18px #ff9a2e88;background:linear-gradient(180deg,#2b3038,#14181d)}
-.control-card .thumb{position:absolute;inset:0 0 38px 0;width:100%;height:calc(100% - 38px);object-fit:cover;opacity:.95;border-bottom:3px solid transparent;border-image:repeating-linear-gradient(135deg,#ffb02e 0 8px,#111 8px 16px) 3}
+.control-card .thumb{position:absolute;inset:0 0 38px 0;width:100%;height:calc(100% - 38px);object-fit:cover;opacity:.95;border-bottom:3px solid transparent;border-image:repeating-linear-gradient(135deg,#ffb02e 0 8px,#111 8px 16px) 3;box-shadow:inset 0 0 0 2px rgba(255,176,60,.85),0 0 18px rgba(255,140,30,.45)}.boss-hint{position:absolute;left:8px;right:8px;top:8px;z-index:2;font:900 11px/1.2 "Rajdhani",Impact,sans-serif;letter-spacing:.08em;color:#fff;text-shadow:0 0 6px #ff5a30,0 1px 0 #000}
 .control-card .icon{display:none}
 .control-card .label{position:relative;z-index:1;font:900 15px/1.1 "Rajdhani","Barlow Condensed",Impact,system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#fff;text-shadow:0 0 6px #ffb02e,0 0 12px #ff9614aa,0 2px 0 #000}
 .control-card .plus{z-index:1;color:#ffb02e;background:#000a;border-radius:50%;width:24px;height:24px;line-height:24px;text-align:center;top:8px}

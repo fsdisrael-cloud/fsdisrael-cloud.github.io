@@ -11,7 +11,7 @@ export const BIOMES = {
   valley: "Green valley",
   mountains: "Mountains",
 };
-import { rollRun } from "./variety.js?v=38";
+import { rollRun, EARTH_PLACES } from "./variety.js?v=39";
 const P = {
   seward: { name: "Resurrection Bay, Alaska", lat: 60.05, lon: -149.4 },
   monument: { name: "Monument Valley", lat: 36.99, lon: -110.10 },
@@ -39,7 +39,7 @@ export const LEVELS = [
 export const levelCount = () => LEVELS.length;
 const KEY = "jet-level-v1";
 export function loadLevelNo() {
-  try { const n = parseInt(localStorage.getItem(KEY) || "1", 10); return n >= 1 && n <= 99 ? n : 1; } catch { return 1; }
+  try { const n = parseInt(localStorage.getItem(KEY) || "1", 10); return n >= 1 && n <= 999 ? n : 1; } catch { return 1; }
 }
 export function saveLevelNo(n) { try { localStorage.setItem(KEY, String(n)); } catch { /* ignore */ } }
 
@@ -47,28 +47,38 @@ const VERB = { jet: "Shoot down", tank: "Destroy", flak: "Destroy", sam: "Destro
 const NOUN = { jet: "enemy planes", tank: "tanks", flak: "flak guns", sam: "SAM sites", base: "base buildings" };
 /** Build the engine level object for level number n (1-based). */
 export function buildLevel(n, run0) {
-  const d0 = LEVELS[Math.max(0, Math.min(LEVELS.length - 1, n - 1))];
-  // every launch gets a fresh random world; the level only sets difficulty and the mission size
+  n = Math.max(1, Math.min(999, n | 0));
+  const d0 = LEVELS[(n - 1) % LEVELS.length];
   let run = run0 || rollRun();
-  const nightOps = n >= 4 && n % 4 === 0;   // b35: dedicated NIGHT OPS mission every 4th level
+  const nightOps = n % 4 === 0;
   if (nightOps) run = { ...run, time: "night" };
-  const m = run.mix, sc = (v, k) => (v ? Math.max(1, Math.round(v * k)) : 0);
-  const d = { ...d0, place: run.place, biome: run.place.biome, time: run.time, weather: run.weather, carrier: !!(d0.carrier && run.place.sea),
-    tank: sc(d0.tank, m[0] * 1.6), base: sc(d0.base, m[1] * 1.15), flak: m[2] ? Math.max(d0.flak ? 1 : 0, Math.round(d0.flak * m[2] * 1.3)) : 0, sam: m[3] ? Math.round(d0.sam * m[3] * 1.4) : 0 };
-  // b24: every level is 3 minutes and has MANY more targets (ground ones are also bigger and more spread out)
-  { const ramp = Math.min(1, 0.55 + 0.07 * n), more = { jet: 1.45, tank: 2.2, base: 1.5, flak: 1.5, sam: 1.35 };
-    for (const k of ["jet", "tank", "base", "flak", "sam"]) if (d[k]) d[k] = Math.max(1, Math.round(d[k] * ramp * more[k]));
-    if (d.jets) d.jets = Math.max(3, Math.round(d.jets * ramp * more.jet) + Math.min(8, Math.max(0, n - 10))); }
-  const objectives = [];
-  d.jets = 15 + 3 * (n - 1);   // b30: level 1 = 15 air enemies (jets + choppers), +3 per level
-  objectives.push({ kind: "jet", need: d.jets, label: `Destroy ${d.jets} enemies` });
-  for (const k of ["base", "tank", "flak", "sam"]) if (d[k]) objectives.push({ kind: k, need: d[k], label: `${VERB[k]} ${d[k]} ${NOUN[k]}` });
+  const carrierOnly = n % 5 === 4;
+  if (carrierOnly) {
+    const coasts = EARTH_PLACES.filter((p) => p.sea);
+    run = { ...run, place: coasts[(n * 3) % coasts.length] };
+  }
+  const air = Math.min(24, 5 + Math.floor((n - 1) * 0.35));
+  const sea = Math.min(8, 2 + Math.floor((n - 1) * 0.08));
+  const ground = Math.min(18, 5 + Math.floor((n - 1) * 0.22));
+  const tank = Math.max(1, Math.round(ground * 0.4));
+  const flak = Math.max(1, Math.round(ground * 0.2));
+  const sam = n < 3 ? 0 : Math.max(1, Math.round(ground * 0.15));
+  let base = Math.max(1, ground - tank - flak - sam);
+  const diff = Math.min(0.8, 0.06 + (n - 1) * 0.007);
+  const hostile = Math.min(0.75, 0.2 + (n - 1) * 0.005);
+  const objectives = [{ kind: "jet", need: air, label: `Destroy ${air} enemies` }];
+  if (base) objectives.push({ kind: "base", need: base, label: `${VERB.base} ${base} ${NOUN.base}` });
+  if (tank) objectives.push({ kind: "tank", need: tank, label: `${VERB.tank} ${tank} ${NOUN.tank}` });
+  if (flak) objectives.push({ kind: "flak", need: flak, label: `${VERB.flak} ${flak} ${NOUN.flak}` });
+  if (sam) objectives.push({ kind: "sam", need: sam, label: `${VERB.sam} ${sam} ${NOUN.sam}` });
+  if (sea) objectives.push({ kind: "ship", need: sea, label: `Destroy ${sea} ships` });
+  const carrier = carrierOnly || !!(d0.carrier && run.place.sea);
   return {
-    run, n, title: nightOps ? `${n}. NIGHT OPS` : `${n}. ${d0.title}`, nightOps, biome: d.biome, place: d.place, time: d.time, weather: d.weather,
-    seconds: 180, difficulty: d.diff, hostile: d.hostile, calm: false,
+    run, n, title: n >= 999 ? "999. FINAL SORTIE" : nightOps ? `${n}. NIGHT OPS` : `${n}. ${d0.title}`, nightOps, biome: run.place.biome, place: run.place, time: run.time, weather: run.weather,
+    seconds: 180, difficulty: diff, hostile, calm: n < 4,
     seed: run.seed || ((n * 2654435761) >>> 0), objectives,
-    ground: { tank: d.tank + 1, flak: d.flak, sam: d.sam, base: d.base, ship: 0 }, jets: d.jets,
-    allies: { jet: 2 + (n >= 5 ? 1 : 0) + (n >= 9 ? 1 : 0), tank: 2 + (d.diff > 0.5 ? 2 : 0), ship: run.place.sea ? (d.carrier || d.biome === "snow" ? 2 : 1) : 0, ...(d.ally || {}) },
-    carrier: !!d.carrier, balloons: 0, drones: 0, targets: 0, ring: null, weapons: ["gun", "rocket", "bomb"], view: "chase", lockView: false,
+    ground: { tank, flak, sam, base, ship: 0 }, jets: air, sea,
+    allies: { jet: n < 3 ? 1 : 2, tank: 1, ship: run.place.sea ? 1 : 0 },
+    carrier, carrierOnly, balloons: 0, drones: 0, targets: 0, ring: null, weapons: ["gun", "rocket", "bomb"], view: "chase", lockView: false,
   };
 }

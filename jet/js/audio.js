@@ -484,7 +484,8 @@ export function createAudio() {
         set(engine.o2.frequency, 30 + throttle * 44, 0.14);
         set(engine.nf.frequency, 380 + throttle * 1300, 0.15);
         set(engine.of.frequency, (cockpit ? 200 : 320) + throttle * 520, 0.2);
-        set(engine.g.gain, (cockpit ? 0.045 : 0.07) + throttle * 0.11, 0.15);
+        set(engine.g.gain, (cockpit ? 0.05 : 0.08) + throttle * 0.13 + (throttle > 0.82 ? 0.05 : 0), 0.12);
+        set(engine.nf.Q, throttle > 0.82 ? 0.7 : 0.35, 0.2);
         set(engine.wh.frequency, 700 + throttle * 2300, 0.12); if (engine.wh2) set(engine.wh2.frequency, (700 + throttle * 2300) * 1.52, 0.12);
         set(engine.whg.gain, (cockpit ? 0.004 : 0.008) + throttle * throttle * 0.02, 0.15);
         const sk = Math.max(0, Math.min(1, (speed - 100) / 260)), ld = Math.max(0, Math.min(1, load));
