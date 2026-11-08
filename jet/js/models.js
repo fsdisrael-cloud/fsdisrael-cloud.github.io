@@ -2,8 +2,8 @@
 // Player + enemy jets: PBR-lit (metal, glossy canopy, environment reflections) with a thin illustrated outline.
 // Ground units: toon + outline. Illustrated look, readable colours.
 import * as THREE from "three";
-import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=37";
-import { patchDetail, missileTex } from "./tex.js?v=37";
+import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=38";
+import { patchDetail, missileTex } from "./tex.js?v=38";
 
 const PI = Math.PI;
 
@@ -225,7 +225,7 @@ function buildJet(kind, vk = "", variant = null) {
     if (o.pos) m.position.set(...o.pos); if (o.rot) m.rotation.set(...o.rot); if (o.scale) m.scale.set(...o.scale);
     (o.parent || root).add(m); return m;
   };
-  add(g.fus, body);
+  { const fu = add(g.fus, body); if (pal.long) fu.scale.set(0.85, 0.85, 1.3); if (pal.flat) fu.scale.set(1.25, 0.6, 0.9); }   /* b38: per-type airframe */
   const exotic = (pal.shape || 0) >= 3;
   const stabs = [], flps = [], ails = [], ruds = [], petalsL = [];
   let brake = null;
@@ -244,12 +244,13 @@ function buildJet(kind, vk = "", variant = null) {
         }
       } }
     add(g.strake, wingM, { pos: [0, 0.05, 0], scale: [s, 1, 1] });
-    add(g.fin, wingM, { pos: [s * 1.0, 0.35, 0], scale: [s, 1, 1] });
+    if (!pal.tailless) { add(g.fin, wingM, { pos: [s * 1.0, 0.35, 0], scale: [s, 1, 1] });   /* b38: tailless types (B-21, J-36, F-47) have no fins */
     { const rp = new THREE.Group(); rp.position.set(s * 1.55, 1.58, 5.15); rp.rotation.z = -s * 0.42; root.add(rp);
       const rm = new THREE.Mesh(G.box, ctlM); rm.scale.set(0.09, 1.5, 0.78); rm.position.z = 0.39; rp.add(rm); ruds.push(rp); }
     // fin-tip band in team accent colour
-    add(g.finTip, accentM, { pos: [s * 1.0 + s * 1.15, 2.5, 5.45], rot: [0, 0, -s * 0.42] });
-    if (lean || exotic) add(g.canard, wingM, { pos: [0, 0.05, 0], scale: [s, 1, 1] });
+    add(g.finTip, accentM, { pos: [s * 1.0 + s * 1.15, 2.5, 5.45], rot: [0, 0, -s * 0.42] }); }
+    if (pal.long) { const nc = add(new THREE.CylinderGeometry(0.55, 0.62, 7.5, 16).rotateX(PI / 2), body, { pos: [s * 3.0, -0.15, 2.4] }); add(new THREE.ConeGeometry(0.5, 1.6, 14).rotateX(-PI / 2), darkM, { pos: [s * 3.0, -0.15, -2.1] }); add(g.fin, wingM, { pos: [s * 2.5, -0.1, 0.4], scale: [s * 0.7, 0.8, 0.9] }); add(new THREE.TorusGeometry(0.5, 0.05, 5, 18), glowM, { pos: [s * 3.0, -0.15, 6.2] }); }   /* b38: SR-71/A-12 engine nacelles */
+    if (lean || exotic || pal.canard) add(g.canard, wingM, { pos: [0, 0.05, 0], scale: [s, 1, 1] });
     // intake scoop + dark mouth + splitter
     add(g.intake, body, { pos: [s * 1.5, -0.1, 0], rot: [0, -s * 0.03, 0] });
     add(G.box, darkM, { pos: [s * 1.5, -0.2, -3.52], scale: [0.78, 0.8, 0.1] });
@@ -441,6 +442,7 @@ function buildJet(kind, vk = "", variant = null) {
   root.traverse((o) => { if (!o.isMesh) return; for (let q = o; q; q = q.parent) if (q === canopy || q === pilot || q === cockpit) return; body0.push(o); });
   const light = kind !== "player" ? null : new THREE.PointLight(0xff9a50, 0, 60);
   if (light) { light.position.set(0, 0, 8); root.add(light); }
+  if (pal.tailless) for (const [sg] of stabs) sg.visible = false;
   root.userData = {
     flame, core, navL, navR, canopy, pilot, cockpit, hands, radius: lean ? 7 : 6, eye: new THREE.Vector3(0, 1.0, -2.4),
     burn(fl, boost) {
@@ -456,7 +458,7 @@ function buildJet(kind, vk = "", variant = null) {
       const L = (o, key, v) => { o.rotation[key] += (v - o.rotation[key]) * 0.28; };
       for (const [o, sd] of stabs) L(o, "x", -c.pitch * 0.6 - sd * c.roll * 0.3);
       for (const [o, sd] of flps) L(o, "x", -sd * c.roll * 0.5 + c.flap * 0.5);
-      for (const [o, sd] of ails) L(o, "x", -sd * c.roll * 0.8 + c.flap * 0.18);
+      for (const [o, sd] of ails) L(o, "x", -sd * c.roll * 0.8 + c.flap * 0.18 - (pal.tailless ? c.pitch * 0.55 : 0));   /* b38: elevons on tailless jets */
       for (const o of ruds) L(o, "y", -c.yaw * 0.5 + c.roll * 0.22);   // b35: coordinated rudder (right roll -> TE right)
       if (brake) L(brake, "x", -c.brake * 0.95);
       for (const o of petalsL) o.scale.setScalar(1 + c.burn * 0.16);

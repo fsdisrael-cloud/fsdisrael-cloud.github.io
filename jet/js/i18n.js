@@ -52,7 +52,7 @@ const T = {
   "NEW": ["NOUVEAU", "חדש", "新游戏", "NEU", "NUEVO", "جديد", "नया", "新規", "새로", "NOVO", "НОВАЯ", "NUOVO", "YENİ"],
   "CONT": ["SUITE", "המשך", "继续", "WEITER", "SEGUIR", "متابعة", "जारी", "続き", "계속", "CONT", "ПРОД", "CONT", "DEVAM"],
   "LEVELS": ["NIVEAUX", "שלבים", "关卡", "LEVEL", "NIVELES", "المراحل", "स्तर", "ステージ", "레벨", "FASES", "УРОВНИ", "LIVELLI", "SEVİYELER"],
-  "HOW TO FLY": ["COMMENT VOLER", "איך טסים", "飞行指南", "FLUGANLEITUNG", "CÓMO VOLAR", "كيف تطير", "कैसे उड़ें", "操作方法", "조종법", "COMO VOAR", "КАК ЛЕТАТЬ", "COME VOLARE", "NASIL UÇULUR"],
+  "HOW TO": ["COMMENT", "איך", "指南", "ANLEITUNG", "CÓMO", "كيف", "कैसे", "遊び方", "방법", "COMO", "КАК", "COME", "NASIL"],
   "AIR": ["AIR", "אוויר", "空", "LUFT", "AIRE", "جو", "वायु", "空", "공중", "AR", "ВОЗД", "ARIA", "HAVA"],
   "GND": ["SOL", "קרקע", "地", "BODEN", "SUELO", "أرض", "ज़मीन", "地", "지상", "SOLO", "ЗЕМЛЯ", "TERRA", "KARA"],
   "SEA": ["MER", "ים", "海", "SEE", "MAR", "بحر", "समुद्र", "海", "해상", "MAR", "МОРЕ", "MARE", "DENİZ"],

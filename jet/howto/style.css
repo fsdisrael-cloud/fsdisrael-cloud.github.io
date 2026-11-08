@@ -53,3 +53,13 @@
 .lab33 #practice-stick .ring, .lab33 #practice-stick #knob { opacity:0 !important; }
 .lab33 #practice-stick { background:none !important; box-shadow:none !important; border:0 !important; position:relative; }
 .lab33 .lab-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; filter:drop-shadow(0 6px 7px rgba(0,0,0,.6)); }
+/* b38: real 3D jet + throttle lever */
+.lab33 .sky{position:relative}.lab33 .lab-gl{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
+html.lab3d .lab33 #lab-jet{display:none!important}
+.lab33 .lab-row{display:flex;align-items:center;gap:10px}
+.lab-thr-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;flex:0 0 46px;font:700 10px Rajdhani,system-ui;color:#ffc784;letter-spacing:1px}
+.lab-thr-wrap b{color:#ff8a3a}
+#lab-thr{-webkit-appearance:slider-vertical;appearance:slider-vertical;writing-mode:vertical-lr;direction:rtl;width:34px;height:130px;accent-color:#ff9a2a;touch-action:none}
+.demo-actions{flex-wrap:wrap}
+.lab33 .lab-row{flex-wrap:wrap;justify-content:center}.lab33 .lab-row>.sky{flex:1 1 100%;min-width:0;max-width:100%}
+.lab33 .lab-row>.sky{flex:1 1 100%!important;height:190px!important}

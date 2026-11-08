@@ -570,7 +570,8 @@ export function createAudio() {
       try { const u = new SpeechSynthesisUtterance(text); u.rate = key === "say-msl" ? 1.25 : 1.05; u.pitch = 0.55; u.volume = 1; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch { /* ignore */ }
     },
     warn() { if (!gate("warn", 2000)) return; for (let i = 0; i < 4; i++) { tone({ f0: 880, dur: 0.12, peak: 0.32, type: "square", a: 0.005, delay: i * 0.3 }); tone({ f0: 1320, dur: 0.12, peak: 0.32, type: "square", a: 0.005, delay: i * 0.3 + 0.14 }); } },   /* b37: loud RWR */
-    pullUp() { if (!gate("pullup", 2600)) return; try { const u = new SpeechSynthesisUtterance("Pull up! Pull up!"); u.rate = 1.15; u.pitch = 0.8; u.volume = 1; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch { /* ignore */ } tone({ f0: 420, dur: 0.5, peak: 0.25, type: "sawtooth", a: 0.01 }); },
+    pullUp() { if (!gate("pullup", 2400)) return; try { const u = new SpeechSynthesisUtterance("Pull up. Pull up."); u.rate = 1.05; u.pitch = 0.55; u.volume = 1; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch { /* ignore */ } },   /* b38: old voice style */
+    stall() { if (!gate("stall", 900)) return; for (let i = 0; i < 3; i++) tone({ f0: 1250, dur: 0.07, peak: 0.22, type: "square", a: 0.003, delay: i * 0.11 }); },
     /** b26: landing-gear actuator: electric motor whine that rises while the legs travel, then a heavy mechanical clunk when they lock */
     gearMotor(dur = 1.3, down = true) {
       tone({ f0: down ? 95 : 150, f1: down ? 160 : 90, dur, peak: 0.07, type: "sawtooth", a: 0.08, prio: 2 });

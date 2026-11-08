@@ -1,17 +1,17 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=37";
-import { createHud } from "./hud.js?v=37";
-import { createControls } from "./controls.js?v=37";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=37";
-import { createAudio, trackFor } from "./audio.js?v=37";
-import { createHaptics } from "./haptics.js?v=37";
-import { createRain2D } from "./rain2d.js?v=37";
-import { createLoading } from "./loading.js?v=37";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=37";
-import { setSurreal, tickStyle } from "./surreal.js?v=37";
-import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=37";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=37";
+import { createGame } from "./game.js?v=38";
+import { createHud } from "./hud.js?v=38";
+import { createControls } from "./controls.js?v=38";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=38";
+import { createAudio, trackFor } from "./audio.js?v=38";
+import { createHaptics } from "./haptics.js?v=38";
+import { createRain2D } from "./rain2d.js?v=38";
+import { createLoading } from "./loading.js?v=38";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=38";
+import { setSurreal, tickStyle } from "./surreal.js?v=38";
+import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=38";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=38";
 
 const $ = (id) => document.getElementById(id);
 
@@ -195,7 +195,7 @@ const MENU_BUTTONS = [
   { id: "new", label: "NEW", sub: "NEW SORTIE", primary: true, run: () => { clearSave(); play(); } },
 ];
 const SEC_LINKS = [
-  { label: "HOW TO FLY", run: () => showPanel("How to fly", HOW_HTML) },    // PLACEHOLDER (function pending)
+  { label: "HOW TO", run: () => showPanel("How to", HOW_HTML + `<p style="text-align:center;margin-top:14px"><a class="t26-cont" style="display:inline-block;text-decoration:none" href="howto/" target="_blank" rel="noopener"><span>OPEN FULL HOW-TO GUIDE</span></a></p>`) },    // PLACEHOLDER (function pending)
   { label: "LEVELS", run: () => showPanel("Levels", levelsHtml()) },        // PLACEHOLDER (function pending)
 ];
 function levelsHtml() {
@@ -219,8 +219,8 @@ function buildMenu() {
   const sl = $("sec-links"); sl.innerHTML = "";
   for (const b of SEC_LINKS) { const el = document.createElement("button"); el.type = "button"; el.className = "slink"; el.textContent = b.label; el.addEventListener("click", (e) => { e.stopPropagation(); b.run(); }); sl.appendChild(el); }
 }
-function showPanel(title, html) { $("panel-title").textContent = title; $("panel-body").innerHTML = html; $("panel").classList.remove("hidden"); }
-$("panel-close").addEventListener("click", () => $("panel").classList.add("hidden"));
+function showPanel(title, html) { $("panel-title").textContent = title; $("panel-body").innerHTML = html; $("panel").classList.remove("hidden"); document.body.classList.add("panel-open"); }
+$("panel-close").addEventListener("click", () => { $("panel").classList.add("hidden"); document.body.classList.remove("panel-open"); });
 
 // ---------- b26: language picker ----------
 initLang();
@@ -249,7 +249,7 @@ initLang();
 }
 buildMenu(); applyDom(); watchDom();
 game.attachWeaponCam($("wcam-c"));
-window.__jet.game = game;
+window.__jet.game = game; window.__jet.audio = audio;
 
 // ---------- start / levels ----------
 async function launch(n, fromTap, sv) {

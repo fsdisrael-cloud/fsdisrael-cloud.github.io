@@ -965,3 +965,12 @@ body:not(.on-title) > .t26-by, body:not(.on-title) > #t32-ver { display:none !im
 .top-row #btn-autoland.autoland.hidden { display:none !important; }
 body.in-game #wcam.wcam { position:fixed !important; left:calc(env(safe-area-inset-left) + 134px) !important; right:auto !important; top:calc(env(safe-area-inset-top) + 56px) !important; bottom:auto !important; width:76px !important; height:76px !important; margin:0 !important; }
 @media (orientation: landscape) { body.in-game #wcam.wcam { left:calc(env(safe-area-inset-left) + 134px) !important; right:auto !important; top:calc(env(safe-area-inset-top) + 54px) !important; width:76px !important; height:76px !important; } }
+body.panel-open #tap-fly, body.panel-open #menu-buttons, body.panel-open > .t26-by { display:none !important; } #panel { z-index:1000 !important; }
+/* b38 portrait HUD: nothing overlaps */
+@media (orientation: portrait) {
+  body.in-game .hud .top-center { left:auto !important; right:calc(var(--safe-r, 0px) + 62px) !important; transform:none !important; }
+  body.in-game .top-row #btn-autoland.autoland { font-size:9px !important; padding:5px 6px !important; margin:0 2px !important; }
+  body.in-game #wcam.wcam { left:calc(env(safe-area-inset-left) + 14px) !important; top:calc(env(safe-area-inset-top) + 188px) !important; width:76px !important; height:76px !important; }
+}
+#hud .alert, .alert { left:0 !important; right:0 !important; margin:0 auto !important; width:max-content; max-width:88vw; white-space:normal; text-align:center; transform:none !important; box-sizing:border-box; }
+@media (orientation: landscape) { #hud .alert, .alert { top:38% !important; } }
