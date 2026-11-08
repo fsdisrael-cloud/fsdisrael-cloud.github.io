@@ -1,6 +1,6 @@
 {
  "title": "TESSIE FOLDER",
- "updated": "2026-11-08 03:14",
+ "updated": "2026-11-08 07:18",
  "projects": [
   {
    "id": "tessie-shorts",
@@ -287,11 +287,26 @@
    "icon": "jet-logo",
    "url": "https://fsdisrael-cloud.github.io/jet/",
    "next": {
-    "short": "B38",
-    "label": "Build 38",
+    "short": "B39",
+    "label": "Build 39",
     "note": "Planned. Changes are being collected."
    },
    "items": [
+    {
+     "id": "b38",
+     "short": "B38",
+     "label": "Build 38",
+     "when": "2026-11-08 07:18",
+     "title": "Every scene's art + real jet models",
+     "bullets": [
+      "New rear-view art for all 12 scenes; real jet shapes with moving surfaces; auto-land fixed; PULL UP voice + stall beep; HOW TO popup; pilot figure; naval blasts; runways on radar; 3D stick lab with throttle"
+     ],
+     "shot": "b38",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LAUNCH",
+     "linkNote": ""
+    },
     {
      "id": "b37",
      "short": "B37",
@@ -304,8 +319,8 @@
      "shot": "b37",
      "shotReal": true,
      "link": "https://fsdisrael-cloud.github.io/jet/",
-     "linkLabel": "LAUNCH",
-     "linkNote": ""
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
     },
     {
      "id": "b36",
