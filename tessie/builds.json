@@ -1,6 +1,6 @@
 {
  "title": "TESSIE FOLDER",
- "updated": "2026-11-07 22:57",
+ "updated": "2026-11-08 02:35",
  "projects": [
   {
    "id": "tessie-shorts",
@@ -287,11 +287,26 @@
    "icon": "jet-logo",
    "url": "https://fsdisrael-cloud.github.io/jet/",
    "next": {
-    "short": "B36",
-    "label": "Build 36",
-    "note": "Playtest feedback round"
+    "short": "B37",
+    "label": "Build 37",
+    "note": "Planned. Changes are being collected."
    },
    "items": [
+    {
+     "id": "b36",
+     "short": "B36",
+     "label": "Build 36",
+     "when": "2026-11-08 02:35",
+     "title": "Title screen + landscape HUD",
+     "bullets": [
+      "New title layout; auto-land & missile cam back; NVG removed; eject centered; harder ground crash; bombs to ground; new how-to lab & icon"
+     ],
+     "shot": "b36",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LAUNCH",
+     "linkNote": ""
+    },
     {
      "id": "b35",
      "short": "B35",
@@ -307,8 +322,8 @@
      "shot": "b35",
      "shotReal": true,
      "link": "https://fsdisrael-cloud.github.io/jet/",
-     "linkLabel": "LAUNCH",
-     "linkNote": ""
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
     },
     {
      "id": "b33",
