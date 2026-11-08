@@ -44,8 +44,12 @@
 .rs-cap{font:900 16px/1 "Rajdhani",Impact,system-ui,sans-serif;letter-spacing:.14em;color:#ffb02e;text-align:center;margin:26px 0 6px;text-shadow:0 0 8px #ff8a1a88}
 .lab33,.lab33 .lab-row{width:100%}.lab33 .sky{flex:1 1 180px!important;min-width:170px}
 @media(min-width:651px){.practice{grid-template-columns:1fr minmax(340px,1.2fr)!important}}
-.lab33 #lab-jet{width:130px!important;margin:-19px 0 0 -65px!important}.lab33 #lab-cv{z-index:2}
+.lab33 #lab-jet{width:118px!important;margin:-44px 0 0 -59px!important}.lab33 #lab-cv{z-index:2}
 /* b35: full-bleed realistic card art */
 .target-card{padding:0!important;overflow:hidden!important;position:relative!important;background:#000!important;border:1px solid #ffffff22!important;box-shadow:0 10px 24px #000a,0 0 0 1px #000,0 0 18px var(--group,#ff8a1a)33!important}
 .target-card img{width:100%!important;height:auto!important;aspect-ratio:3/2!important;object-fit:cover!important;display:block!important;filter:none!important;transform:none!important;margin:0!important;max-width:none!important}
 .target-card span{position:absolute!important;left:0;right:0;bottom:0;margin:0!important;border-radius:0!important;padding:18px 10px 8px!important;background:linear-gradient(transparent,#000d)!important;text-shadow:0 2px 4px #000!important;text-align:left}
+/* b36: the game's own joystick */
+.lab33 #practice-stick .ring, .lab33 #practice-stick #knob { opacity:0 !important; }
+.lab33 #practice-stick { background:none !important; box-shadow:none !important; border:0 !important; position:relative; }
+.lab33 .lab-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; filter:drop-shadow(0 6px 7px rgba(0,0,0,.6)); }

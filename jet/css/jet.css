@@ -900,3 +900,27 @@ body:not(.in-game) #eject-handles, .results:not(.hidden) ~ #eject-handles { disp
 /* b35: LOOK BACK always on top and touchable */
 #btn-six.six-btn { z-index: 60 !important; pointer-events: auto !important; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 #btn-six { display:none !important; }   /* b35: replaced by center-screen swipe free-look */
+/* b36 title layout (mockup 4): one top row, logo, caption row, big clear jet, CONTINUE bottom-right above TAP TO FLY */
+body.on-title #sec-links.sec-links { position:fixed !important; top:calc(env(safe-area-inset-top) + 14px) !important; left:calc(env(safe-area-inset-left) + 150px) !important; right:calc(env(safe-area-inset-right) + 64px) !important; bottom:auto !important; display:flex !important; flex-direction:row !important; gap:6px !important; justify-content:center; transform:none !important; z-index:30; }
+body.on-title #sec-links > * { flex:1 1 0; min-width:0; margin:0 !important; padding:8px 4px !important; font-size:12px !important; white-space:nowrap; text-align:center; }
+body.on-title .t26-top { padding-top:calc(env(safe-area-inset-top) + 58px) !important; }
+.t26-top .t35-row { margin:8px auto 0; }
+body.on-title #menu-buttons.menu-buttons { position:fixed !important; right:calc(env(safe-area-inset-right) + 14px) !important; left:auto !important; top:auto !important; bottom:calc(env(safe-area-inset-bottom) + 168px) !important; transform:none !important; width:auto !important; z-index:30; }
+@media (orientation: landscape) { body.on-title #sec-links.sec-links { left:calc(env(safe-area-inset-left) + 170px) !important; right:calc(env(safe-area-inset-right) + 80px) !important; max-width:none; } body.on-title .t26-top { padding-top:calc(env(safe-area-inset-top) + 50px) !important; } body.on-title #menu-buttons.menu-buttons { bottom:calc(env(safe-area-inset-bottom) + 14px) !important; } }
+#nv-btn, .nv-btn, body.night .nv-btn, body.cockpit .nv-btn { display:none !important; }
+/* b36 landscape: keep the player jet clear - instruments to the edges */
+@media (orientation: landscape) {
+  body.in-game #eject-handles.ej-h { position:fixed !important; left:50% !important; right:auto !important; top:auto !important; bottom:calc(env(safe-area-inset-bottom) + 4px) !important; transform:translateX(-50%) scale(.8) !important; }
+  body.in-game #stats.stats { position:fixed !important; left:auto !important; right:calc(env(safe-area-inset-right) + 190px) !important; top:auto !important; bottom:calc(env(safe-area-inset-bottom) + 6px) !important; transform:scale(.8) !important; transform-origin:right bottom; width:auto !important; }
+  body.in-game #wcam.wcam { position:fixed !important; left:calc(env(safe-area-inset-left) + 8px) !important; right:auto !important; top:42% !important; bottom:auto !important; width:92px !important; height:92px !important; margin:0 !important; }
+}
+body.on-title .t26-top { position:fixed !important; top:calc(env(safe-area-inset-top) + 62px) !important; left:0 !important; right:0 !important; padding-top:0 !important; margin:0 !important; transform:none !important; display:flex; flex-direction:column; align-items:center; }
+body.on-title .t26-plate { width:min(62vw, 270px) !important; }
+@media (orientation: landscape) { body.on-title .t26-top { top:calc(env(safe-area-inset-top) + 52px) !important; } body.on-title .t26-plate { width:min(26vw, 230px) !important; }
+  body.in-game #wcam.wcam { left:auto !important; right:calc(env(safe-area-inset-right) + 14px) !important; top:calc(env(safe-area-inset-top) + 150px) !important; } }
+/* b36 fix2 */
+#tap-fly { position:fixed !important; left:50% !important; transform:translateX(-50%) !important; top:auto !important; bottom:calc(env(safe-area-inset-bottom) + 96px) !important; margin:0 !important; z-index:5; }
+@media (orientation: landscape) { #tap-fly { bottom:calc(env(safe-area-inset-bottom) + 18px) !important; }
+  body.in-game #wcam.wcam { top:calc(env(safe-area-inset-top) + 132px) !important; width:78px !important; height:78px !important; } }
+#tap-fly { white-space:nowrap; } body:not(.on-title) #tap-fly { display:none !important; }
+body.on-title #tap-fly { z-index:900 !important; opacity:1 !important; display:block !important; font-family:inherit; }

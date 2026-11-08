@@ -1,15 +1,15 @@
 // Ubu game world: flight model, camera, targets, AI, weapons, effects, objectives.
-import { createPost } from "./post.js?v=35";
+import { createPost } from "./post.js?v=36";
 import * as THREE from "three";
-import { buildTerrain } from "./terrain.js?v=35";
-import { createSky } from "./sky.js?v=35";
-import { createPilot, createSeat, createChute, createAirstrip, STRIP, createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createShip, createWarship, createSub, createSamSite, createRocket, createHeli, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=35";
-import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=35";
-import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=35";
-import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=35";
-import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=35";
-import { setQuality, FX as FXQ } from "./tex.js?v=35";
-import { style, patchTerrain, waveAt, createDreamShapes, onStyle, setLake } from "./surreal.js?v=35";
+import { buildTerrain } from "./terrain.js?v=36";
+import { createSky } from "./sky.js?v=36";
+import { createPilot, createSeat, createChute, createAirstrip, STRIP, createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createShip, createWarship, createSub, createSamSite, createRocket, createHeli, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=36";
+import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=36";
+import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=36";
+import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=36";
+import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=36";
+import { setQuality, FX as FXQ } from "./tex.js?v=36";
+import { style, patchTerrain, waveAt, createDreamShapes, onStyle, setLake } from "./surreal.js?v=36";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V(), tE = V();
@@ -613,7 +613,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (t.mode === "flee") t.speed += (THREE.MathUtils.clamp(player.speed * (0.8 - 0.12 * ezv()), 40, 150) - t.speed) * Math.min(1, dt * 0.5);
     const edge = half - 1100;
     if (Math.abs(t.pos.x - center.x) > edge || Math.abs(t.pos.z - center.z) > edge) t.baseYaw = Math.atan2(-(center.x - t.pos.x), -(center.z - t.pos.z));
-    const wantYaw = t.baseYaw + (t.mode === "flee" ? (t.jink ? Math.sin(t.t * 1.1 + t.ph) * 0.9 : Math.sin(t.t * 0.45 + t.ph) * 0.55) : Math.sin(t.t * 0.8 + t.ph) * 0.12);   // b30: chase target slaloms left-right
+    const wantYaw = t.baseYaw + (t.mode === "flee" ? (t.jink ? Math.sin(t.t * 1.1 + t.ph) * 1.5 + Math.sin(t.t * 2.3 + t.ph * 2) * 0.35 : Math.sin(t.t * 0.45 + t.ph) * 0.55) : Math.sin(t.t * 0.8 + t.ph) * 0.12);   // b30: chase target slaloms left-right
     let yr = THREE.MathUtils.clamp(wrapPi(wantYaw - t.yaw) * (t.jink ? 2.2 : 1.2), -(t.jink ? 1.1 : 0.6 - 0.3 * ezv()), t.jink ? 1.1 : 0.6 - 0.3 * ezv());
     if (t.breakT > 0) yr = t.breakDir * 2.2;
     t.yaw += yr * dt;
@@ -1138,7 +1138,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     const sm = (a, b, x) => { const t = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
     const maxPR = (1.7 - 0.25 * ez) * (1 + 0.12 * brkV) * (1 + 0.2 * sm(0.72, 1, uP));
     let pitchRate = Math.sign(st.pitch) * Math.pow(uP, 1.3) * maxPR;
-    if (pitchRate < 0 && !player.inverted && assistDanger > 0.6) pitchRate *= Math.max(0, 1 - (assistDanger - 0.6) * 2.5);
+    /* b36: no ground rescue - diving in crashes */
     if (pitchRate > 0 && player.inverted && assistDanger > 0.1) pitchRate *= Math.max(0, 1 - assistDanger * 1.6);
     loopT = Math.abs(st.pitch) > 0.97 ? loopT + dt : 0;
     // ---- roll: stick = roll RATE; full stick = fast barrel roll. Gentle input stops at ~80 deg bank (a clean banked turn); a firm push rolls on through
@@ -1172,8 +1172,8 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     // ground rescue: roll upright first if inverted, then pull
     if (assistDanger > 0.02) {
       const upr = Math.max(0, Math.cos(player.bank));
-      if (player.pitch < 0.7 && assistDanger > 0.6) pitchRate = Math.max(pitchRate, (assistDanger - 0.6) * 3 * upr);   // b32: last-moment help only
-      if (assistDanger > 0.3 && player.inverted) rr += -Math.sign(player.bank || 1) * 3.2 * assistDanger;
+      /* b36: no ground rescue - diving in crashes */   // b32: last-moment help only
+      /* b36: no ground rescue - diving in crashes */
     }
     // minimal tap-aim only (air taps); no passive steering of the nose
     let best = null, bl = _vB;
@@ -2519,11 +2519,11 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     const yr = THREE.MathUtils.clamp(wrapPi(want - t.yaw) * 1.4, -0.9, 0.9);
     t.yaw += yr * dt;
     // creep toward the player until ~450 m, then strafe around him; a hit or a missile makes it dive and bank away
-    const desired = dist > 2200 ? 120 : dist > 520 ? 62 : dist < 300 ? -30 : 0;
+    const desired = dist > 2600 ? 120 : dist > 1300 ? 55 : dist < 1000 ? -45 : 0;   /* b36: choppers keep ~1.1 km away */
     t.speed += (desired - t.speed) * Math.min(1, dt * 0.8);
     tD.set(-Math.sin(t.yaw), 0, -Math.cos(t.yaw));
     t.vel.copy(tD).multiplyScalar(t.speed);
-    if (dist < 650) { tE.set(-tD.z, 0, tD.x); t.vel.addScaledVector(tE, Math.sin(t.t * 0.6 + t.ph) * 22); }
+    if (dist < 1500) { tE.set(-tD.z, 0, tD.x); t.vel.addScaledVector(tE, Math.sin(t.t * 0.6 + t.ph) * 22); }
     t.pos.addScaledVector(t.vel, dt);
     const gh = groundAt(t.pos.x, t.pos.z);
     t.hoverY = Math.max(t.hoverY + (Math.sin(t.t * 0.3 + t.ph) * 0.8) * dt, gh + 45);
@@ -2683,7 +2683,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     for (let y = 0; y < WCS; y += 3) { c.fillStyle = "rgba(60,255,110,0.05)"; c.fillRect(0, y, WCS, 1); }
     c.strokeStyle = "rgba(90,255,130,0.35)"; c.lineWidth = 1; c.beginPath(); c.moveTo(WCS / 2 - 14, WCS / 2); c.lineTo(WCS / 2 + 14, WCS / 2); c.moveTo(WCS / 2, WCS / 2 - 14); c.lineTo(WCS / 2, WCS / 2 + 14); c.stroke();
     c.fillStyle = "rgba(120,255,150,0.6)"; c.font = "bold 11px monospace"; c.textAlign = "center"; c.fillText("WPN CAM", WCS / 2, WCS / 2 + 34); c.fillText("STANDBY", WCS / 2, WCS / 2 + 48);
-    if (WC.canvas) { WC.canvas.style.opacity = 1; WC.canvas.dataset.live = "0"; if (WC.canvas.parentElement && WC.canvas.parentElement !== document.body) WC.canvas.parentElement.style.visibility = "hidden"; }   // b35: no empty camera bezel
+    if (WC.canvas) { WC.canvas.style.opacity = 1; WC.canvas.dataset.live = "0"; }
   }
   const wcQ = [];
   function wcNext() { while (wcQ.length) { const q = wcQ.shift(); if (q.obj.active || q.obj.result == null) { wcStart(q.obj, q.label); return true; } } return false; }
@@ -2936,7 +2936,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       b.o.lookAt(tA.copy(b.p).add(b.v)); b.o.rotateY(Math.PI);
       const gh = groundAt(b.p.x, b.p.z);
       let near = false;
-      for (const t of targets) if (t.alive && !t.submerged && t.kind !== "jet" && t.pos.distanceTo(b.p) < t.radius + 8) { near = true; break; }
+      for (const t of targets) if (t.alive && !t.submerged && t.kind !== "jet" && !t.heli && Math.hypot(t.pos.x - b.p.x, t.pos.z - b.p.z) < t.radius + 6 && b.p.y < Math.max(gh, t.pos.y) + Math.min(t.radius * 0.7, 14)) { near = true; break; }   /* b36: bombs fall all the way down */
       if (WS.kind !== "std" && (b.trail = (b.trail || 0) - dt) <= 0) { b.trail = 0.03; fx(b.p, tB.set((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10), 1.6, 0.2, 0.3, WS.fx, 0, 1); }
       if (b.p.y <= gh + 1 || near) {
         b.active = false; b.o.visible = false; b.result = "hit";

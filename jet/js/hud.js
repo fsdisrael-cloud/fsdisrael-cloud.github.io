@@ -1,7 +1,7 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=35";
-import { tr } from "./i18n.js?v=35";
+import { LABEL } from "./missions.js?v=36";
+import { tr } from "./i18n.js?v=36";
 
 const ALLY = "#3dff8b";
 const COL = { boss:"#ff3b3b", bossweapon:"#ff8a40", jet: "#ff3b3b", tank: "#ff9c35", flak: "#ff9c35", sam: "#ff9c35", base: "#ff9c35", ship: "#bd6aff", pad: "#3dff8b", ring: "#ffe14d" };
@@ -147,7 +147,7 @@ export function createHud() {
     ctx.restore();
   }
   let nvOn = false;
-  function setNV(on) { nvOn = on; window.__nv = on; document.body.classList.toggle("nv", on); }
+  function setNV(on) { on = false; nvOn = on;   /* b36: NVG removed (black screen on iPhone) */ window.__nv = on; document.body.classList.toggle("nv", on); }
   addEventListener("keydown", (e) => { if ((e.key === "n" || e.key === "N") && document.body.classList.contains("cockpit")) setNV(!nvOn); });
   document.getElementById("nv-btn")?.addEventListener("click", () => setNV(!nvOn));
 
@@ -502,7 +502,7 @@ export function createHud() {
       if (s.night && !s._nvA && !window.__nvAuto) { window.__nvAuto = 1; setNV(true); } if (!s.night) window.__nvAuto = 0; document.body.classList.toggle("night", !!s.night);
       { const sx = $n("btn-six"); if (sx) sx.classList.toggle("warn", !!s.six); }
       const al = $n("btn-autoland");
-      if (al) { const approach = mode === "app" || mode === "final", can = s.hasStrip && (approach || !mode && (fv < 0.35 || (s.player.bombs ?? 9) + (s.player.missiles ?? 9) <= 2)) && !s.crashing && !s.landing; /* b33: only when low fuel/ammo or on approach */ al.classList.toggle("hidden", !can); al.classList.toggle("urgent", approach || can && fv < 0.25); al.textContent = approach ? "CANCEL LANDING" : "▼ AUTO LAND"; }
+      if (al) { const approach = mode === "app" || mode === "final", can = s.hasStrip && (approach || !mode) && !s.crashing && !s.landing;   /* b36: always available */ /* b33: only when low fuel/ammo or on approach */ al.classList.toggle("hidden", !can); al.classList.toggle("urgent", approach || can && fv < 0.25); al.textContent = approach ? "CANCEL LANDING" : "▼ AUTO LAND"; }
     }
     dom.spd.textContent = Math.round(s.player.speed * 3.6); if (dom.thr) dom.thr.textContent = dom.spd.textContent;
     dom.alt.textContent = Math.round(s.player.pos.y); if (dom.fl) dom.fl.textContent = s.player.flares ?? 0; if (dom.trk) dom.trk.classList.toggle("on", !!s.track);
