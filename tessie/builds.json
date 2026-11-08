@@ -1,6 +1,6 @@
 {
  "title": "TESSIE FOLDER",
- "updated": "2026-11-08 02:35",
+ "updated": "2026-11-08 03:14",
  "projects": [
   {
    "id": "tessie-shorts",
@@ -287,11 +287,26 @@
    "icon": "jet-logo",
    "url": "https://fsdisrael-cloud.github.io/jet/",
    "next": {
-    "short": "B37",
-    "label": "Build 37",
+    "short": "B38",
+    "label": "Build 38",
     "note": "Planned. Changes are being collected."
    },
    "items": [
+    {
+     "id": "b37",
+     "short": "B37",
+     "label": "Build 37",
+     "when": "2026-11-08 03:14",
+     "title": "Final: mockup title + boss upgrade",
+     "bullets": [
+      "Title matches mockup; AUTO LAND by fuel; missile cam by radar; PULL UP voice; loud missile warning; bigger missiles with smoke; boss with rear laser turret; glowing how-to contours"
+     ],
+     "shot": "b37",
+     "shotReal": true,
+     "link": "https://fsdisrael-cloud.github.io/jet/",
+     "linkLabel": "LAUNCH",
+     "linkNote": ""
+    },
     {
      "id": "b36",
      "short": "B36",
@@ -304,8 +319,8 @@
      "shot": "b36",
      "shotReal": true,
      "link": "https://fsdisrael-cloud.github.io/jet/",
-     "linkLabel": "LAUNCH",
-     "linkNote": ""
+     "linkLabel": "LATEST",
+     "linkNote": "Older builds are not hosted separately. This opens the latest version."
     },
     {
      "id": "b35",
