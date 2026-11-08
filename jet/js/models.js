@@ -2,8 +2,8 @@
 // Player + enemy jets: PBR-lit (metal, glossy canopy, environment reflections) with a thin illustrated outline.
 // Ground units: toon + outline. Illustrated look, readable colours.
 import * as THREE from "three";
-import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=38";
-import { patchDetail, missileTex } from "./tex.js?v=38";
+import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=39";
+import { patchDetail, missileTex } from "./tex.js?v=39";
 
 const PI = Math.PI;
 
@@ -231,9 +231,9 @@ function buildJet(kind, vk = "", variant = null) {
   let brake = null;
   const ctlM = pbr({ color: new THREE.Color(pal.wing).multiplyScalar(0.92), metalness: 0.35, roughness: 0.46, emissive: 0x161c25, emissiveIntensity: 0.5, envMapIntensity: eK });
   for (const s of [-1, 1]) {
-    add(g.wing, wingM, { pos: [0, -0.2, 0], scale: [s, 1, 1] });
+    add(g.wing, wingM, { pos: [0, pal.flat ? -0.05 : -0.2, 0], scale: [s * (pal.wingSpan || 1), pal.flat ? 0.45 : 1, pal.flat ? 1.2 : 1] });
     { const sg = new THREE.Group(); sg.position.set(0, -0.02, 4.9); root.add(sg); stabs.push([sg, s]); add(g.stab, wingM, { pos: [0, 0, -4.9], scale: [s, 1, 1], parent: sg });
-      if ((pal.shape || 0) < 3) {
+      if ((pal.shape || 0) < 3 || pal.shape === 4) {
         const w = WING_SHAPES[pal.shape || 0], slope = (w[5] - w[2]) / (w[3] - w[0]);
         for (const [xa, xb, ch, list] of [[1.9, 3.7, 0.95, flps], [3.9, 5.6, 0.8, ails]]) {
           const xm = (xa + xb) / 2, k = (xm - w[0]) / (w[3] - w[0]), th = (w[6] + (w[7] - w[6]) * k) * 0.5, hl = (xb - xa) / 2;
@@ -456,11 +456,11 @@ function buildJet(kind, vk = "", variant = null) {
     bodyMeshes: body0, setGear, gearK: () => gearK, gearLen: 2.15,
     ctl(c) {
       const L = (o, key, v) => { o.rotation[key] += (v - o.rotation[key]) * 0.28; };
-      for (const [o, sd] of stabs) L(o, "x", -c.pitch * 0.6 - sd * c.roll * 0.3);
-      for (const [o, sd] of flps) L(o, "x", -sd * c.roll * 0.5 + c.flap * 0.5);
-      for (const [o, sd] of ails) L(o, "x", -sd * c.roll * 0.8 + c.flap * 0.18 - (pal.tailless ? c.pitch * 0.55 : 0));   /* b38: elevons on tailless jets */
-      for (const o of ruds) L(o, "y", -c.yaw * 0.5 + c.roll * 0.22);   // b35: coordinated rudder (right roll -> TE right)
-      if (brake) L(brake, "x", -c.brake * 0.95);
+      for (const [o, sd] of stabs) L(o, "x", -c.pitch * 1.15 - sd * c.roll * 0.55);
+      for (const [o, sd] of flps) L(o, "x", -sd * c.roll * 0.85 + c.flap * 0.9);
+      for (const [o, sd] of ails) L(o, "x", -sd * c.roll * 1.35 + c.flap * 0.28 - (pal.tailless ? c.pitch * 0.9 : 0));
+      for (const o of ruds) L(o, "y", -c.yaw * 0.95 + c.roll * 0.4);
+      if (brake) L(brake, "x", -c.brake * 1.25);
       for (const o of petalsL) o.scale.setScalar(1 + c.burn * 0.16);
     },
   };
@@ -482,7 +482,7 @@ export function createPlayerJet(vk = "viper", variant = null) {
     m.add(new THREE.Mesh(missGeo, mis));
     const nz = new THREE.Mesh(noseGeo, pyl); nz.position.z = -0.95; m.add(nz);
     for (const r of [0, PI / 2]) { const f = new THREE.Mesh(G.box, pyl); f.scale.set(r ? 0.5 : 0.02, r ? 0.02 : 0.5, 0.25); f.position.z = 0.6; m.add(f); }
-    g.add(m); j.add(g); loaded.push(m);
+    g.add(m); g.visible = false; j.add(g); loaded.push(m);
   }
   j.userData.hardMissiles = loaded;
   return j;
@@ -739,15 +739,15 @@ export function createSamSite() {
 }
 
 export function createRocket(color = 0xe6e9ec, tip = 0x2b3036) {
-  const key = "rocket27" + color + tip;
+  const key = "rocket39" + color + tip;
   const geo = cached(key, () => {
     const b = new PartBuilder();
-    b.add(G.capsule, color, { rot: [PI / 2, 0, 0], scale: [0.09, 0.8, 0.09] });
-    b.add(G.cone, tip, { pos: [0, 0, -1.55], rot: [-PI / 2, 0, 0], scale: [0.09, 0.75, 0.09] });
-    b.add(G.cyl, 0xc23a2e, { pos: [0, 0, -0.5], rot: [PI / 2, 0, 0], scale: [0.10, 0.12, 0.10] });
-    for (const r of [0, PI / 2]) b.add(G.box, tip, { pos: [0, 0, 1.0], rot: [0, 0, r], scale: [0.64, 0.025, 0.45] });
-    for (const r of [0, PI / 2]) b.add(G.box, tip, { pos: [0, 0, -0.55], rot: [0, 0, r], scale: [0.38, 0.025, 0.22] });
-    b.add(G.cyl, 0x1a1c20, { pos: [0, 0, 1.32], rot: [PI / 2, 0, 0], scale: [0.085, 0.18, 0.085] });
+    b.add(G.capsule, color, { rot: [PI / 2, 0, 0], scale: [0.055, 1.55, 0.055] });
+    b.add(G.cone, tip, { pos: [0, 0, -2.15], rot: [-PI / 2, 0, 0], scale: [0.055, 0.7, 0.055] });
+    b.add(G.cyl, 0x8d939c, { pos: [0, 0, -0.2], rot: [PI / 2, 0, 0], scale: [0.062, 0.16, 0.062] });
+    for (const r of [0, PI / 2]) b.add(G.box, tip, { pos: [0, 0, 1.35], rot: [0, 0, r], scale: [0.42, 0.018, 0.28] });
+    for (const r of [PI / 4, PI / 4 + PI / 2]) b.add(G.box, 0xc5c8ce, { pos: [0, 0, -0.85], rot: [0, 0, r], scale: [0.28, 0.014, 0.16] });
+    b.add(G.cyl, 0x1a1c20, { pos: [0, 0, 1.7], rot: [PI / 2, 0, 0], scale: [0.05, 0.16, 0.05] });
     return b.build();
   });
   const g = toonModel(geo, { outlineScale: 0.5, detail: { kind: "panel", s: 1.6, k: 0.8 } });
@@ -762,11 +762,12 @@ export function createRocket(color = 0xe6e9ec, tip = 0x2b3036) {
 }
 
 export function createBomb() {
-  const geo = cached("bomb", () => {
+  const geo = cached("bomb39", () => {
     const b = new PartBuilder();
-    b.add(G.sphere, 0x4f5a3a, { scale: [0.5, 0.5, 1.2] });
-    b.add(G.sphere, 0xffd23f, { pos: [0, 0, -0.75], scale: [0.36, 0.36, 0.3] });
-    for (const r of [0, PI / 2]) b.add(G.sphere, 0x3a4229, { pos: [0, 0, 1.05], rot: [0, 0, r], scale: [0.65, 0.06, 0.3] });
+    b.add(G.capsule, 0x8a9096, { rot: [PI / 2, 0, 0], scale: [0.28, 0.85, 0.28] });
+    b.add(G.cone, 0x9aa0a6, { pos: [0, 0, -1.15], rot: [-PI / 2, 0, 0], scale: [0.28, 0.55, 0.28] });
+    b.add(G.cyl, 0xf0c21a, { pos: [0, 0, -0.72], rot: [PI / 2, 0, 0], scale: [0.3, 0.16, 0.3] });
+    for (const r of [0, PI / 2]) b.add(G.box, 0x5c636a, { pos: [0, 0, 0.95], rot: [0, 0, r], scale: [0.7, 0.035, 0.28] });
     return b.build();
   });
   const g = toonModel(geo, { outlineScale: 0.7, detail: { kind: "panel", s: 1.2, k: 0.8 } });

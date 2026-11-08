@@ -1,7 +1,7 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=38";
-import { tr } from "./i18n.js?v=38";
+import { LABEL } from "./missions.js?v=39";
+import { tr } from "./i18n.js?v=39";
 
 const ALLY = "#3dff8b";
 const COL = { boss:"#ff3b3b", bossweapon:"#ff8a40", jet: "#ff3b3b", tank: "#ff9c35", flak: "#ff9c35", sam: "#ff9c35", base: "#ff9c35", ship: "#bd6aff", pad: "#3dff8b", ring: "#ffe14d" };
@@ -504,7 +504,10 @@ export function createHud() {
       if (s.night && !s._nvA && !window.__nvAuto) { window.__nvAuto = 1; setNV(true); } if (!s.night) window.__nvAuto = 0; document.body.classList.toggle("night", !!s.night);
       { const sx = $n("btn-six"); if (sx) sx.classList.toggle("warn", !!s.six); }
       const al = $n("btn-autoland");
-      if (al) { const approach = mode === "app" || mode === "final", can = s.hasStrip && (approach || !mode) && !s.crashing && !s.landing;   /* b36: always available */ /* b33: only when low fuel/ammo or on approach */ al.classList.toggle("hidden", !can); al.classList.toggle("urgent", approach || can && fv < 0.25); al.textContent = approach ? "CANCEL LANDING" : "▼ AUTO LAND"; }
+      if (al) { const approach = mode === "app" || mode === "final", can = s.hasStrip && (approach || !mode) && !s.crashing && !s.landing; al.classList.toggle("hidden", !can); al.classList.toggle("urgent", approach || can && fv < 0.25); al.textContent = approach ? "GO AROUND" : "▼ AUTO LAND"; }
+      const mb = $n("btn-moab"), sb = $n("btn-shield");
+      if (mb) { const n = s.moabs ?? 0; mb.classList.toggle("empty", n <= 0); const c = mb.querySelector(".cnt"); if (c) c.textContent = String(n); }
+      if (sb) { sb.classList.toggle("on", (s.shieldT || 0) > 0); const c = sb.querySelector(".cnt"); if (c) c.textContent = (s.shieldT || 0) > 0 ? s.shieldT.toFixed(1) : String(s.shields ?? 0); }
     }
     dom.spd.textContent = Math.round(s.player.speed * 3.6); if (dom.thr) dom.thr.textContent = dom.spd.textContent;
     dom.alt.textContent = Math.round(s.player.pos.y); if (dom.fl) dom.fl.textContent = s.player.flares ?? 0; if (dom.trk) dom.trk.classList.toggle("on", !!s.track);

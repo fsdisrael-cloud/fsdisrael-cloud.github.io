@@ -1,7 +1,7 @@
 // b38: the how-to stick lab flies the REAL game jet (same model, control surfaces and afterburner as in game)
 import * as THREE from "three";
-import { initEnv, createPlayerJet } from "../js/models.js?v=38";
-import { JET_TYPES } from "../js/variety.js?v=38";
+import { initEnv, createPlayerJet } from "../js/models.js?v=39";
+import { JET_TYPES } from "../js/variety.js?v=39";
 const sky = document.getElementById("lab-sky");
 if (sky) try {
   const L = () => window.LAB || {};
@@ -25,10 +25,14 @@ if (sky) try {
     if (w && (R.domElement.width !== Math.round(w * R.getPixelRatio()))) { R.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
     const T = thr ? +thr.value / 100 : 0.6; S.thr = T; const brk = S.brakeT > 0 ? 1 : 0; if (S.brakeT > 0) S.brakeT -= 1 / 60;
     const p = S.p || 0, bank = S.bank || 0, ra = S.ra || 0;
-    rx += (p * 0.55 - rx) * 0.12; rz += (-bank * 0.95 - ra - rz) * 0.18; ry += (-bank * 0.3 - ry) * 0.08;   // stick down -> nose up, right -> right wing down + yaw right
+    const noseTilt = (0.5 - T) * 0.42;
+    rx += (p * 0.55 + noseTilt - rx) * 0.12; rz += (-bank * 0.95 - ra - rz) * 0.18; ry += (-bank * 0.3 - ry) * 0.08;
     jet.rotation.set(rx, ry, rz, "YXZ");
-    jet.position.set((S.x || 0) / Math.max(1, w) * 9, -(S.y || 0) / Math.max(1, h) * 6 + (S.dy || 0) * -0.02, 0);
-    u.ctl?.({ pitch: -p, roll: bank, yaw: bank * 0.4, flap: 0, brake: brk, burn: T > 0.85 ? 1 : 0 });
+    const far = (T - 0.5) * 4.5;
+    jet.position.set((S.x || 0) / Math.max(1, w) * 9, -(S.y || 0) / Math.max(1, h) * 6 + (S.dy || 0) * -0.02, far);
+    cam.position.z = 19 + far;
+    cam.lookAt(0.4, 0.2 + noseTilt, -2);
+    u.ctl?.({ pitch: -p + noseTilt, roll: bank, yaw: bank * 0.4, flap: T < 0.4 ? 0.8 : 0, brake: T < 0.38 ? 1 : brk, burn: T > 0.85 ? 1 : 0 });
     u.burn?.(0.25 + T * 0.9, T > 0.85 ? (T - 0.85) * 6 : 0);
     if (eng) { eng.g.gain.value = 0.05 + T * 0.16; eng.f.frequency.value = 250 + T * 1400; }
     jet.updateMatrixWorld(true);
