@@ -1,7 +1,7 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=36";
-import { tr } from "./i18n.js?v=36";
+import { LABEL } from "./missions.js?v=37";
+import { tr } from "./i18n.js?v=37";
 
 const ALLY = "#3dff8b";
 const COL = { boss:"#ff3b3b", bossweapon:"#ff8a40", jet: "#ff3b3b", tank: "#ff9c35", flak: "#ff9c35", sam: "#ff9c35", base: "#ff9c35", ship: "#bd6aff", pad: "#3dff8b", ring: "#ffe14d" };
@@ -230,7 +230,7 @@ export function createHud() {
     if(boss){const pods=boss.pods.filter(t=>t.alive).length,hp=(boss.hp+boss.pods.reduce((n,t)=>n+(t.alive?t.hp:0),0))/(boss.maxHp+boss.pods.reduce((n,t)=>n+t.maxHp,0));ctx.save();ctx.fillStyle="rgba(8,12,20,.8)";ctx.fillRect(W*.2,H*.18,W*.6,30);ctx.fillStyle="#ff593e";ctx.fillRect(W*.2+3,H*.18+22,(W*.6-6)*Math.max(0,hp),5);label(W*.5,H*.18+14,`${boss.name}  |  ${pods} WEAPONS`,"#ffb28f",11);ctx.restore();}
     if(s.landingGuide){const g=s.landingGuide,cx=W*.5,cy=H*.43;ctx.save();ctx.strokeStyle="rgba(220,245,240,.6)";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(cx-42,cy);ctx.lineTo(cx+42,cy);ctx.moveTo(cx,cy-32);ctx.lineTo(cx,cy+32);ctx.stroke();const ex=Math.max(-32,Math.min(32,-g.x*.5)),ey=Math.max(-24,Math.min(24,g.dy*.6));ctx.strokeStyle="#ffb34b";ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(cx+ex,cy-25);ctx.lineTo(cx+ex,cy+25);ctx.moveTo(cx-32,cy+ey);ctx.lineTo(cx+32,cy+ey);ctx.stroke();label(cx,cy+48,g.carrier?"CARRIER APPROACH":"RUNWAY APPROACH","#ffce8b",10);ctx.restore();}
     // incoming missiles
-    for (const m of s.missiles) if (m.active) { const pr = project(m.p, cam); if (pr.on) { circle(pr.x, pr.y, 10, "#ff2222", 3); label(pr.x, pr.y - 18, "MISSILE", "#ff4444", 11); } else edgeArrow(m.p, cam, "#ff2222", true); }
+    for (const m of s.missiles) if (m.active) { const pr = project(m.p, cam); if (pr.on) { /* b37: no ring - the missile itself is drawn */ } else edgeArrow(m.p, cam, "#ff2222", true); }
     // CCIP marker
     if (s.ccip) { const pr = project(s.ccip, cam); if (pr.on) { circle(pr.x, pr.y, 9, "#ff8a2a", 3); ctx.fillStyle = "#ff8a2a"; ctx.beginPath(); ctx.arc(pr.x, pr.y, 3, 0, 7); ctx.fill(); } }
     // b21: bomb aim: line from the impact point to the snapped ground target + a bright cross on the target

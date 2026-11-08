@@ -1,17 +1,17 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=36";
-import { createHud } from "./hud.js?v=36";
-import { createControls } from "./controls.js?v=36";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=36";
-import { createAudio, trackFor } from "./audio.js?v=36";
-import { createHaptics } from "./haptics.js?v=36";
-import { createRain2D } from "./rain2d.js?v=36";
-import { createLoading } from "./loading.js?v=36";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=36";
-import { setSurreal, tickStyle } from "./surreal.js?v=36";
-import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=36";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=36";
+import { createGame } from "./game.js?v=37";
+import { createHud } from "./hud.js?v=37";
+import { createControls } from "./controls.js?v=37";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=37";
+import { createAudio, trackFor } from "./audio.js?v=37";
+import { createHaptics } from "./haptics.js?v=37";
+import { createRain2D } from "./rain2d.js?v=37";
+import { createLoading } from "./loading.js?v=37";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=37";
+import { setSurreal, tickStyle } from "./surreal.js?v=37";
+import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=37";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=37";
 
 const $ = (id) => document.getElementById(id);
 
@@ -195,8 +195,8 @@ const MENU_BUTTONS = [
   { id: "new", label: "NEW", sub: "NEW SORTIE", primary: true, run: () => { clearSave(); play(); } },
 ];
 const SEC_LINKS = [
-  { label: "LEVELS", run: () => showPanel("Levels", levelsHtml()) },        // PLACEHOLDER (function pending)
   { label: "HOW TO FLY", run: () => showPanel("How to fly", HOW_HTML) },    // PLACEHOLDER (function pending)
+  { label: "LEVELS", run: () => showPanel("Levels", levelsHtml()) },        // PLACEHOLDER (function pending)
 ];
 function levelsHtml() {
   const d = LEVELS[Math.min(levelNo, LEVELS.length) - 1];
@@ -500,11 +500,11 @@ requestAnimationFrame(frame);
   body.classList.add("tp-a");
   let sceneHist = [], sceneIdx = -1;
   const forced = /[?&](time|planet|place|weather|season)=/.test(location.search);
-  const p0 = startPreload(levelNo, forced ? undefined : titleRun());
+  const p0 = startPreload(levelNo, forced ? undefined : titleRun("f35"));
   p0.promise.then((ok) => { preloadReady = ok; });
   const t0 = performance.now();
   function setArtFor(jet) { const A = TITLE_ART[jet] || TITLE_ART.viper, s = document.documentElement.style, u = `url("${new URL("img/art/" + A.img, location.href).href}")`; s.setProperty("--title-p", u, "important"); s.setProperty("--title-l", `url("${new URL("img/art/" + A.img.replace(".jpg", "_l.jpg"), location.href).href}")`, "important"); }   // b33/b35
-  setArtFor("viper"); setTimeout(() => { for (const k of TITLE_JETS) { const im = new Image(); im.src = "img/art/" + TITLE_ART[k].img.replace(".jpg", innerWidth > innerHeight ? "_l.jpg" : ".jpg"); } }, 2500);
+  setArtFor("f35"); setTimeout(() => { for (const k of TITLE_JETS) { const im = new Image(); im.src = "img/art/" + TITLE_ART[k].img.replace(".jpg", innerWidth > innerHeight ? "_l.jpg" : ".jpg"); } }, 2500);
   $("scene-label")?.addEventListener("click", (e) => { e.stopPropagation(); reroll(1); });
   const setLabel = () => { const r = preload?.level?.run; if (r) setArtFor(r.jet); const jn = JET_TYPES[r?.jet]?.name || "", j0 = jn.split(" ")[0]; $("scene-label").textContent = r ? `${r.place?.name || runLabel(r)} · ${/\d/.test(j0) ? j0 : jn}`.toUpperCase() : "";   /* b36: scene + jet only */ };
   // dir 0 / 1: a new random scene; -1: step back to the previous scene; swiping left/right on the menu calls this
@@ -583,7 +583,7 @@ renderer.domElement.addEventListener("webglcontextlost", (e) => { e.preventDefau
   const lab = document.getElementById("scene-label"), rr = document.getElementById("btn-reroll"), tap = document.getElementById("tap-fly");
   if (!lab || !rr || !tap) return;
   const row = document.createElement("div"); row.className = "t35-row"; const top = document.querySelector(".t26-top"); (top || tap.parentElement).append(row); row.append(lab, rr);   /* b36: caption row under the logo */
-  document.body.appendChild(tap); /* b36: tap-fly out of transformed parent */
+  document.body.appendChild(tap); { const al = document.getElementById("btn-autoland"), fd = document.getElementById("fuel-dial"); if (al && fd) fd.parentNode.insertBefore(al, fd); }   /* b37: AUTO LAND left of fuel */ { const by = document.querySelector(".t26-by"), vv = document.getElementById("t32-ver"); if (by) document.body.appendChild(by); if (vv) document.body.appendChild(vv); row.prepend(rr); } /* b36: tap-fly out of transformed parent */
 })();
 // b35: iOS forgets motion permission each session - re-ask on the first tap if TILT was left on
 addEventListener("click", () => { let pref = false; try { pref = localStorage.getItem("jet-tilt-v2") === "1"; } catch { /* ignore */ }

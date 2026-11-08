@@ -66,6 +66,7 @@ export function createAudio() {
 
   /** Try to get the context running again (works without a gesture after an iOS interruption ends). */
   function kick() {
+    try { if (navigator.audioSession && navigator.audioSession.type !== "playback") navigator.audioSession.type = "playback"; } catch { /* ignore */ }   /* b37: iOS ring switch */
     if (!ctx || held) return;
     if (ctx.state === "closed") { ensure(); tech = null; if (wanted) playTrack(wanted, { ...(wantedOpts || {}), again: true }); return; }
     if (ctx.state !== "running") { try { const r = ctx.resume(); if (r && r.catch) r.catch(() => {}); } catch { /* ignore */ } }
@@ -568,7 +569,8 @@ export function createAudio() {
       if (!gate(key, key === "say-msl" ? 2200 : 6000)) return;
       try { const u = new SpeechSynthesisUtterance(text); u.rate = key === "say-msl" ? 1.25 : 1.05; u.pitch = 0.55; u.volume = 1; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch { /* ignore */ }
     },
-    warn() { if (!gate("warn", 2500)) return; tone({ f0: 660, dur: 0.16, peak: 0.07, type: "square", a: 0.01 }); tone({ f0: 990, dur: 0.16, peak: 0.07, type: "square", a: 0.01, delay: 0.2 }); },
+    warn() { if (!gate("warn", 2000)) return; for (let i = 0; i < 4; i++) { tone({ f0: 880, dur: 0.12, peak: 0.32, type: "square", a: 0.005, delay: i * 0.3 }); tone({ f0: 1320, dur: 0.12, peak: 0.32, type: "square", a: 0.005, delay: i * 0.3 + 0.14 }); } },   /* b37: loud RWR */
+    pullUp() { if (!gate("pullup", 2600)) return; try { const u = new SpeechSynthesisUtterance("Pull up! Pull up!"); u.rate = 1.15; u.pitch = 0.8; u.volume = 1; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch { /* ignore */ } tone({ f0: 420, dur: 0.5, peak: 0.25, type: "sawtooth", a: 0.01 }); },
     /** b26: landing-gear actuator: electric motor whine that rises while the legs travel, then a heavy mechanical clunk when they lock */
     gearMotor(dur = 1.3, down = true) {
       tone({ f0: down ? 95 : 150, f1: down ? 160 : 90, dur, peak: 0.07, type: "sawtooth", a: 0.08, prio: 2 });
@@ -584,7 +586,6 @@ export function createAudio() {
     /** ejection seat fire: sharp bang + rocket hiss */
     seatFire() { noise({ dur: 0.18, peak: 0.6, type: "lowpass", f0: 3000, f1: 300, a: 0.001, prio: 2 }); tone({ f0: 90, f1: 30, dur: 0.4, peak: 0.5, a: 0.001, prio: 2 }); noise({ dur: 1.1, peak: 0.25, type: "bandpass", f0: 1400, f1: 3200, q: 0.8, a: 0.04 }); },
     chuteOpen() { noise({ dur: 0.35, peak: 0.4, type: "bandpass", f0: 600, f1: 200, q: 0.7, a: 0.01, prio: 2 }); tone({ f0: 140, f1: 55, dur: 0.3, peak: 0.25, a: 0.004 }); },
-    pullUp() { if (!gate("pu", 2500)) return; tone({ f0: 520, dur: 0.25, peak: 0.045, a: 0.04 }); },
     thunder() { noise({ dur: 3.2, peak: 0.7, type: "lowpass", f0: 400, f1: 60, a: 0.08, rate: 0.5 }); tone({ f0: 55, f1: 30, dur: 2.4, peak: 0.35, type: "sine", a: 0.1 }); },
     crash() {
       duck(0.15, 2.2);

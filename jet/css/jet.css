@@ -924,3 +924,44 @@ body.on-title .t26-plate { width:min(62vw, 270px) !important; }
   body.in-game #wcam.wcam { top:calc(env(safe-area-inset-top) + 132px) !important; width:78px !important; height:78px !important; } }
 #tap-fly { white-space:nowrap; } body:not(.on-title) #tap-fly { display:none !important; }
 body.on-title #tap-fly { z-index:900 !important; opacity:1 !important; display:block !important; font-family:inherit; }
+/* ===== b37 title: mockup layout ===== */
+body.on-title .t26-lang { position:fixed !important; left:calc(env(safe-area-inset-left) + 10px) !important; top:calc(env(safe-area-inset-top) + 12px) !important; right:auto !important; margin:0 !important; z-index:50; }
+body.on-title #sec-links.sec-links { position:fixed !important; top:calc(env(safe-area-inset-top) + 14px) !important; left:calc(env(safe-area-inset-left) + 140px) !important; right:calc(env(safe-area-inset-right) + 62px) !important; display:flex !important; gap:6px; justify-content:space-between; flex-wrap:nowrap; margin:0 !important; z-index:50; transform:none !important; }
+body.on-title #sec-links .slink { flex:1 1 0; white-space:nowrap; font-size:12px !important; padding:8px 4px !important; min-width:0; }
+body.on-title .t26-top { top:calc(env(safe-area-inset-top) + 64px) !important; gap:14px !important; }
+body.on-title .t26-plate { width:min(84vw, 400px) !important; }
+body.on-title .t35-row { display:flex !important; flex-direction:row !important; align-items:center; justify-content:center; gap:14px; width:94vw; margin:0 !important; position:static !important; }
+body.on-title .t35-row #btn-reroll { order:0; flex:0 0 auto; position:static !important; margin:0 !important; }
+body.on-title .t35-row #scene-label { order:1; position:static !important; margin:0 !important; background:none !important; border:0 !important; box-shadow:none !important; font-size:clamp(14px,4.4vw,20px) !important; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; padding:0 !important; width:auto !important; max-width:58vw; text-shadow:0 2px 3px #000; }
+body.on-title #menu-buttons.menu-buttons { position:fixed !important; left:50% !important; right:auto !important; transform:translateX(-50%) !important; bottom:calc(env(safe-area-inset-bottom) + 182px) !important; top:auto !important; margin:0 !important; }
+#tap-fly { bottom:calc(env(safe-area-inset-bottom) + 82px) !important; padding:14px 34px !important; border:2px solid #ff9a2a !important; border-radius:12px !important; background:linear-gradient(180deg, rgba(38,28,20,.94), rgba(14,10,8,.96)) !important; box-shadow:0 0 12px rgba(255,140,30,.85), 0 0 26px rgba(255,120,20,.45), inset 0 0 0 2px rgba(0,0,0,.6) !important; }
+#tap-fly .hz { display:none !important; }
+#tap-fly .t26-tapt { font:italic 900 clamp(28px,9vw,44px)/1 "Rajdhani","Barlow Condensed",Impact,system-ui,sans-serif !important; letter-spacing:.04em; color:#fff; }
+body > .t26-by { position:fixed !important; left:50% !important; transform:translateX(-50%) !important; bottom:calc(env(safe-area-inset-bottom) + 18px) !important; top:auto !important; margin:0 !important; z-index:60; display:flex; align-items:center; gap:8px; color:#fff; font-size:20px; }
+body > #t32-ver { position:fixed !important; left:calc(env(safe-area-inset-left) + 14px) !important; bottom:calc(env(safe-area-inset-bottom) + 24px) !important; top:auto !important; z-index:60; }
+body:not(.on-title) > .t26-by, body:not(.on-title) > #t32-ver { display:none !important; }
+@media (orientation: landscape) {
+  body.on-title .t26-plate { width:min(34vw, 300px) !important; }
+  body.on-title .t26-top { top:calc(env(safe-area-inset-top) + 56px) !important; gap:8px !important; }
+  body.on-title #sec-links.sec-links { left:50% !important; right:auto !important; transform:translateX(-50%) !important; width:min(52vw,460px); }
+  body.on-title #menu-buttons.menu-buttons { bottom:calc(env(safe-area-inset-bottom) + 104px) !important; }
+  #tap-fly { bottom:calc(env(safe-area-inset-bottom) + 40px) !important; padding:8px 30px !important; }
+  #tap-fly .t26-tapt { font-size:30px !important; }
+  body > .t26-by { bottom:calc(env(safe-area-inset-bottom) + 6px) !important; font-size:15px; }
+  body > .t26-by svg { width:18px; height:18px; }
+}
+@media (orientation: landscape) {
+  body.on-title .t26-top { left:calc(env(safe-area-inset-left) + 12px) !important; right:auto !important; width:min(25vw,230px) !important; top:calc(env(safe-area-inset-top) + 62px) !important; align-items:flex-start !important; }
+  body.on-title .t26-plate { width:min(23vw,220px) !important; }
+  body.on-title .t35-row { flex-direction:column !important; align-items:flex-start !important; width:auto !important; gap:8px !important; }
+  body.on-title .t35-row #scene-label { font-size:14px !important; max-width:24vw; }
+  body.on-title #menu-buttons.menu-buttons { left:auto !important; transform:none !important; right:calc(env(safe-area-inset-right) + 20px) !important; bottom:calc(env(safe-area-inset-bottom) + 96px) !important; width:min(22vw,220px); display:flex; justify-content:center; }
+  #tap-fly { left:auto !important; transform:none !important; right:calc(env(safe-area-inset-right) + 20px) !important; bottom:calc(env(safe-area-inset-bottom) + 30px) !important; width:min(22vw,220px); padding:8px 10px !important; }
+  #tap-fly .t26-tapt { font-size:24px !important; }
+  body.on-title #sec-links.sec-links { width:min(46vw,420px); }
+}
+/* b37 HUD */
+.top-row #btn-autoland.autoland { position:static !important; transform:none !important; left:auto !important; top:auto !important; bottom:auto !important; font-size:10px !important; padding:6px 8px !important; max-width:none !important; white-space:nowrap; align-self:center; margin:0 4px !important; }
+.top-row #btn-autoland.autoland.hidden { display:none !important; }
+body.in-game #wcam.wcam { position:fixed !important; left:calc(env(safe-area-inset-left) + 134px) !important; right:auto !important; top:calc(env(safe-area-inset-top) + 56px) !important; bottom:auto !important; width:76px !important; height:76px !important; margin:0 !important; }
+@media (orientation: landscape) { body.in-game #wcam.wcam { left:calc(env(safe-area-inset-left) + 134px) !important; right:auto !important; top:calc(env(safe-area-inset-top) + 54px) !important; width:76px !important; height:76px !important; } }
