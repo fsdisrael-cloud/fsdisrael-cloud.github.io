@@ -10,6 +10,14 @@
 //  - Desktop: arrows/WASD, space = guns, F = missile, B = bomb, shift = boost, V = camera.
 const D2R = Math.PI / 180;
 
+/** Strong expo: almost nothing near center, full rate only at a hard pull. Same curve for stick and tilt. */
+export function expoAxis(v) {
+  const dz = 0.06, a = Math.abs(v);
+  if (a <= dz) return 0;
+  const u = Math.min(1, (a - dz) / (1 - dz));
+  return Math.sign(v) * Math.pow(u, 2.45);
+}
+
 // ---- easy-to-adjust configuration ----
 export const CONTROL_CFG = {
   stickDragUpIsNoseUp: true,  // build 19 default: push the stick UP = nose UP (climb). INVERT PITCH toggle (settings) = real aircraft style
@@ -289,7 +297,9 @@ export function createControls() {
     if (keys.has("s") || keys.has("arrowdown")) kp -= kd;
     if (keys.has("a") || keys.has("arrowleft")) kr -= 1;
     if (keys.has("d") || keys.has("arrowright")) kr += 1;
-    const p = Math.max(-1, Math.min(1, tp + jp + kp)), r = Math.max(-1, Math.min(1, tr + jr + kr));
+    // Curve each analog source on its own, then add. A small tilt and a small stick stay small.
+    const p = Math.max(-1, Math.min(1, expoAxis(tp) + expoAxis(jp) + kp));
+    const r = Math.max(-1, Math.min(1, expoAxis(tr) + expoAxis(jr) + kr));
     const k = 1 - Math.exp(-dt * 34);
     stick.pitch += (p - stick.pitch) * k;
     stick.roll += (r - stick.roll) * k;

@@ -80,15 +80,15 @@ function wpick(table, r) {
 
 /** Roll one run. `rng` defaults to Math.random (a new world every restart). */
 export function rollRun(rng = Math.random) {
-  // scene mix: Earth only (day, dusk, night, weather)
-  const rs = rng(), kind = rs < 0.4 ? "variant" : "day";   // b33: more dusk / night (NVG) flights
+  // 1.40: about 80% daytime (mostly full day), about 20% night.
   const planetKey = "earth";
   const planet = PLANETS[planetKey];
   const place = pick(EARTH_PLACES, rng);
-  const vTime = rng();
-  const time = kind === "variant" ? (vTime < 0.2 ? "day" : wpick([["dawn", 20], ["dusk", 40], ["night", 40]], rng)) : "day";
+  const tod = rng();
+  const daytime = tod < 0.8;
+  const time = !daytime ? "night" : rng() < 0.84 ? "day" : rng() < 0.5 ? "dawn" : "dusk";
   const season = pick(Object.keys(SEASONS), rng);
-  let weather = kind === "day" ? wpick([["clear", 74], ["cloudy", 26]], rng) : wpick([["clear", 30], ["cloudy", 14], ["fog", 14], ["rain", 16], ["snow", 8], ["storm", 18]], rng);
+  let weather = daytime ? wpick([["clear", 74], ["cloudy", 26]], rng) : wpick([["clear", 46], ["cloudy", 22], ["fog", 10], ["rain", 10], ["snow", 6], ["storm", 6]], rng);
   if (weather === "snow" && !SEASONS[season].snowOk && place.biome !== "snow") weather = "cloudy";
   else if (season === "winter" && weather === "clear" && rng() < 0.4) weather = "snow";
   if (season === "summer" && weather === "cloudy" && rng() < 0.7) weather = "clear";   // b23: summer gets clearer skies
@@ -129,18 +129,18 @@ export function loadScene() {
 
 /** b33: pre-made title art: one image per jet, each with its own terrain / season / weather / time (the run matches the art) */
 export const TITLE_ART = {
-  viper:  { img: "title_viper.jpg?v=39",  biome: "mountains", sea: true, time: "dusk",  season: "summer", weather: "cloudy" },
-  falcon: { img: "title_falcon.jpg?v=39", biome: "snow",      sea: true, time: "night", season: "winter", weather: "snow" },
-  tomcat: { img: "title_tomcat.jpg?v=39", biome: "valley",    sea: true, time: "day",   season: "summer", weather: "clear" },
-  raptor: { img: "title_raptor.jpg?v=39", biome: "valley",    sea: false, time: "dusk", season: "autumn", weather: "storm" },
-  arctic: { img: "title_arctic.jpg?v=39", biome: "desert",    sea: null, time: "dawn",  season: "summer", weather: "clear" },
-  f35:    { img: "title_f35.jpg?v=39",    biome: "snow",      sea: null, time: "night", season: "winter", weather: "clear" },
-  b21:    { img: "title_b21.jpg?v=39",    biome: "desert",    sea: null, time: "night", season: "summer", weather: "clear" },
-  f47:    { img: "title_f47.jpg?v=39",    biome: "snow",      sea: null, time: "dawn",  season: "winter", weather: "cloudy" },
-  tempest:{ img: "title_tempest.jpg?v=39",biome: "valley",    sea: true, time: "dusk",  season: "summer", weather: "cloudy" },
-  j36:    { img: "title_j36.jpg?v=39",    biome: "valley",    sea: true, time: "dusk",  season: "autumn", weather: "storm" },
-  sr71:   { img: "title_sr71.jpg?v=39",   biome: "desert",    sea: null, time: "day",   season: "summer", weather: "clear" },
-  a12:    { img: "title_a12.jpg?v=39",    biome: "snow",      sea: true, time: "night", season: "winter", weather: "clear" },
+  viper:  { img: "title_viper.jpg?v=40",  biome: "mountains", sea: true, time: "dusk",  season: "summer", weather: "cloudy" },
+  falcon: { img: "title_falcon.jpg?v=40", biome: "snow",      sea: true, time: "night", season: "winter", weather: "snow" },
+  tomcat: { img: "title_tomcat.jpg?v=40", biome: "valley",    sea: true, time: "day",   season: "summer", weather: "clear" },
+  raptor: { img: "title_raptor.jpg?v=40", biome: "valley",    sea: false, time: "dusk", season: "autumn", weather: "storm" },
+  arctic: { img: "title_arctic.jpg?v=40", biome: "desert",    sea: null, time: "dawn",  season: "summer", weather: "clear" },
+  f35:    { img: "title_f35.jpg?v=40",    biome: "snow",      sea: null, time: "night", season: "winter", weather: "clear" },
+  b21:    { img: "title_b21.jpg?v=40",    biome: "desert",    sea: null, time: "night", season: "summer", weather: "clear" },
+  f47:    { img: "title_f47.jpg?v=40",    biome: "snow",      sea: null, time: "dawn",  season: "winter", weather: "cloudy" },
+  tempest:{ img: "title_tempest.jpg?v=40",biome: "valley",    sea: true, time: "dusk",  season: "summer", weather: "cloudy" },
+  j36:    { img: "title_j36.jpg?v=40",    biome: "valley",    sea: true, time: "dusk",  season: "autumn", weather: "storm" },
+  sr71:   { img: "title_sr71.jpg?v=40",   biome: "desert",    sea: null, time: "day",   season: "summer", weather: "clear" },
+  a12:    { img: "title_a12.jpg?v=40",    biome: "snow",      sea: true, time: "night", season: "winter", weather: "clear" },
 };
 export const TITLE_JETS = Object.keys(TITLE_ART);
 export function titleRun(jet) {

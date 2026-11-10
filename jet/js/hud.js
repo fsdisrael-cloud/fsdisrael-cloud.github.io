@@ -1,7 +1,7 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=39";
-import { tr } from "./i18n.js?v=39";
+import { LABEL } from "./missions.js?v=40";
+import { tr } from "./i18n.js?v=40";
 
 const ALLY = "#3dff8b";
 const COL = { boss:"#ff3b3b", bossweapon:"#ff8a40", jet: "#ff3b3b", tank: "#ff9c35", flak: "#ff9c35", sam: "#ff9c35", base: "#ff9c35", ship: "#bd6aff", pad: "#3dff8b", ring: "#ffe14d" };
@@ -146,6 +146,26 @@ export function createHud() {
     const fuelK = Math.max(0, Math.min(1, s.fuel ?? 1)), lowF = fuelK < 0.2;
     ctx.restore();
   }
+  function paintNV(on) {
+    const c = document.getElementById("nv-cv");
+    if (!c) return;
+    if (!on) { c.style.display = "none"; return; }
+    c.style.display = "block";
+    const w = Math.max(2, c.clientWidth || innerWidth), h = Math.max(2, c.clientHeight || innerHeight);
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+    const g = c.getContext("2d");
+    g.clearRect(0, 0, w, h);
+    g.fillStyle = "rgba(70, 255, 130, 0.26)";
+    g.fillRect(0, 0, w, h);
+    const y = h * 0.5, band = g.createLinearGradient(0, y - h * 0.045, 0, y + h * 0.045);
+    band.addColorStop(0, "rgba(180,255,200,0)");
+    band.addColorStop(0.5, "rgba(220,255,230,0.7)");
+    band.addColorStop(1, "rgba(180,255,200,0)");
+    g.fillStyle = band; g.fillRect(0, y - h * 0.045, w, h * 0.09);
+    const vig = g.createRadialGradient(w * 0.5, h * 0.48, Math.min(w, h) * 0.2, w * 0.5, h * 0.48, Math.max(w, h) * 0.68);
+    vig.addColorStop(0, "rgba(0,0,0,0)"); vig.addColorStop(1, "rgba(0,30,12,0.34)");
+    g.fillStyle = vig; g.fillRect(0, 0, w, h);
+  }
   let nvOn = false;
   function setNV(on) { on = false; nvOn = on;   /* b36: NVG removed (black screen on iPhone) */ window.__nv = on; document.body.classList.toggle("nv", on); }
   addEventListener("keydown", (e) => { if ((e.key === "n" || e.key === "N") && document.body.classList.contains("cockpit")) setNV(!nvOn); });
@@ -157,6 +177,7 @@ export function createHud() {
     const eb = el("btn-eject"); if (eb) { eb.classList.toggle("hidden", !(s.critical > 0)); if (s.critical > 0) el("eject-count").textContent = Math.ceil(s.critical); }
     const cockpitView = s.viewMode === "cockpit";
     if (cockpitView !== document.body.classList.contains("cockpit")) { document.body.classList.toggle("cockpit", cockpitView); if (!cockpitView) { hmdK = 0; } }
+    paintNV(!!s.night && document.body.classList.contains("in-game"));
     if (!s.player) return;
     const cam = s.camera;
     if (cockpitView) { try { drawHMD(s); } catch (e) { /* never break the frame */ } }
@@ -176,13 +197,18 @@ export function createHud() {
       const color = COL[t.kind] || "#fff";
       if (pr.on && d < 9000) {
         const air = t.kind === "jet" || t.kind === "boss" || t.kind === "bossweapon";
+        if ((t === s.lockCand || t === s.lockTarget) && s.lockTime > 0) {
+          const k = Math.min(1, s.lockTime / 1), R = 72 - k * 54;
+          const col = k >= 1 ? "#b6ff9a" : "#ffe14a";
+          ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = k >= 1 ? 2.8 : 1.8; ctx.strokeRect(pr.x - R, pr.y - R, R * 2, R * 2); ctx.restore();
+          label(pr.x, pr.y - R - 8, k >= 1 ? "LOCKED" : "LOCK", col, 10);
+        }
         if (t === s.lockTarget) {
           const R = Math.max(16, Math.min(46, 2600 / Math.max(d, 1) * (t.radius / 8) + 10)), pu = 1 + 0.06 * Math.sin(s.elapsed * 8);
           const lc = air ? "#ff3b3b" : t.kind === "ship" ? "#bd6aff" : "#ff9c35";   // b30: lock = red air / purple sea / orange ground
           if (air) diamond(pr.x, pr.y, R * pu * 1.15, lc); else brackets(pr.x, pr.y, R * pu * 1.15, lc, 1.1);
           label(pr.x, pr.y + R * pu + 15, `${air ? "AIR" : t.kind === "ship" ? "SEA" : "GND"} ${d < 1000 ? Math.round(d) + "m" : (d / 1000).toFixed(1) + "km"}`, "rgba(255,225,200,0.9)", 11);
         } else {
-          if (t === s.lockCand && s.lockTime > 0) { const R = 28 - Math.min(1, s.lockTime / 0.8) * 18; if (R > 8) circle(pr.x, pr.y, R, "rgba(255,80,80,0.35)", 1.1); }
           // tiny subtle tick above the model (never covers it): chevron for air, dot for ground
           const ty = pr.y - Math.max(12, Math.min(30, 1800 / Math.max(d, 1) * (t.radius / 8) + 8));
           ctx.save(); ctx.fillStyle = air ? "rgba(255,70,60,0.22)" : "rgba(255,160,70,0.2)"; ctx.strokeStyle = "rgba(0,0,0,0.12)"; ctx.lineWidth = 1; ctx.beginPath();

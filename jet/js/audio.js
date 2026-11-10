@@ -14,7 +14,7 @@ const GAME_TRACKS = ["afterburn", "vector", "redline", "skyline", "nightfall", "
 
 export function createAudio() {
   let ctx = null, master, musicGain, musicLP = null, sfxGain, noiseBuf = null, rwrN = null, intensity = 0;
-  let musicOn = true, sfxOn = true;
+  let musicOn = true, sfxOn = true, titleMix = false;
   try {
     const s = JSON.parse(localStorage.getItem("jet-audio") || "{}");
     if (typeof s.music === "boolean") musicOn = s.music;
@@ -219,6 +219,7 @@ export function createAudio() {
 
   async function playTrack(name, opts) {
     wanted = name; wantedOpts = opts || null;
+    if (!musicOn) return;
     stopTechno();
     if (!ctx) return;
     let file = TRACK_FOR[name] || "m15/menu";
@@ -442,7 +443,20 @@ export function createAudio() {
     playTrack, preload(name) { if (ctx) load(TRACK_FOR[name] || name).catch(() => {}); },
     trackFile: () => techFile,
     currentTrack: () => current?.name || null,
-    setMusic(v) { musicOn = !!v; save(); if (musicGain) musicGain.gain.setTargetAtTime(musicOn ? 0.55 : 0, ctx.currentTime, 0.1); },
+    setMusic(v) {
+      musicOn = !!v; save();
+      if (!ctx || !musicGain) return;
+      musicGain.gain.setTargetAtTime(musicOn ? 0.55 : 0, ctx.currentTime, 0.12);
+      if (!musicOn) {
+        stopTechno();
+        if (current && !current.dead) {
+          const old = current; current = null; old.dead = true;
+          try { old.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.12); setTimeout(() => { try { old.src.stop(); } catch { /* ignore */ } }, 700); } catch { /* ignore */ }
+        }
+      } else if (wanted) playTrack(wanted, { ...(wantedOpts || {}), again: true });
+    },
+    /** Logo / title: missile, bomb and blast cues stay silent. Engine is driven separately, very quiet. */
+    setTitle(on) { titleMix = !!on; },
     setSfx(v) { sfxOn = !!v; save(); if (sfxGain) sfxGain.gain.setTargetAtTime(sfxOn ? 0.9 : 0, ctx.currentTime, 0.05); },
     musicOn: () => musicOn, sfxOn: () => sfxOn,
     startEngine() {
@@ -472,26 +486,27 @@ export function createAudio() {
       nf.Q.value = 0.35;
       } catch { engine = null; }
     },
-    updateEngine(throttle, cockpit, speed = 150, load = 0) {
+    updateEngine(throttle, cockpit, speed = 150, load = 0, gainK = 1) {
       if (!engine || !ctx) return;
       const t = ctx.currentTime;
       if (t - lastEngineT < 0.1) return; // 10 Hz is plenty; avoids piling up AudioParam events (WebKit)
       lastEngineT = t;
       try {
         const set = (p, v, tc) => { p.cancelScheduledValues(t); p.setTargetAtTime(v, t, tc); };
+        const gK = Math.max(0, gainK);
         // b25: pitch and body swing clearly with the throttle: idle growl -> screaming turbine
-        set(engine.o.frequency, 52 + throttle * 96, 0.14);
-        set(engine.o2.frequency, 30 + throttle * 44, 0.14);
-        set(engine.nf.frequency, 380 + throttle * 1300, 0.15);
-        set(engine.of.frequency, (cockpit ? 200 : 320) + throttle * 520, 0.2);
-        set(engine.g.gain, (cockpit ? 0.05 : 0.08) + throttle * 0.13 + (throttle > 0.82 ? 0.05 : 0), 0.12);
-        set(engine.nf.Q, throttle > 0.82 ? 0.7 : 0.35, 0.2);
-        set(engine.wh.frequency, 700 + throttle * 2300, 0.12); if (engine.wh2) set(engine.wh2.frequency, (700 + throttle * 2300) * 1.52, 0.12);
-        set(engine.whg.gain, (cockpit ? 0.004 : 0.008) + throttle * throttle * 0.02, 0.15);
+        set(engine.o.frequency, 48 + throttle * 110, 0.14);
+        set(engine.o2.frequency, 28 + throttle * 50, 0.14);
+        set(engine.nf.frequency, 340 + throttle * 1500, 0.15);
+        set(engine.of.frequency, (cockpit ? 180 : 280) + throttle * 640, 0.2);
+        set(engine.g.gain, ((cockpit ? 0.05 : 0.09) + throttle * 0.15 + (throttle > 0.82 ? 0.06 : 0)) * gK, 0.12);
+        set(engine.nf.Q, throttle > 0.82 ? 0.65 : 0.32, 0.2);
+        set(engine.wh.frequency, 640 + throttle * 2500, 0.12); if (engine.wh2) set(engine.wh2.frequency, (640 + throttle * 2500) * 1.5, 0.12);
+        set(engine.whg.gain, ((cockpit ? 0.004 : 0.01) + throttle * throttle * 0.028) * gK, 0.15);
         const sk = Math.max(0, Math.min(1, (speed - 100) / 260)), ld = Math.max(0, Math.min(1, load));
-        set(engine.wf.frequency, 380 + sk * sk * 2400 + ld * 700, 0.15);
-        set(engine.wg.gain, (cockpit ? 0.035 : 0.06) + sk * sk * 0.3 + ld * 0.12, 0.15);
-        set(engine.bg.gain, 0.02 + sk * 0.05 + ld * 0.14, 0.15);
+        set(engine.wf.frequency, 360 + sk * sk * 2200 + ld * 700, 0.15);
+        set(engine.wg.gain, ((cockpit ? 0.03 : 0.05) + sk * sk * 0.26 + ld * 0.1) * gK, 0.15);
+        set(engine.bg.gain, (0.018 + sk * 0.045 + ld * 0.12) * gK, 0.15);
         set(engine.lg.gain, ld * 0.12 + sk * 0.02, 0.15);
         set(engine.lfo.frequency, 7 + sk * 6 + ld * 5, 0.2);
       } catch { /* ignore */ }
@@ -506,17 +521,18 @@ export function createAudio() {
       if (!ctx || !sfxOn || ctx.state !== "running") return; const now = ctx.currentTime; gunT = now;
       if (!gunV) {
         gunV = play("gun", { gain: 0.0001, loop: true, prio: 2, lp: 7000 });
-        if (gunV) { gunV.g.gain.setValueAtTime(0.0001, now); gunV.g.gain.linearRampToValueAtTime(0.46, now + 0.012); }
+        if (gunV) { gunV.g.gain.setValueAtTime(0.0001, now); gunV.g.gain.linearRampToValueAtTime(0.5, now + 0.012); }
       }
       if (!gunTimer) { const chk = () => { if (!ctx || ctx.currentTime - gunT > 0.14) gunStop(); else gunTimer = setTimeout(chk, 50); }; gunTimer = setTimeout(chk, 90); }
     },
-    rocket() { play("rocket", { gain: 0.8, rate: 1.0, rate2: 0.9, lp: 7000, lp2: 2500, prio: 2 }); },
+    rocket() { if (titleMix) return; play("rocket", { gain: 0.92, rate: 0.94, rate2: 0.78, lp: 4800, lp2: 1600, prio: 2 }); },
     /** enemy jet streaking past: doppler roar (pitch falls as it passes); gain by closeness */
     flyby(gain = 0.7) { play("pass", { gain, rate: 1.28, rate2: 0.72, lp: 14000, lp2: 3000, prio: 2 }); },
-    bomb() { play("bomb", { gain: 0.5, rate: 1.0, rate2: 0.85, lp: 6000, lp2: 2200, prio: 2 }); },
+    bomb() { if (titleMix) return; play("bomb", { gain: 0.55, rate: 0.96, rate2: 0.8, lp: 4800, lp2: 1800, prio: 2 }); },
     /** release: heavy clunk of the rack, then the falling whistle */
-    bombRelease() { play("clunk", { gain: 0.95, prio: 2, lp: 5000 }); play("bomb", { gain: 0.5, rate: 1.0, rate2: 0.85, lp: 6000, lp2: 2200, delay: 0.3, prio: 2 }); },
+    bombRelease() { if (titleMix) return; play("clunk", { gain: 0.95, prio: 2, lp: 4200 }); play("bomb", { gain: 0.55, rate: 0.96, rate2: 0.8, lp: 4800, lp2: 1800, delay: 0.28, prio: 2 }); },
     explosion(big = 1, dist = 0) {
+      if (titleMix) return;
       if (dist < 1800 && big >= 0.9) duck(big >= 1.5 ? 0.3 : 0.55, big >= 1.5 ? 1.2 : 0.7);
       const d = Math.max(0, dist), v = Math.max(0.12, 1 - d / 3500), lpf = Math.max(900, 17000 * Math.exp(-d / 1100));
       const rate = Math.max(0.62, 1.12 - 0.22 * Math.min(2.5, big));

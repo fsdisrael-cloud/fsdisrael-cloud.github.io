@@ -2,8 +2,8 @@
 // Player + enemy jets: PBR-lit (metal, glossy canopy, environment reflections) with a thin illustrated outline.
 // Ground units: toon + outline. Illustrated look, readable colours.
 import * as THREE from "three";
-import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=39";
-import { patchDetail, missileTex } from "./tex.js?v=39";
+import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=40";
+import { patchDetail, missileTex } from "./tex.js?v=40";
 
 const PI = Math.PI;
 
@@ -213,8 +213,8 @@ function buildJet(kind, vk = "", variant = null) {
   const pal = { ...PAL[kind], ...(variant || {}) }, g = jetGeometry(kind, vk, pal), lean = kind === "enemy";
   const root = new THREE.Group();
   const eK = kind === "ally" ? 0.82 : 0.78;
-  const body = pbr({ vertexColors: true, metalness: 0.76, roughness: 0.34, emissive: 0x10151c, emissiveIntensity: 0.35, envMapIntensity: eK }, { kind: "panel", s: 0.2, k: 0.5 });
-  const wingM = pbr({ color: pal.wing, metalness: 0.72, roughness: 0.36, emissive: 0x10151c, emissiveIntensity: 0.3, envMapIntensity: eK }, { kind: "panel", s: 0.26, k: 0.5 });
+  const body = pbr({ vertexColors: true, metalness: 0.76, roughness: 0.34, emissive: 0x10151c, emissiveIntensity: 0.5, envMapIntensity: eK }, { kind: "panel", s: 0.2, k: 0.5 });
+  const wingM = pbr({ color: pal.wing, metalness: 0.72, roughness: 0.36, emissive: 0x10151c, emissiveIntensity: 0.42, envMapIntensity: eK }, { kind: "panel", s: 0.26, k: 0.5 });
   const darkM = pbr({ color: pal.dark, metalness: 0.7, roughness: 0.5 });
   const metalM = pbr({ color: 0x3b4047, metalness: 0.95, roughness: 0.36, flatShading: true, envMapIntensity: 1.1 });
   const glassM = pbr({ color: pal.glass, metalness: 1, roughness: 0.05, envMapIntensity: 1.25, transparent: true, opacity: 0.96 });
@@ -455,11 +455,11 @@ function buildJet(kind, vk = "", variant = null) {
     },
     bodyMeshes: body0, setGear, gearK: () => gearK, gearLen: 2.15,
     ctl(c) {
-      const L = (o, key, v) => { o.rotation[key] += (v - o.rotation[key]) * 0.28; };
-      for (const [o, sd] of stabs) L(o, "x", -c.pitch * 1.15 - sd * c.roll * 0.55);
-      for (const [o, sd] of flps) L(o, "x", -sd * c.roll * 0.85 + c.flap * 0.9);
-      for (const [o, sd] of ails) L(o, "x", -sd * c.roll * 1.35 + c.flap * 0.28 - (pal.tailless ? c.pitch * 0.9 : 0));
-      for (const o of ruds) L(o, "y", -c.yaw * 0.95 + c.roll * 0.4);
+      const L = (o, key, v) => { o.rotation[key] += (v - o.rotation[key]) * 0.55; };
+      for (const [o, sd] of stabs) L(o, "x", -c.pitch * 1.45 - sd * c.roll * 0.7);
+      for (const [o, sd] of flps) L(o, "x", -sd * c.roll * 1.05 + c.flap * 1.0);
+      for (const [o, sd] of ails) L(o, "x", -sd * c.roll * 1.65 + c.flap * 0.32 - (pal.tailless ? c.pitch * 1.15 : 0));
+      for (const o of ruds) L(o, "y", -c.yaw * 1.2 + c.roll * 0.55);
       if (brake) L(brake, "x", -c.brake * 1.25);
       for (const o of petalsL) o.scale.setScalar(1 + c.burn * 0.16);
     },

@@ -1,8 +1,8 @@
 // Time of day + weather: sky dome, sun/moon, stars, lights, fog, toon clouds, rain/snow, lightning.
-import { FX } from "./tex.js?v=39";
+import { FX } from "./tex.js?v=40";
 import * as THREE from "three";
-import { PartBuilder, G, getGradientMap, outlineMaterial } from "./toon.js?v=39";
-import { style, skyHueChunk } from "./surreal.js?v=39";
+import { PartBuilder, G, getGradientMap, outlineMaterial } from "./toon.js?v=40";
+import { style, skyHueChunk } from "./surreal.js?v=40";
 
 export const TIMES = ["dawn", "day", "dusk", "night"];
 export const WEATHERS = ["clear", "cloudy", "rain", "fog", "snow", "storm"];
@@ -11,7 +11,7 @@ const TOD = {
   day: { elev: 55, az: 140, top: 0x2f7fd8, hor: 0xbfe3ff, bot: 0xd9efff, sun: 0xfff4dc, sunI: 2.3, hs: 0xcfe8ff, hg: 0x7a6a50, hI: 1.0, fog: 0xc4dcf0, tint: 0xffffff, cloud: 0xffffff, exp: 1.0, stars: 0 },
   dawn: { elev: 9, az: 85, top: 0x4060a8, hor: 0xffb27a, bot: 0xffd2a8, sun: 0xffb070, sunI: 1.7, hs: 0xffd8c0, hg: 0x5a4a50, hI: 0.8, fog: 0xf0bc9c, tint: 0xffe2cc, cloud: 0xffd2bc, exp: 1.0, stars: 0.15 },
   dusk: { elev: 15, az: 262, top: 0x2b5c9c, hor: 0xffa648, bot: 0xffcf86, sun: 0xffb866, sunI: 2.1, hs: 0xffd2a0, hg: 0x9a7650, hI: 1.7, fog: 0xe8b07c, tint: 0xffdcae, cloud: 0xffcf9a, exp: 1.0, stars: 0.15 },
-  night: { elev: 38, az: 200, top: 0x040a1c, hor: 0x1d2d55, bot: 0x26386a, sun: 0xa8c4ff, sunI: 0.9, hs: 0x5876c0, hg: 0x141828, hI: 0.75, fog: 0x15203c, tint: 0x8094c8, cloud: 0x6a7aa4, exp: 1.05, stars: 1 },
+  night: { elev: 28, az: 200, top: 0x10243f, hor: 0x3d8f62, bot: 0x1c3a32, sun: 0xd0ecff, sunI: 1.45, hs: 0x7aab86, hg: 0x2a3830, hI: 1.25, fog: 0x243e36, tint: 0xb7c8b4, cloud: 0x9eb4a4, exp: 1.28, stars: 0.8 },
 };
 const WX = {
   clear: { over: 0.0, near: 3000, far: 18000, clouds: 9, sunK: 1, rain: 0, snow: 0, lightning: false },
@@ -71,6 +71,11 @@ export function createSky(scene, renderer) {
           col += sunCol * sunSide * hz * 0.38 * (1.0 - over * 0.7);
           float g = 0.78; float mie = (1.0 - g * g) / pow(1.0 + g * g - 2.0 * g * sdot, 1.5);
           col += sunCol * mie * 0.018 * (1.0 - over * 0.85) * (0.35 + 0.65 * smoothstep(-0.05, 0.4, h));
+        }
+        if (night > 0.5) {
+          float hzBand = exp(-abs(h) * 22.0);
+          col = mix(col, vec3(0.55, 1.0, 0.72), hzBand * 0.62);
+          col = max(col, vec3(0.045, 0.07, 0.05));
         }
         // ---- psychedelic signature: slowly shifting iridescent gradient + aurora ribbons (sky only) ----
         {
@@ -297,7 +302,7 @@ export function createSky(scene, renderer) {
       if (weather === "fog") { hor.copy(fogCol); bot.copy(fogCol); }
     }
     const pl = opts.planet && opts.planet.top != null ? opts.planet : null, se = !pl && opts.season ? opts.season : null;
-    const nK = time === "night" ? 0.34 : time === "dawn" || time === "dusk" ? 0.78 : 1;
+    const nK = time === "night" ? 0.72 : time === "dawn" || time === "dusk" ? 0.82 : 1;
     if (pl) {
       top.setHex(pl.top).multiplyScalar(nK); hor.setHex(pl.hor).multiplyScalar(nK); bot.setHex(pl.bot).multiplyScalar(nK);
       fogCol.setHex(pl.fog).multiplyScalar(nK);
@@ -322,11 +327,11 @@ export function createSky(scene, renderer) {
     hemi.color.setHex(T.hs); hemi.groundColor.setHex(T.hg);
     baseHemi = T.hI * (0.75 + 0.25 * (1 - over));
     hemi.intensity = baseHemi;
-    baseAmb = time === "night" ? 0.25 : 0.18;
+    baseAmb = time === "night" ? 0.62 : 0.24;
     amb.intensity = baseAmb;
     scene.fog.color.copy(fogCol);
-    scene.fog.near = W.near * (time === "night" ? 0.8 : 1);
-    scene.fog.far = W.far * (time === "night" ? 0.75 : 1);
+    scene.fog.near = W.near * (time === "night" ? 0.95 : 1);
+    scene.fog.far = W.far * (time === "night" ? 0.95 : 1);
     renderer.toneMappingExposure = T.exp;
     renderer.setClearColor(fogCol);
     const tint = new THREE.Color(style.surreal ? (time === "night" ? 0xb0a0e0 : 0xffffff) : T.tint);
@@ -339,7 +344,7 @@ export function createSky(scene, renderer) {
     if (over > 0.5) ct.multiplyScalar(1 - (over - 0.5) * 0.6);
     if (pl) ct.setHex(pl.cloud).multiplyScalar(nK);
     cloudMat.color.copy(ct); cloudReal.uniforms.uCol.value.copy(ct); cloudReal.uniforms.uDark.value = over > 0.5 ? 1 : 0; cloudReal.uniforms.uAmb.value.copy(hemiSkyColor(T, nK));
-    cloudMat.emissive.copy(ct).multiplyScalar(time === "night" ? 0.12 : 0.28);
+    cloudMat.emissive.copy(ct).multiplyScalar(time === "night" ? 0.34 : 0.28);
     buildClouds(W.clouds, center, half, over > 0.5, seed, W.near < 500 ? 12 : state.weather === "rain" || state.weather === "storm" ? 10 : state.weather === "cloudy" ? 5 : state.weather === "snow" ? 8 : state.weather === "clear" ? 2 : 0);   // b21: flat stratus banks seen edge-on read as thin bright streaks across the sky -> only in fog/rain/snow
     rain.visible = W.rain > 0;
     rainMat.uniforms.uOp.value = 0.32 + 0.18 * Math.min(1, W.rain - 0.5);

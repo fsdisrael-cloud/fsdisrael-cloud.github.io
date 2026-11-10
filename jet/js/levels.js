@@ -11,7 +11,7 @@ export const BIOMES = {
   valley: "Green valley",
   mountains: "Mountains",
 };
-import { rollRun, EARTH_PLACES } from "./variety.js?v=39";
+import { rollRun, EARTH_PLACES } from "./variety.js?v=40";
 const P = {
   seward: { name: "Resurrection Bay, Alaska", lat: 60.05, lon: -149.4 },
   monument: { name: "Monument Valley", lat: 36.99, lon: -110.10 },
@@ -50,13 +50,20 @@ export function buildLevel(n, run0) {
   n = Math.max(1, Math.min(999, n | 0));
   const d0 = LEVELS[(n - 1) % LEVELS.length];
   let run = run0 || rollRun();
-  const nightOps = n % 4 === 0;
-  if (nightOps) run = { ...run, time: "night" };
+  // Exactly one mission in five is night. The other four stay daytime even if the scene roll was night.
+  const nightOps = n % 5 === 0;
+  let timeLock = "";
+  try { timeLock = new URLSearchParams(location.search).get("time") || ""; } catch { /* ignore */ }
+  if (!timeLock) {
+    if (nightOps) run = { ...run, time: "night" };
+    else if (run.time === "night") run = { ...run, time: "day" };
+  }
   const carrierOnly = n % 5 === 4;
   if (carrierOnly) {
     const coasts = EARTH_PLACES.filter((p) => p.sea);
     run = { ...run, place: coasts[(n * 3) % coasts.length] };
   }
+  // 1.40: mission 1 is about 5 air, 2 sea, 5 ground, then a slow climb.
   const air = Math.min(24, 5 + Math.floor((n - 1) * 0.35));
   const sea = Math.min(8, 2 + Math.floor((n - 1) * 0.08));
   const ground = Math.min(18, 5 + Math.floor((n - 1) * 0.22));
