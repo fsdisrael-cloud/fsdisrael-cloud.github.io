@@ -1022,3 +1022,43 @@ body.in-game .radar-wrap { top:calc(var(--safe-t) + 48px); }
   #tap-fly { bottom:calc(env(safe-area-inset-bottom) + 28px) !important; }
   body > .t26-by { display:none !important; }
 }
+
+/* 1.40: night tint is a canvas, never a CSS filter on the WebGL view */
+canvas#nv-cv { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; display: none; }
+.nv, body.nv-on.in-game .nv { display: none !important; }
+body.nv.in-game::after { content: none !important; display: none !important; }
+
+/* 1.40 HUD lanes. Ammo stays inside its button. Orbs sit off the radar and off the eject handle. */
+body.in-game .wbtn .cnt { bottom: 5px; min-width: 0; padding: 0 2px; background: transparent; border: 0; box-shadow: none; font-size: 10px; text-shadow: 0 1px 1px #000; }
+body.in-game .specials { position: fixed; z-index: 16; left: auto; right: calc(var(--safe-r) + 12px); top: calc(var(--safe-t) + 168px); bottom: auto; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+body.in-game .orb { position: relative; width: 58px; height: 58px; padding: 0; border: 0; border-radius: 50%; color: #fff; pointer-events: auto; touch-action: manipulation; cursor: pointer;
+  background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.78), rgba(255,186,40,.34) 38%, rgba(90,40,0,.16) 72%, rgba(0,0,0,.04));
+  box-shadow: inset -8px -12px 16px rgba(0,0,0,.38), 0 8px 16px rgba(0,0,0,.35); }
+body.in-game .orb .sym { position: relative; z-index: 1; font: 700 22px/1 sans-serif; text-shadow: 0 1px 2px #000; }
+body.in-game .orb .cnt { position: absolute; left: 0; right: 0; bottom: 6px; text-align: center; font: 800 11px/1 system-ui, sans-serif; text-shadow: 0 1px 1px #000; }
+body.in-game .orb .orb-shine { position: absolute; left: 18%; top: 12%; width: 34%; height: 16%; border-radius: 50%; background: rgba(255,255,255,.62); transform: rotate(-16deg); pointer-events: none; }
+body.in-game .w-shield { background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.75), rgba(90,190,255,.5) 36%, rgba(12,40,110,.22) 74%, rgba(0,0,0,.05)); animation: shieldGlow 1.3s ease-in-out infinite; }
+body.in-game .w-shield .orb-shine { animation: shieldSheen 1.3s ease-in-out infinite; }
+@keyframes shieldGlow { 50% { box-shadow: inset -8px -12px 16px rgba(0,0,0,.28), 0 0 18px rgba(90,190,255,.9); } }
+@keyframes shieldSheen { 50% { opacity: .35; transform: rotate(-16deg) translateX(6px); } }
+body.in-game .orb.empty { opacity: .42; }
+body.in-game .weapons .thr { width: 96px; height: 132px; }
+body.in-game .thr-track { width: 22px; }
+body.in-game .thr-knob { width: 44px; height: 22px; margin-left: -22px; }
+@media (orientation: landscape) {
+  body.in-game { --wb: 46px; --radar: 84px; }
+  body.in-game .weapons { gap: 8px; max-height: calc(100vh - 150px); }
+  body.in-game .weapons .thr { width: 104px; height: 96px; }
+  body.in-game .specials { top: calc(var(--safe-t) + 62px); right: calc(var(--safe-r) + 8px); left: auto; flex-direction: column; }
+  body.in-game #eject-handles.ej-h { left: calc(env(safe-area-inset-left) + 8px) !important; right: auto !important; transform: none !important; bottom: calc(env(safe-area-inset-bottom) + 118px) !important; z-index: 40; }
+  body.in-game #stats.stats { left: auto !important; right: calc(env(safe-area-inset-right) + var(--stick) + 14px) !important; top: auto !important; bottom: calc(env(safe-area-inset-bottom) + 8px) !important; transform: none !important; width: 148px !important; }
+}
+@media (orientation: portrait) {
+  body.in-game { --wb: 44px; --radar: 84px; --stick: 108px; }
+  body.in-game .weapons { max-width: calc(100vw - var(--stick) - 28px); gap: 6px; }
+  body.in-game .weapons .thr { width: 86px !important; height: 176px !important; }
+  body.in-game #wcam.wcam { left: calc(env(safe-area-inset-left) + 8px) !important; top: calc(env(safe-area-inset-top) + 148px) !important; width: 68px !important; height: 68px !important; }
+  body.in-game #stats.stats { left: calc(var(--safe-l) + 8px) !important; right: auto !important; top: calc(var(--safe-t) + 228px) !important; bottom: auto !important; transform: none !important; width: 146px !important; }
+  body.in-game #eject-handles.ej-h { left: calc(env(safe-area-inset-left) + 8px) !important; right: auto !important; transform: none !important; bottom: calc(env(safe-area-inset-bottom) + 188px) !important; z-index: 40; }
+  body.in-game .specials { left: auto !important; right: calc(var(--safe-r) + 6px) !important; top: calc(var(--safe-t) + 248px) !important; bottom: auto !important; flex-direction: column !important; }
+}

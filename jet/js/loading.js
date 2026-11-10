@@ -3,9 +3,9 @@
 //   - styling lives in css/loading.css,
 //   - the game only calls loading.show(), loading.set(progress 0..1, text) and loading.hide().
 // Galoo's final loading graphics can replace the template/CSS without touching the game.
-import { logo3dHTML } from "./logo3d.js?v=39";
+import { logo3dHTML } from "./logo3d.js?v=40";
 const TITLE = "JET-X"; // alt text; the visible wordmark is img/wordmark.png (swap that file to rebrand)
-const WORDMARK = "img/logo_v6.png?v=39";
+const WORDMARK = "img/logo_v6.png?v=40";
 const ART = []; // chosen by orientation in css/loading.css
 const TIPS = [
   "Tilt the top of your phone up to climb, down to dive.",

@@ -1,17 +1,17 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=39";
-import { createHud } from "./hud.js?v=39";
-import { createControls } from "./controls.js?v=39";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=39";
-import { createAudio, trackFor } from "./audio.js?v=39";
-import { createHaptics } from "./haptics.js?v=39";
-import { createRain2D } from "./rain2d.js?v=39";
-import { createLoading } from "./loading.js?v=39";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=39";
-import { setSurreal, tickStyle } from "./surreal.js?v=39";
-import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=39";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=39";
+import { createGame } from "./game.js?v=40";
+import { createHud } from "./hud.js?v=40";
+import { createControls } from "./controls.js?v=40";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=40";
+import { createAudio, trackFor } from "./audio.js?v=40";
+import { createHaptics } from "./haptics.js?v=40";
+import { createRain2D } from "./rain2d.js?v=40";
+import { createLoading } from "./loading.js?v=40";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=40";
+import { setSurreal, tickStyle } from "./surreal.js?v=40";
+import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=40";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=40";
 
 const $ = (id) => document.getElementById(id);
 
