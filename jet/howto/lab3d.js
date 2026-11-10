@@ -1,7 +1,7 @@
 // b38: the how-to stick lab flies the REAL game jet (same model, control surfaces and afterburner as in game)
 import * as THREE from "three";
-import { initEnv, createPlayerJet } from "../js/models.js?v=42";
-import { JET_TYPES } from "../js/variety.js?v=42";
+import { initEnv, createPlayerJet } from "../js/models.js?v=43";
+import { JET_TYPES } from "../js/variety.js?v=43";
 const sky = document.getElementById("lab-sky");
 if (sky) try {
   const L = () => window.LAB || {};
@@ -11,6 +11,8 @@ if (sky) try {
   const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(34, 1.6, 0.5, 400);
   initEnv(R);
   scene.add(new THREE.HemisphereLight(0xcfe4ff, 0x3a3020, 1.6)); const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(-6, 12, 6); scene.add(sun);
+  const dirt = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), new THREE.MeshStandardMaterial({ color: 0x6a7348, roughness: 1 })); dirt.rotation.x = -Math.PI / 2; dirt.position.y = -1.7; scene.add(dirt);
+  const ridge = new THREE.Mesh(new THREE.ConeGeometry(7, 5, 5), new THREE.MeshStandardMaterial({ color: 0x8a7a62, roughness: 0.9 })); ridge.position.set(-10, 0.6, -16); scene.add(ridge);
   const jk = new URLSearchParams(location.search).get("jet"), JK = JET_TYPES[jk] ? jk : "f35"; const jet = createPlayerJet(JK, JET_TYPES[JK]); jet.scale.setScalar(0.5); scene.add(jet); const u = jet.userData;
   if (u.canopy) u.canopy.visible = true; u.setGear?.(0);
   cam.position.set(-6.5, 4.6, 19); cam.lookAt(0.4, 0.2, -2);
