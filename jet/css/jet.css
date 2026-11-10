@@ -1060,5 +1060,16 @@ body.in-game .thr-knob { width: 44px; height: 22px; margin-left: -22px; }
   body.in-game #wcam.wcam { left: calc(env(safe-area-inset-left) + 8px) !important; top: calc(env(safe-area-inset-top) + 148px) !important; width: 68px !important; height: 68px !important; }
   body.in-game #stats.stats { left: calc(var(--safe-l) + 8px) !important; right: auto !important; top: calc(var(--safe-t) + 228px) !important; bottom: auto !important; transform: none !important; width: 146px !important; }
   body.in-game #eject-handles.ej-h { left: calc(env(safe-area-inset-left) + 8px) !important; right: auto !important; transform: none !important; bottom: calc(env(safe-area-inset-bottom) + 188px) !important; z-index: 40; }
-  body.in-game .specials { left: auto !important; right: calc(var(--safe-r) + 6px) !important; top: calc(var(--safe-t) + 248px) !important; bottom: auto !important; flex-direction: column !important; }
+  body.in-game .specials { left: auto !important; right: calc(var(--safe-r) + 6px) !important; top: calc(var(--safe-t) + 260px) !important; bottom: auto !important; flex-direction: column !important; }
+  body.in-game #wcam.wcam { top: calc(env(safe-area-inset-top) + 198px) !important; }
+  body.in-game .alert, body.in-game #hud .alert { top: 48% !important; }
 }
+body.in-game #wcam.wcam { z-index: 3; }
+@media (orientation: landscape) {
+  body.in-game #wcam.wcam { left: calc(env(safe-area-inset-left) + 196px) !important; right: auto !important; top: calc(env(safe-area-inset-top) + 52px) !important; width: 62px !important; height: 62px !important; }
+  body.in-game .specials { left: calc(var(--safe-l) + 280px) !important; right: auto !important; top: calc(var(--safe-t) + 6px) !important; flex-direction: row !important; }
+  body.in-game #eject-handles.ej-h { left: 50% !important; right: auto !important; transform: translateX(-50%) !important; bottom: calc(env(safe-area-inset-bottom) + 4px) !important; }
+  body.in-game .weapons { max-height: calc(100vh - 220px); }
+  body.in-game .alert { top: 22% !important; }
+}
+#cel-sub { white-space: pre-line; margin: 8px 0 12px; font: 800 16px/1.35 "Rajdhani", system-ui, sans-serif; letter-spacing: .06em; color: #ffe7b0; }
