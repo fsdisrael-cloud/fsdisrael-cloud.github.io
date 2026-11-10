@@ -1,15 +1,15 @@
 // Ubu game world: flight model, camera, targets, AI, weapons, effects, objectives.
-import { createPost } from "./post.js?v=43";
+import { createPost } from "./post.js?v=44";
 import * as THREE from "three";
-import { buildTerrain } from "./terrain.js?v=43";
-import { createSky } from "./sky.js?v=43";
-import { createPilot, createSeat, createChute, createAirstrip, STRIP, createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createShip, createWarship, createSub, createSamSite, createRocket, createHeli, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=43";
-import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=43";
-import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=43";
-import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=43";
-import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=43";
-import { setQuality, FX as FXQ } from "./tex.js?v=43";
-import { style, patchTerrain, waveAt, createDreamShapes, onStyle, setLake } from "./surreal.js?v=43";
+import { buildTerrain } from "./terrain.js?v=44";
+import { createSky } from "./sky.js?v=44";
+import { createPilot, createSeat, createChute, createAirstrip, STRIP, createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createShip, createWarship, createSub, createSamSite, createRocket, createHeli, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=44";
+import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=44";
+import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=44";
+import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=44";
+import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=44";
+import { setQuality, FX as FXQ } from "./tex.js?v=44";
+import { style, patchTerrain, waveAt, createDreamShapes, onStyle, setLake } from "./surreal.js?v=44";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V(), tE = V();
@@ -3729,7 +3729,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       player.pos.set(...sn.p); player.q.set(...sn.q); player.q.normalize(); player.speed = sn.sp || 150; player.hp = sn.hp ?? 100; player.rockets = sn.rk ?? player.rockets; player.bombs = sn.bb ?? player.bombs;
       throttle = sn.thr ?? throttle; syncAngles(); player.vel.set(0, 0, -1).applyQuaternion(player.q).multiplyScalar(player.speed); updatePlaneTransform(); invulnUntil = elapsed + 3; snapCamera();
     },
-    takeoff, autoLand: () => startLanding(true), opsMode: () => (ops ? ops.mode : null), fuel: () => fuelV, setFuel: (v) => { fuelV = v; },
+    takeoff, takeoffNow() { if (!player || !ops || ops.mode === "roll") return ops?.mode === "roll"; ops.mode = "ready"; ops.kf = ops.ka = 1; return takeoff(); }, autoLand: () => startLanding(true), opsMode: () => (ops ? ops.mode : null), fuel: () => fuelV, setFuel: (v) => { fuelV = v; },
     setTime(sec) { endless = !sec; timeLeft = sec || 0; },
     setAssist(v) { assist = !!v; aP = aR = 0; try { localStorage.setItem("jet-assist", assist ? "1" : "0"); } catch { /* ignore */ } },
     assistOn() { return assist; },
