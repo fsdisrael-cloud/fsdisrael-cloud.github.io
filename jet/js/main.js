@@ -217,6 +217,7 @@ function askPilot() {
   const form = document.getElementById("pilot-form");
   const box = document.getElementById("pilot-call");
   form?.addEventListener("submit", (e) => { e.preventDefault(); commitPilot(box?.value); });
+  box?.addEventListener("input", () => { const u = box.value.toUpperCase(); if (box.value !== u) box.value = u; });
   box?.focus();
 }
 function pilotList() {
