@@ -1,17 +1,17 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=43";
-import { createHud } from "./hud.js?v=43";
-import { createControls } from "./controls.js?v=43";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=43";
-import { createAudio, trackFor } from "./audio.js?v=43";
-import { createHaptics } from "./haptics.js?v=43";
-import { createRain2D } from "./rain2d.js?v=43";
-import { createLoading } from "./loading.js?v=43";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=43";
-import { setSurreal, tickStyle } from "./surreal.js?v=43";
-import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=43";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=43";
+import { createGame } from "./game.js?v=44";
+import { createHud } from "./hud.js?v=44";
+import { createControls } from "./controls.js?v=44";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=44";
+import { createAudio, trackFor } from "./audio.js?v=44";
+import { createHaptics } from "./haptics.js?v=44";
+import { createRain2D } from "./rain2d.js?v=44";
+import { createLoading } from "./loading.js?v=44";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=44";
+import { setSurreal, tickStyle } from "./surreal.js?v=44";
+import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=44";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=44";
 
 const $ = (id) => document.getElementById(id);
 
@@ -182,32 +182,42 @@ const HOW_HTML = `<p><b>Tilt</b> your phone like a wheel: top edge toward you = 
 const SAVE_KEY = "jet-save-v1";
 const PILOTS_KEY = "jet-players-v1";
 function loadPilots() { try { const v = JSON.parse(localStorage.getItem(PILOTS_KEY)); if (v && Array.isArray(v.list)) return v; } catch { /* ignore */ } return { last: "", list: [] }; }
+function cleanCall(v) { return String(v || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5); }
 function rememberPilot(name, n, score) {
-  name = String(name || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 5);
-  if (name.length !== 5) return;
+  name = cleanCall(name);
+  if (name.length < 1) return;
   const p = loadPilots();
   p.list = [{ name, n: n || 1, score: score | 0, t: Date.now() }, ...p.list.filter((x) => x.name !== name)].slice(0, 16);
   p.last = name;
   try { localStorage.setItem(PILOTS_KEY, JSON.stringify(p)); } catch { /* ignore */ }
 }
+let flyNow = false;
+function closePanel() { $("panel").classList.add("hidden"); document.body.classList.remove("panel-open"); }
 function continuePilot(name) {
-  const p = loadPilots(), row = p.list.find((x) => x.name === name);
-  if (!row) return askPilot();
-  p.last = row.name; try { localStorage.setItem(PILOTS_KEY, JSON.stringify(p)); } catch { /* ignore */ }
+  name = cleanCall(name) || "GUEST";
+  let row = loadPilots().list.find((x) => x.name === name);
+  if (!row) { rememberPilot(name, 1, 0); row = loadPilots().list.find((x) => x.name === name); }
+  const p = loadPilots(); p.last = name; try { localStorage.setItem(PILOTS_KEY, JSON.stringify(p)); } catch { /* ignore */ }
   const sv = readSave();
   levelNo = row.n || 1; saveLevelNo(levelNo);
+  if (!(sv && sv.n === levelNo && sv.snap)) flyNow = true;
   if (sv && sv.n === levelNo) play(sv); else play();
 }
+function commitPilot(raw) {
+  const name = cleanCall(raw);
+  if (!name) { closePanel(); flyTitle(); return; }
+  const prev = loadPilots().list.find((x) => x.name === name);
+  rememberPilot(name, prev ? prev.n : 1, prev ? prev.score : 0);
+  closePanel();
+  levelNo = prev ? prev.n : 1; saveLevelNo(levelNo); clearSave();
+  flyNow = true; play();
+}
 function askPilot() {
-  showPanel("NEW PILOT", `<form id="pilot-form"><label>5 LETTERS<input id="pilot-name" maxlength="5" autocapitalize="characters" autocomplete="off"></label> <button type="submit">FLY</button></form>`);
-  document.getElementById("pilot-form")?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const name = (document.getElementById("pilot-name").value || "").toUpperCase().replace(/[^A-Z]/g, "");
-    if (name.length !== 5) return;
-    rememberPilot(name, 1, 0);
-    $("panel").classList.add("hidden"); document.body.classList.remove("panel-open");
-    levelNo = 1; saveLevelNo(1); clearSave(); play();
-  });
+  showPanel("NEW PILOT", `<form id="pilot-form" autocomplete="off"><label>CALL SIGN<input id="pilot-call" name="callsign" maxlength="5" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go"></label></form>`);
+  const form = document.getElementById("pilot-form");
+  const box = document.getElementById("pilot-call");
+  form?.addEventListener("submit", (e) => { e.preventDefault(); commitPilot(box?.value); });
+  box?.focus();
 }
 function pilotList() {
   const rows = loadPilots().list.map((r) => `<button type="button" data-name="${r.name}">${r.name} · MISSION ${r.n} · ${r.score}</button>`).join("") || "<p>NO SAVED PILOTS</p>";
@@ -218,7 +228,7 @@ function pilotList() {
     continuePilot(b.dataset.name);
   });
 }
-function flyTitle() { const last = loadPilots().last; if (last) continuePilot(last); else askPilot(); }
+function flyTitle() { continuePilot(loadPilots().last || "GUEST"); }
 function readSave() { try { const v = JSON.parse(localStorage.getItem(SAVE_KEY) || "null"); return v && v.v === 1 && v.run && PLANETS[v.run.planetKey] ? v : null; } catch { return null; } }
 function writeSave() {
   if (state !== "playing") return;
@@ -282,8 +292,8 @@ function showCelebration(opt, done) {
 }
 function buildMenu() {
   const box = $("menu-buttons"); box.innerHTML = "";
-  const last = loadPilots().last;
-  const tapT = $("tap-fly")?.querySelector(".t26-tapt"); if (tapT) tapT.textContent = last ? `CONTINUE ${last}` : "NEW PILOT";
+  const last = loadPilots().last || "GUEST";
+  const tapT = $("tap-fly")?.querySelector(".t26-tapt"); if (tapT) tapT.textContent = `CONTINUE ${last}`;
   const neu = document.createElement("button");
   neu.type = "button"; neu.className = "plate"; neu.innerHTML = `<span class="pt">NEW PILOT</span>`;
   neu.addEventListener("click", (e) => { e.stopPropagation(); askPilot(); });
@@ -292,7 +302,11 @@ function buildMenu() {
   for (const b of SEC_LINKS) { const el = document.createElement("button"); el.type = "button"; el.className = "slink"; el.textContent = b.label; el.addEventListener("click", (e) => { e.stopPropagation(); b.run(); }); sl.appendChild(el); }
 }
 function showPanel(title, html) { $("panel-title").textContent = title; $("panel-body").innerHTML = html; $("panel").classList.remove("hidden"); document.body.classList.add("panel-open"); }
-$("panel-close").addEventListener("click", () => { $("panel").classList.add("hidden"); document.body.classList.remove("panel-open"); });
+$("panel-close").addEventListener("click", () => {
+  const form = document.getElementById("pilot-form");
+  if (form && !$("panel").classList.contains("hidden")) { form.requestSubmit(); return; }
+  closePanel();
+});
 
 // ---------- b26: language picker ----------
 initLang();
@@ -326,6 +340,7 @@ window.__jet.game = game; window.__jet.audio = audio;
 // ---------- start / levels ----------
 async function launch(n, fromTap, sv) {
   if (state === "loading") return;
+  const roll = flyNow; flyNow = false;
   state = "loading";
   levelNo = n; saveLevelNo(n);
   document.body.classList.remove("tp-a", "tp-b", "tp-c", "preview", "rolling"); previewOn = false; game.titleOff();
@@ -356,7 +371,7 @@ async function launch(n, fromTap, sv) {
   game.dbg.setLives(carryLives);
   if (sv?.snap) { try { game.restoreSnap(sv.snap); } catch { /* ignore */ } }
   window.__settingsOpen?.(false);
-  game.start(); try { controls.calibrate(); } catch { /* ignore */ }   // b35: tilt neutral = how the phone is held at launch
+  game.start(); if (roll && !sv?.snap) game.takeoffNow?.(); try { controls.calibrate(); } catch { /* ignore */ }   // b35: tilt neutral = how the phone is held at launch
   { const b = $("lvl-banner"), lv = game.level?.() || {}, ob = (lv.objectives || []).map((o) => o.label).filter(Boolean)[0] || "Destroy the enemy";   // b34: clear level goal
     $("lvl-b1").textContent = `LEVEL ${n}`; $("lvl-b2").textContent = ob.toUpperCase() + ((n % 5 === 0) ? " · BOSS!" : "");
     b.classList.remove("hidden", "go"); void b.offsetWidth; b.classList.add("go"); clearTimeout(window.__lvlB); window.__lvlB = setTimeout(() => b.classList.add("hidden"), 4200); }
