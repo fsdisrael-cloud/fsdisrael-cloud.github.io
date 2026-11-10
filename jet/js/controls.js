@@ -12,10 +12,10 @@ const D2R = Math.PI / 180;
 
 /** Strong expo: almost nothing near center, full rate only at a hard pull. Same curve for stick and tilt. */
 export function expoAxis(v) {
-  const dz = 0.06, a = Math.abs(v);
+  const dz = 0.11, a = Math.abs(v);
   if (a <= dz) return 0;
   const u = Math.min(1, (a - dz) / (1 - dz));
-  return Math.sign(v) * Math.pow(u, 2.45);
+  return Math.sign(v) * Math.pow(u, 3.25);
 }
 
 // ---- easy-to-adjust configuration ----
@@ -24,7 +24,7 @@ export const CONTROL_CFG = {
   stickRadiusPx: 56,         // drag distance for full deflection
   tiltRangePitchDeg: 32,     // degrees of tilt for full pitch input
   tiltRangeRollDeg: 38,      // degrees of tilt for full roll input
-  tiltDeadZoneDeg: 2.5,
+  tiltDeadZoneDeg: 4.8,
   tiltSmoothing: 24,         // higher = snappier
   stickReturn: 12,           // spring-back speed of the joystick
   lookYawPerScreen: 5.2,     // head-look: radians of view yaw for a swipe across the full screen width
@@ -41,7 +41,7 @@ export function createControls() {
   let gyroOn = false, gotGyroEvent = false, tiltPref = false, permOk = false; try { tiltPref = localStorage.getItem("jet-tilt-v2") === "1"; } catch { /* ignore */ }
   let invertLook = false; try { invertLook = localStorage.getItem("jet-look-invert") === "1"; } catch {}
   let invertPitch = false; try { invertPitch = localStorage.getItem("jet-invert-v3") === "1"; } catch { /* ignore */ }
-  let rawPitch = 0, rawRoll = 0, smPitch = 0, smRoll = 0;
+  let rawPitch = 0, rawRoll = 0, smPitch = 0, smRoll = 0, steadyT = 0, lastSmP = 0, lastSmR = 0;
   let zeroPitch = 35, zeroRoll = 0, wantCal = true, calAt = 0;
   let tgtEdge = 0, mslHeld = false, bombHeld = false, gunHeld = false, rocketEdge = false, bombEdge = false, viewEdge = false, boostKey = false, flareEdge = false, brakeHeld = false, brakeKey = false;
   // b24 one-finger mode: double-tap the stick = missile, triple-tap = bomb (short taps with almost no deflection, so they never move the jet)
@@ -279,6 +279,14 @@ export function createControls() {
     // tilt: smoothing + dead zone, relative to the calibrated neutral
     const ks = 1 - Math.exp(-dt * C.tiltSmoothing);
     smPitch += (rawPitch - smPitch) * ks; smRoll += (rawRoll - smRoll) * ks;
+    const moved = Math.hypot(smPitch - lastSmP, smRoll - lastSmR);
+    lastSmP = smPitch; lastSmR = smRoll;
+    if (gyroOn && tiltPref && !joy.active && moved < 0.12) steadyT += dt;
+    else if (joy.active || moved > 0.45) steadyT = 0;
+    if (steadyT > 5 && !joy.active) {
+      zeroPitch += (smPitch - zeroPitch) * Math.min(1, dt * 0.45);
+      zeroRoll += (smRoll - zeroRoll) * Math.min(1, dt * 0.45);
+    }
     let tp = 0, tr = 0;
     if (gyroOn && gotGyroEvent && tiltPref) {
       let dp = smPitch - zeroPitch, dr = smRoll - zeroRoll;

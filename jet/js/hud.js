@@ -1,7 +1,7 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=40";
-import { tr } from "./i18n.js?v=40";
+import { LABEL } from "./missions.js?v=41";
+import { tr } from "./i18n.js?v=41";
 
 const ALLY = "#3dff8b";
 const COL = { boss:"#ff3b3b", bossweapon:"#ff8a40", jet: "#ff3b3b", tank: "#ff9c35", flak: "#ff9c35", sam: "#ff9c35", base: "#ff9c35", ship: "#bd6aff", pad: "#3dff8b", ring: "#ffe14d" };
@@ -326,7 +326,7 @@ export function createHud() {
     v.copy(p).applyMatrix4(cam.matrixWorldInverse);
     let ang = Math.atan2(-v.y, v.x);
     if (v.z > 0 && Math.abs(v.x) < 1e-3) ang = Math.PI / 2;
-    const cx = W / 2, cy = H / 2, rx = W / 2 - 46, ry = H / 2 - 56;
+    const cx = W / 2, cy = H / 2, rx = W / 2 - 118, ry = H / 2 - 132;
     const x = cx + Math.cos(ang) * rx, y = cy + Math.sin(ang) * ry;
     ctx.save(); ctx.globalAlpha = 0.6; ctx.translate(x, y); ctx.rotate(ang); ctx.scale(sc * 0.85, sc * 0.85);
     ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-8, -11); ctx.quadraticCurveTo(-2, 0, -8, 11); ctx.closePath();
@@ -501,9 +501,11 @@ export function createHud() {
     dom.timer.classList.toggle("urgent", !s.endless && t <= 20);
     dom.score.textContent = s.score;
     {   // b24: target counter = what is still alive in the air / on the ground / at sea, plus mission progress
-      const cn = s.counts || { air: 0, gnd: 0, sea: 0 };
-      const need = s.objectives.reduce((a, o) => a + (o.kind === "land" ? 0 : o.need), 0), got = s.objectives.reduce((a, o) => a + (o.kind === "land" ? 0 : Math.min(o.need, s.progress[o.kind] || 0)), 0);
-      const html = `<div class="tally"><span class="air${cn.air ? "" : " zero"}">AIR<b>${cn.air}</b></span><span class="gnd${cn.gnd ? "" : " zero"}">GND<b>${cn.gnd}</b></span><span class="sea${cn.sea ? "" : " zero"}">SEA<b>${cn.sea}</b></span></div><div class="tally"><span>MISSION<b>${got}/${need}</b></span></div>`;
+      const pg = s.progress || {}, needOf = (k) => (s.objectives.find((o) => o.kind === k) || {}).need || 0;
+      const airN = needOf("jet"), seaN = needOf("ship"), gndN = ["tank", "base", "flak", "sam"].reduce((a, k) => a + needOf(k), 0);
+      const airG = Math.min(airN, pg.jet || 0), seaG = Math.min(seaN, pg.ship || 0), gndG = ["tank", "base", "flak", "sam"].reduce((a, k) => a + Math.min(needOf(k), pg[k] || 0), 0);
+      const need = s.objectives.reduce((a, o) => a + (o.kind === "land" ? 0 : o.need), 0), got = s.objectives.reduce((a, o) => a + (o.kind === "land" ? 0 : Math.min(o.need, pg[o.kind] || 0)), 0);
+      const html = `<div class="tally"><span class="air">AIR<b>${airG}/${airN}</b></span><span class="gnd">GND<b>${gndG}/${gndN}</b></span><span class="sea">SEA<b>${seaG}/${seaN}</b></span></div><div class="tally"><span>MISSION<b>${got}/${need}</b></span></div>`;
       if (html !== dom._tally) { dom._tally = html; dom.obj.innerHTML = html; }
     }
     { const hp = Math.round(Math.max(0, Math.min(100, s.hull ?? 100))), bar = el("hud-hull"); if (bar) { bar.style.width = hp + "%"; bar.classList.toggle("critical", hp < 30); bar.parentElement.setAttribute("aria-valuenow", hp); el("hud-hull-value").textContent = hp + "%"; } }
