@@ -1,7 +1,7 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=42";
-import { tr } from "./i18n.js?v=42";
+import { LABEL } from "./missions.js?v=43";
+import { tr } from "./i18n.js?v=43";
 
 const ALLY = "#3dff8b";
 const COL = { boss:"#ff3b3b", bossweapon:"#ff8a40", jet: "#ff3b3b", tank: "#ff9c35", flak: "#ff9c35", sam: "#ff9c35", base: "#ff9c35", ship: "#bd6aff", pad: "#3dff8b", ring: "#ffe14d" };
@@ -446,6 +446,8 @@ export function createHud() {
     for (const r of (s.runways || [])) { const L = 420, dx = -Math.sin(r.hd) * L, dz = -Math.cos(r.hd) * L, qa = toScope({ x: r.x - dx, y: 0, z: r.z - dz }), qb = toScope({ x: r.x + dx, y: 0, z: r.z + dz }); rctx.save(); rctx.lineCap = "round"; rctx.strokeStyle = "#062b14"; rctx.lineWidth = 5.5 * u; rctx.beginPath(); rctx.moveTo(qa.x, qa.y); rctx.lineTo(qb.x, qb.y); rctx.stroke(); rctx.strokeStyle = "#c9b48a"; rctx.lineWidth = 3 * u; rctx.stroke(); rctx.restore(); }
     // b30: incoming enemy missiles = small yellow dot + thin yellow trail
     for (const m of s.missiles) if (m.active) { const q = toScope(m.p), v = m.v || m.vel; if (v) { const tq = toScope({ x: m.p.x - v.x * 2.2, y: m.p.y, z: m.p.z - v.z * 2.2 }); rctx.beginPath(); rctx.moveTo(tq.x, tq.y); rctx.lineTo(q.x, q.y); rctx.strokeStyle = "rgba(255,225,77,.85)"; rctx.lineWidth = 1.1 * u; rctx.stroke(); } rctx.beginPath(); rctx.arc(q.x, q.y, 2.4 * u, 0, 7); rctx.fillStyle = "#ffe14d"; rctx.fill(); }
+    const gCol = { bomb: "#ff9a1f", bombs: "#ff6a1a", missile: "#d8e6ff", shield: "#4db4ff", health: "#ff4040", fuel: "#3dff6a" };
+    for (const g of s.gifts || []) { const q = toScope(g); rctx.beginPath(); rctx.arc(q.x, q.y, 2.1 * u, 0, 7); rctx.fillStyle = gCol[g.kind] || "#fff2c4"; rctx.fill(); }
     // enemy planes: red triangles pointing along their heading
     for (const t of s.targets) {
       if (!t.alive || !["jet","boss","bossweapon"].includes(t.kind)) continue;

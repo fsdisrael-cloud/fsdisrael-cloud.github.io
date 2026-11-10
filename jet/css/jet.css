@@ -1077,3 +1077,12 @@ body.title-hold .screen.title, body.title-hold .loading { opacity: 0 !important;
 body.title-ready .screen.title { animation: titleIn .5s ease both; }
 @keyframes titleIn { from { opacity: 0; } to { opacity: 1; } }
 .cel-trophy { display: none !important; }
+/* 1.43: takeoff card sits off the center instruments */
+body.in-game .ops { top: auto !important; left: 50% !important; right: auto !important; bottom: calc(env(safe-area-inset-bottom) + 188px) !important; transform: translateX(-50%) !important; width: min(176px, 42vw); gap: 6px; z-index: 8; }
+body.in-game .ops-bars { width: 100%; }
+@media (orientation: landscape) {
+  body.in-game .ops { top: calc(env(safe-area-inset-top) + 84px) !important; bottom: auto !important; left: auto !important; right: calc(env(safe-area-inset-right) + 8px) !important; transform: none !important; width: 168px; }
+}
+#pilot-list { display: flex; flex-direction: column; gap: 8px; }
+#pilot-list button, #pilot-form button { padding: 8px 12px; border: 1px solid #ff9a2a; background: #1b140c; color: #fff; font: 800 16px/1 "Rajdhani", system-ui, sans-serif; }
+#pilot-form input { width: 7em; margin-left: 8px; padding: 8px; letter-spacing: .2em; text-transform: uppercase; background: #0c1016; color: #fff; border: 1px solid #ff9a2a; }

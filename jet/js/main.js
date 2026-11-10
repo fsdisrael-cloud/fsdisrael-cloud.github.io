@@ -1,17 +1,17 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=42";
-import { createHud } from "./hud.js?v=42";
-import { createControls } from "./controls.js?v=42";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=42";
-import { createAudio, trackFor } from "./audio.js?v=42";
-import { createHaptics } from "./haptics.js?v=42";
-import { createRain2D } from "./rain2d.js?v=42";
-import { createLoading } from "./loading.js?v=42";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=42";
-import { setSurreal, tickStyle } from "./surreal.js?v=42";
-import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=42";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=42";
+import { createGame } from "./game.js?v=43";
+import { createHud } from "./hud.js?v=43";
+import { createControls } from "./controls.js?v=43";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=43";
+import { createAudio, trackFor } from "./audio.js?v=43";
+import { createHaptics } from "./haptics.js?v=43";
+import { createRain2D } from "./rain2d.js?v=43";
+import { createLoading } from "./loading.js?v=43";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=43";
+import { setSurreal, tickStyle } from "./surreal.js?v=43";
+import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=43";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=43";
 
 const $ = (id) => document.getElementById(id);
 
@@ -180,6 +180,45 @@ const HOW_HTML = `<p><b>Tilt</b> your phone like a wheel: top edge toward you = 
 // Opening flow: logo + live scene while terrain loads -> HUD powers on -> tap anywhere -> CONT / NEW plates.
 // CONT resumes the autosave (jet-save-v1); it is disabled when there is no save. LEVELS / HOW TO FLY are small placeholder links.
 const SAVE_KEY = "jet-save-v1";
+const PILOTS_KEY = "jet-players-v1";
+function loadPilots() { try { const v = JSON.parse(localStorage.getItem(PILOTS_KEY)); if (v && Array.isArray(v.list)) return v; } catch { /* ignore */ } return { last: "", list: [] }; }
+function rememberPilot(name, n, score) {
+  name = String(name || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 5);
+  if (name.length !== 5) return;
+  const p = loadPilots();
+  p.list = [{ name, n: n || 1, score: score | 0, t: Date.now() }, ...p.list.filter((x) => x.name !== name)].slice(0, 16);
+  p.last = name;
+  try { localStorage.setItem(PILOTS_KEY, JSON.stringify(p)); } catch { /* ignore */ }
+}
+function continuePilot(name) {
+  const p = loadPilots(), row = p.list.find((x) => x.name === name);
+  if (!row) return askPilot();
+  p.last = row.name; try { localStorage.setItem(PILOTS_KEY, JSON.stringify(p)); } catch { /* ignore */ }
+  const sv = readSave();
+  levelNo = row.n || 1; saveLevelNo(levelNo);
+  if (sv && sv.n === levelNo) play(sv); else play();
+}
+function askPilot() {
+  showPanel("NEW PILOT", `<form id="pilot-form"><label>5 LETTERS<input id="pilot-name" maxlength="5" autocapitalize="characters" autocomplete="off"></label> <button type="submit">FLY</button></form>`);
+  document.getElementById("pilot-form")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = (document.getElementById("pilot-name").value || "").toUpperCase().replace(/[^A-Z]/g, "");
+    if (name.length !== 5) return;
+    rememberPilot(name, 1, 0);
+    $("panel").classList.add("hidden"); document.body.classList.remove("panel-open");
+    levelNo = 1; saveLevelNo(1); clearSave(); play();
+  });
+}
+function pilotList() {
+  const rows = loadPilots().list.map((r) => `<button type="button" data-name="${r.name}">${r.name} · MISSION ${r.n} · ${r.score}</button>`).join("") || "<p>NO SAVED PILOTS</p>";
+  showPanel("PILOTS", `<div id="pilot-list">${rows}</div>`);
+  document.getElementById("pilot-list")?.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-name]"); if (!b) return;
+    $("panel").classList.add("hidden"); document.body.classList.remove("panel-open");
+    continuePilot(b.dataset.name);
+  });
+}
+function flyTitle() { const last = loadPilots().last; if (last) continuePilot(last); else askPilot(); }
 function readSave() { try { const v = JSON.parse(localStorage.getItem(SAVE_KEY) || "null"); return v && v.v === 1 && v.run && PLANETS[v.run.planetKey] ? v : null; } catch { return null; } }
 function writeSave() {
   if (state !== "playing") return;
@@ -187,6 +226,7 @@ function writeSave() {
     const L = game.level(), hs = game.hudState(); if (!L?.run) return;
     const { planet, ...run } = L.run;
     localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, n: levelNo, run, score: hs.score | 0, timeLeft: Math.max(5, Math.round(hs.timeLeft || 0)), endless: false, snap: game.snapshot(), t: Date.now() }));
+    rememberPilot(loadPilots().last, levelNo, hs.score | 0);
   } catch { /* ignore */ }
 }
 function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ } }
@@ -195,6 +235,7 @@ const MENU_BUTTONS = [
   { id: "new", label: "NEW", sub: "NEW SORTIE", primary: true, run: () => { clearSave(); play(); } },
 ];
 const SEC_LINKS = [
+  { label: "PILOTS", run: () => pilotList() },
   { label: "HOW TO", run: () => showPanel("How to", HOW_HTML + `<p style="text-align:center;margin-top:14px"><a class="t26-cont" style="display:inline-block;text-decoration:none" href="howto/" target="_blank" rel="noopener"><span>OPEN FULL HOW-TO GUIDE</span></a></p>`) },    // PLACEHOLDER (function pending)
   { label: "LEVELS", run: () => { showPanel("Levels", levelsHtml()); const f = document.getElementById("lv-jump"); f?.addEventListener("submit", (e) => { e.preventDefault(); const n = Math.max(1, Math.min(999, parseInt(document.getElementById("lv-num").value, 10) || 1)); levelNo = n; saveLevelNo(n); $("panel").classList.add("hidden"); document.body.classList.remove("panel-open"); clearSave(); play(); }); } },
 ];
@@ -241,17 +282,12 @@ function showCelebration(opt, done) {
 }
 function buildMenu() {
   const box = $("menu-buttons"); box.innerHTML = "";
-  const sv = readSave();
-  for (const b of MENU_BUTTONS) {
-    const el = document.createElement("button");
-    const off = b.id === "cont" && !sv;
-    if (off || b.id === "new") continue;   // b26: TAP TO FLY starts a new sortie; CONT only shows when there is a save
-    el.type = "button"; el.className = "plate" + (b.primary ? " go" : "") + (off ? " off" : ""); el.disabled = off;
-    if (b.id === "cont") { el.className = "t26-cont"; el.innerHTML = `<span>${b.label}</span>`; }   // b31: same style as the TAP TO FLY plate
-    else el.innerHTML = `<i class="led"></i><span class="pt">${b.label}</span><em class="ps">${off ? "NO SAVE" : b.sub}</em>`;
-    el.addEventListener("click", (e) => { e.stopPropagation(); b.run(); });
-    box.appendChild(el);
-  }
+  const last = loadPilots().last;
+  const tapT = $("tap-fly")?.querySelector(".t26-tapt"); if (tapT) tapT.textContent = last ? `CONTINUE ${last}` : "NEW PILOT";
+  const neu = document.createElement("button");
+  neu.type = "button"; neu.className = "plate"; neu.innerHTML = `<span class="pt">NEW PILOT</span>`;
+  neu.addEventListener("click", (e) => { e.stopPropagation(); askPilot(); });
+  box.appendChild(neu);
   const sl = $("sec-links"); sl.innerHTML = "";
   for (const b of SEC_LINKS) { const el = document.createElement("button"); el.type = "button"; el.className = "slink"; el.textContent = b.label; el.addEventListener("click", (e) => { e.stopPropagation(); b.run(); }); sl.appendChild(el); }
 }
@@ -353,6 +389,7 @@ function onLevelEnd(r) {
   let next;
   if (won) { audio.win(); next = n + 1; saveLevelNo(next); carryScore = r.score; carryLives = game.dbg.lives(); }
   else { audio.lose(); carryLives = 5; next = 1; saveLevelNo(1); carryScore = 0; }
+  rememberPilot(loadPilots().last, won ? next : n, r.score | 0);
   $("res-btn-label").textContent = won ? "NEXT LEVEL" : "NEW GAME";
   $("res-btn").onclick = () => launch(next);
   setTimeout(() => { if (state === "results" && !preload) startPreload(next); }, 400);
@@ -568,7 +605,7 @@ requestAnimationFrame(frame);
   // Art variants follow scene changes; never reveal the rejected live/plain menu.
   let art = window.__titleArt ?? 0;   // b30: ONE art per session, chosen in <head> before first paint
 
-  $("tap-fly").addEventListener("click", (e) => { e.stopPropagation(); if (preloadReady && state === "title") { clearSave(); play(); } });
+  $("tap-fly").addEventListener("click", (e) => { e.stopPropagation(); if (preloadReady && state === "title") flyTitle(); });
   $("btn-reroll").addEventListener("pointerdown", (e) => e.stopPropagation());
   $("btn-reroll").addEventListener("click", (e) => { e.stopPropagation(); reroll(1); });
   // swipe left = next scene, swipe right = previous scene (title menu only, never starting a swipe on a button)
@@ -591,7 +628,7 @@ requestAnimationFrame(frame);
     if (state !== "title" || !(body.classList.contains("tp-b") || body.classList.contains("tp-c"))) return;
     if (e.target.closest("button, #settings, #lang-btn, #lang-list, .slink, .plate, #panel, .menu-buttons, .sec-links")) return;
     if (performance.now() < tapGuard) return;
-    clearSave(); play();
+    flyTitle();
   });
   window.__langTapGuard = () => { tapGuard = performance.now() + 350; };
 }

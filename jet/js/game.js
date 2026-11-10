@@ -1,15 +1,15 @@
 // Ubu game world: flight model, camera, targets, AI, weapons, effects, objectives.
-import { createPost } from "./post.js?v=42";
+import { createPost } from "./post.js?v=43";
 import * as THREE from "three";
-import { buildTerrain } from "./terrain.js?v=42";
-import { createSky } from "./sky.js?v=42";
-import { createPilot, createSeat, createChute, createAirstrip, STRIP, createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createShip, createWarship, createSub, createSamSite, createRocket, createHeli, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=42";
-import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=42";
-import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=42";
-import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=42";
-import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=42";
-import { setQuality, FX as FXQ } from "./tex.js?v=42";
-import { style, patchTerrain, waveAt, createDreamShapes, onStyle, setLake } from "./surreal.js?v=42";
+import { buildTerrain } from "./terrain.js?v=43";
+import { createSky } from "./sky.js?v=43";
+import { createPilot, createSeat, createChute, createAirstrip, STRIP, createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createShip, createWarship, createSub, createSamSite, createRocket, createHeli, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=43";
+import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=43";
+import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=43";
+import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=43";
+import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=43";
+import { setQuality, FX as FXQ } from "./tex.js?v=43";
+import { style, patchTerrain, waveAt, createDreamShapes, onStyle, setLake } from "./surreal.js?v=43";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V(), tE = V();
@@ -1516,7 +1516,8 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       o.v += (o.carrier ? 95 : 15 + 11 * (1 - Math.min(1, o.v / 150))) * dt;
       const tp = o.v > 64 ? THREE.MathUtils.clamp((o.v - 64) * 0.007 + input.pitch * 0.18, o.air ? -0.06 : 0, 0.42) : Math.max(0, input.pitch) * 0.06; o.pitch += (tp - o.pitch) * Math.min(1, dt * 3.4);
       player.pos.x += dirx * o.v * dt; player.pos.z += dirz * o.v * dt;
-      if (o.air === 0 && o.v > 128 && o.pitch > 0.12) { o.air = 0.001; o.vy = 5; camCut = { kind: "lift", t: 0, dur: 3.1, dir: 1 }; audio.whoosh?.(); shake = Math.max(shake, 0.5); }
+      if (!o.spun && o.v > 52) { o.spun = 1; camCut = { kind: "orbit", t: 0, dur: 2.6, dir: 1 }; }
+      if (o.air === 0 && o.v > 128 && o.pitch > 0.12) { o.air = 0.001; o.vy = 5; if (!camCut) camCut = { kind: "orbit", t: 0, dur: 2.2, dir: 1 }; audio.whoosh?.(); shake = Math.max(shake, 0.5); }
       if (o.air > 0) { o.air += dt; o.vy += dt * 7; player.pos.y += o.vy * dt; if (o.air > 0.9) gearSet(0); }
       else { player.pos.y = deck.y + GEAR_H; groundFx(dt, o.v, false); shake = Math.max(shake, 0.12 + 0.2 * Math.min(1, o.v / 140)); }
       const skid = o.air ? 22 : 8;
@@ -1658,7 +1659,11 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     }
     let w, az, r, el, fov;
     if (c.kind === "beauty") { w = Math.min(1, c.t / 0.5); w = w * w * (3 - 2 * w); az = Math.PI * 0.82 + c.t * 0.1; r = 24; el = 0.1; fov = 46; }
-    else {
+    else if (c.kind === "orbit") {
+      const u = Math.min(1, c.t / Math.max(0.2, c.dur));
+      w = 1; az = (c.dir || 1) * u * Math.PI * 2; r = 26; el = 0.16; fov = 48;
+      if (c.t >= c.dur) { camCut = null; return; }
+    } else {
       const u2 = Math.min(1, c.t / c.dur), e = u2 * u2 * (3 - 2 * u2);
       const a = Math.min(1, c.t / 0.12), b = Math.min(1, Math.max(0, (c.dur - c.t) / 0.7));
       w = a * a * (3 - 2 * a) * b * b * (3 - 2 * b);
@@ -1864,7 +1869,8 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   function updateCamera(dt, snap = false) {
     updateCameraBase(dt, snap);
     const activeOps = ops && ["roll", "app", "final", "rollout", "turn"].includes(ops.mode);
-    if (camCut && !crashing && !activeOps && Math.abs(controls.look.yaw) + Math.abs(controls.look.pitch) < 0.08) camOverlay(dt);
+    const pan = camCut && (camCut.kind === "orbit" || camCut.kind === "lift");
+    if (camCut && !crashing && (!activeOps || pan) && Math.abs(controls.look.yaw) + Math.abs(controls.look.pitch) < 0.08) camOverlay(dt);
     if (ops && viewMode !== "cockpit") {
       let rise = Math.max(0, groundAt(camera.position.x, camera.position.z) + 3 - camera.position.y);
       for (let k = 1; k < 12; k++) { const a = k / 12, x = player.pos.x + (camera.position.x - player.pos.x) * a, z = player.pos.z + (camera.position.z - player.pos.z) * a;
@@ -2429,10 +2435,11 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     updateGear(dt);
     if (ops) {
       const fight = ops.mode === "app" || ops.mode === "final";
-      if (!fight) { controls.consumeLoop(); controls.consumeRocket(); controls.consumeBomb(); }
+      const up = ops.mode === "roll" && ops.air > 0;
+      if (!fight && !up) { controls.consumeLoop(); controls.consumeRocket(); controls.consumeBomb(); }
       updateOps(dt);
       if (ops && (ops.mode === "app" || ops.mode === "final" || ops.mode === "rollout" || ops.mode === "roll" || ops.mode === "turn")) { updateTargets(dt); updateProjectiles(dt); }
-      if (fight && ops && !crashing) landCombat(dt);
+      if ((fight || (ops && ops.mode === "roll" && ops.air > 0)) && ops && !crashing) landCombat(dt);
       updateEffects(dt); updateCamera(dt); sky.update(dt, camera.position, player.vel);
       return;
     }
@@ -3284,6 +3291,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
           b.moab = false; b.o.scale.setScalar(1.35);
           explode(b.p.clone(), 80, 3.4); shock(b.p.clone(), 280); shake = Math.max(shake, 2.4);
           for (let i = 0; i < 18; i++) puff(tA.set(b.p.x, gh + 8 + i * 10, b.p.z), tB.set((Math.random() - 0.5) * 12, 30, (Math.random() - 0.5) * 12), 14, 40, 3.5, i < 6 ? 0xffb060 : 0x6a5648);
+          if (terrain.isWater(b.p.x, b.p.z)) waterSplash(b.p, 2.4);
           blast(b.p, 220, 80); audio.explosion(2.4, 0);
           camCut = { kind: "moab", t: 0, dur: 1.15, at: b.p.clone() };
           continue;
@@ -3291,7 +3299,8 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
         explode(b.p.clone(), 28, 1.8); shock(b.p.clone(), 120);
         for (let i = 0; i < 10; i++) puff(b.p, tA.set((Math.random() - 0.5) * 60, 8 + Math.random() * 25, (Math.random() - 0.5) * 60), 6, 22, 2.2, 0x6a6258);
         const water = terrain.isWater(b.p.x, b.p.z);
-        for (let i = 0; i < 6; i++) puff(b.p, tA.set((Math.random() - 0.5) * 20, 30 + Math.random() * 30, (Math.random() - 0.5) * 20), 4, 12, 1.4, water ? 0xffffff : 0x9a8a6a);
+        if (water) waterSplash(b.p, 1.15);
+        else for (let i = 0; i < 6; i++) puff(b.p, tA.set((Math.random() - 0.5) * 20, 30 + Math.random() * 30, (Math.random() - 0.5) * 20), 4, 12, 1.4, 0x9a8a6a);
         const before = stats.kills ? Object.values(stats.kills).reduce((a, c) => a + c, 0) : 0;
         blast(b.p, 60, 50);
         const after = Object.values(stats.kills).reduce((a, c) => a + c, 0);
@@ -3442,7 +3451,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       six: sixT > 0, night: L?.run?.time === "night", lockTarget, lockCand, lockTime, track: trackOn, counts: countTargets(), lives, livesMax: LIVES_MAX, moabs, shields, shieldT, laserT, ops: ops ? ops.mode : null, opsK: ops ? { kf: ops.kf || 0, ka: ops.ka || 0 } : null, hasStrip: !!(strip || pad), runways: [strip && { x: strip.pos.x, z: strip.pos.z, hd: strip.hd }, pad && { x: pad.pos.x, z: pad.pos.z, hd: pad.heading }].filter(Boolean), hull: player ? Math.max(0, player.hp) : 100, fuel: fuelV,  ccip, bombAim: aimPos, bombLocked: !!bombLock, bombKind: bombLock ? bombLock.kind : (selTgt ? selTgt.kind : ""), bombName: bombLock ? kindName(bombLock) : "", bombDist: bombLock ? bombLock.pos.distanceTo(player.pos) : 0, bombSel: !!selTgt, tgtFlash, alert: alertMsg, camera, missiles, half, center, elapsed,
       fwd: player ? fwdFrom(player.yaw, player.pitch, V()) : null,
       heat, overheated, crashing: !!crashing, pad, baseCenters, landingOpen, landing: !!landing, autoGun, rack: RACK, rockets: player ? player.rockets : 0, bombs: player ? player.bombs : 0,
-      rocketRefill: player && player.rockets < RACK ? rocketRegen / ROCKET_REGEN : 0, bombRefill: player && player.bombs < RACK ? bombRegen / BOMB_REGEN : 0, rocketCd: Math.max(0, rocketCd), bombCd: Math.max(0, bombCd), endless, allies, lowAlt, maneuver: maneuver ? maneuver.dir : 0,
+      rocketRefill: player && player.rockets < RACK ? rocketRegen / ROCKET_REGEN : 0, bombRefill: player && player.bombs < RACK ? bombRegen / BOMB_REGEN : 0, rocketCd: Math.max(0, rocketCd), bombCd: Math.max(0, bombCd), endless, allies, lowAlt, gifts: prizes.map((z) => ({ x: z.mesh.position.x, z: z.mesh.position.z, kind: z.kind })), maneuver: maneuver ? maneuver.dir : 0,
     };
   }
 

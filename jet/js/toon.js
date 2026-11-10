@@ -1,6 +1,6 @@
 // Ubu toon toolkit: soft cel shading + thick black screen-space outlines.
 import * as THREE from "three";
-import { patchDetail } from "./tex.js?v=42";
+import { patchDetail } from "./tex.js?v=43";
 
 let gradientMap = null;
 export function getGradientMap() {

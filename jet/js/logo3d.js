@@ -1,7 +1,7 @@
 // Layered 3D logo: emblem plate (back), chrome letters + jet (middle, own specular sweep), embers (front).
 // Tilt the phone (DeviceOrientation) and the layers parallax + the whole plate rotates a few degrees, like a depth wallpaper.
 // Fallbacks: touch/mouse drag tilts it, and an idle float runs when nothing else moves it.
-const V = "?v=42";
+const V = "?v=43";
 export function logo3dHTML(cls = "") {
   let em = "";
   for (let i = 0; i < 16; i++) {
