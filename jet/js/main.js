@@ -1,17 +1,17 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=41";
-import { createHud } from "./hud.js?v=41";
-import { createControls } from "./controls.js?v=41";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=41";
-import { createAudio, trackFor } from "./audio.js?v=41";
-import { createHaptics } from "./haptics.js?v=41";
-import { createRain2D } from "./rain2d.js?v=41";
-import { createLoading } from "./loading.js?v=41";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=41";
-import { setSurreal, tickStyle } from "./surreal.js?v=41";
-import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=41";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=41";
+import { createGame } from "./game.js?v=42";
+import { createHud } from "./hud.js?v=42";
+import { createControls } from "./controls.js?v=42";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=42";
+import { createAudio, trackFor } from "./audio.js?v=42";
+import { createHaptics } from "./haptics.js?v=42";
+import { createRain2D } from "./rain2d.js?v=42";
+import { createLoading } from "./loading.js?v=42";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=42";
+import { setSurreal, tickStyle } from "./surreal.js?v=42";
+import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=42";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=42";
 
 const $ = (id) => document.getElementById(id);
 
@@ -209,25 +209,31 @@ function starTotal(add = 0) {
 }
 function showCelebration(opt, done) {
   const box = $("celebrate"); box.classList.remove("hidden");
-  $("cel-title").textContent = opt.giant ? "MISSION 999" : "LEVEL COMPLETE";
+  $("cel-title").textContent = opt.giant ? "MISSION 999 COMPLETE" : `LEVEL ${opt.level || ""} COMPLETE`;
   $("cel-stars").innerHTML = "★".repeat(opt.stars || 0) + `<span style="opacity:.35">${"☆".repeat(Math.max(0, 5 - (opt.stars || 0)))}</span>`;
   let sub = $("cel-sub");
   if (!sub) { sub = document.createElement("div"); sub.id = "cel-sub"; $("cel-title").after(sub); }
   sub.textContent = `WELL DONE\n${opt.stats || ""}\nNext: ${opt.nextName || "next sortie"}`;
   const go = $("cel-next"); if (go) go.textContent = "TAP TO START";
-  const trophy = $("cel-trophy");
-  const hues = ["#ffd36a", "#9ad7ff", "#ff8a6a", "#d7ffa0", "#e0b0ff", "#fff6d0"];
-  trophy.style.setProperty("--th", hues[(opt.total || 1) % hues.length]);
-  trophy.dataset.kind = String((opt.total || 1) % 6);
+  const trophy = $("cel-trophy"); if (trophy) trophy.style.display = "none";
   const cv = $("cel-cv"), ctx = cv.getContext("2d");
   let raf; const t0 = performance.now();
   const frame = (now) => {
     const t = (now - t0) / 1000; cv.width = innerWidth; cv.height = innerHeight; ctx.clearRect(0, 0, cv.width, cv.height);
-    for (let i = 0; i < 48; i++) { const x = (i * 97 + t * 90) % cv.width, y = (i * 53 + t * 160) % cv.height; ctx.fillStyle = hues[i % hues.length]; ctx.fillRect(x, y, 6, 9); }
-    const phase = Math.min(1, Math.max(0, (t - 1.2) / 1.3));
-    const cx = cv.width / 2 + Math.sin(t * 5) * (1 - phase) * 90, cy = cv.height * 0.46;
-    ctx.save(); ctx.translate(cx, cy); ctx.rotate(phase * Math.PI); ctx.fillStyle = "#e7eef6";
-    ctx.beginPath(); ctx.moveTo(0, -16); ctx.lineTo(36, 10); ctx.lineTo(8, 4); ctx.lineTo(0, 18); ctx.lineTo(-8, 4); ctx.lineTo(-36, 10); ctx.closePath(); ctx.fill(); ctx.restore();
+    const cx = cv.width / 2, cy = cv.height * 0.36;
+    ctx.save(); ctx.translate(cx, cy);
+    ctx.fillStyle = "#1c222a"; ctx.strokeStyle = "#9aa3ad"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(0, 8, 58, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 8, 40, 0, Math.PI * 2); ctx.strokeStyle = "#d4b15c"; ctx.lineWidth = 5; ctx.stroke();
+    ctx.fillStyle = "#e7e2d4"; ctx.font = "700 22px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("★", 0, 10);
+    ctx.fillStyle = "#8d949c"; ctx.fillRect(-16, 62, 32, 10); ctx.fillStyle = "#c5ccd3"; ctx.fillRect(-22, 70, 44, 6);
+    for (let i = 0; i < 8; i++) {
+      const a = t * 0.45 + i * 0.8, r = 78 + (i % 3) * 16;
+      ctx.globalAlpha = 0.25 + 0.35 * Math.max(0, Math.sin(t * 4 + i));
+      ctx.fillStyle = i % 2 ? "#f3e2b4" : "#ffb060";
+      ctx.fillRect(Math.cos(a) * r, Math.sin(a) * r * 0.55 - 6, 2, 2);
+    }
+    ctx.restore();
     raf = requestAnimationFrame(frame);
   };
   raf = requestAnimationFrame(frame);
@@ -356,7 +362,7 @@ function onLevelEnd(r) {
     const total = starTotal(stars);
     const nxt = buildLevel(Math.min(999, next));
     $("results").classList.add("hidden");
-    showCelebration({ giant: n >= 999, stars, total, stats: rows.join(" · ") || "All targets destroyed", nextName: (nxt.title || "").replace(/^\d+\.\s*/, "") }, () => { if (n >= 999) showHighScores(r.score, () => launch(1), n); else launch(next); });
+    showCelebration({ giant: n >= 999, level: n, stars, total, stats: rows.join(" · ") || "All targets destroyed", nextName: (nxt.title || "").replace(/^\d+\.\s*/, "") }, () => { if (n >= 999) showHighScores(r.score, () => launch(1), n); else launch(next); });
     return;
   }
   if (!won) {
@@ -534,14 +540,14 @@ requestAnimationFrame(frame);
 // start loading the first level right away; the opening screen shows only the logo until it is ready
 {
   const body = document.body;
-  body.classList.add("tp-a");
+  body.classList.add("tp-a", "title-hold");
   let sceneHist = [], sceneIdx = -1;
   const forced = /[?&](time|planet|place|weather|season)=/.test(location.search);
   const p0 = startPreload(levelNo, forced ? undefined : titleRun("f35"));
   p0.promise.then((ok) => { preloadReady = ok; });
   const t0 = performance.now();
   function setArtFor(jet) { const A = TITLE_ART[jet] || TITLE_ART.viper, s = document.documentElement.style, u = `url("${new URL("img/art/" + A.img, location.href).href}")`; s.setProperty("--title-p", u, "important"); s.setProperty("--title-l", `url("${new URL("img/art/" + A.img.replace(".jpg", "_l.jpg"), location.href).href}")`, "important"); }   // b33/b35
-  setArtFor("f35"); setTimeout(() => { for (const k of TITLE_JETS) { const im = new Image(); im.src = "img/art/" + TITLE_ART[k].img.replace(".jpg", innerWidth > innerHeight ? "_l.jpg" : ".jpg"); } }, 2500);
+  /* art is applied once, with the fade-in, after the level is ready */
   $("scene-label")?.addEventListener("click", (e) => { e.stopPropagation(); reroll(1); });
   const setLabel = () => { const r = preload?.level?.run; if (r) setArtFor(r.jet); const jn = JET_TYPES[r?.jet]?.name || "", j0 = jn.split(" ")[0]; $("scene-label").textContent = r ? `${r.place?.name || runLabel(r)} · ${/\d/.test(j0) ? j0 : jn}`.toUpperCase() : "";   /* b36: scene + jet only */ };
   // dir 0 / 1: a new random scene; -1: step back to the previous scene; swiping left/right on the menu calls this
@@ -577,7 +583,7 @@ requestAnimationFrame(frame);
     try { $("hud-timer").textContent = timeSec ? `${Math.floor(timeSec / 60)}:00` : "0:00"; } catch { /* ignore */ }
     setLabel(); previewOn = ok; body.classList.toggle("preview", !!ok);
     if (ok) { sceneHist = [preload.level.run]; sceneIdx = 0; saveScene(preload.level.run); }
-    body.classList.remove("tp-a"); body.classList.add("tp-b");
+    body.classList.remove("tp-a", "title-hold"); body.classList.add("tp-b", "title-ready");
   });
   // b26: TAP TO FLY (or a tap anywhere that is not a control) starts the sortie directly
   let tapGuard = 0;

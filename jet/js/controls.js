@@ -12,10 +12,10 @@ const D2R = Math.PI / 180;
 
 /** Strong expo: almost nothing near center, full rate only at a hard pull. Same curve for stick and tilt. */
 export function expoAxis(v) {
-  const dz = 0.11, a = Math.abs(v);
+  const dz = 0.16, a = Math.abs(v);
   if (a <= dz) return 0;
   const u = Math.min(1, (a - dz) / (1 - dz));
-  return Math.sign(v) * Math.pow(u, 3.25);
+  return Math.sign(v) * Math.pow(u, 4.2);
 }
 
 // ---- easy-to-adjust configuration ----
