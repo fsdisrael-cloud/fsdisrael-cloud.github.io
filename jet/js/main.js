@@ -1,17 +1,17 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=44";
-import { createHud } from "./hud.js?v=44";
-import { createControls } from "./controls.js?v=44";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=44";
-import { createAudio, trackFor } from "./audio.js?v=44";
-import { createHaptics } from "./haptics.js?v=44";
-import { createRain2D } from "./rain2d.js?v=44";
-import { createLoading } from "./loading.js?v=44";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=44";
-import { setSurreal, tickStyle } from "./surreal.js?v=44";
-import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=44";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=44";
+import { createGame } from "./game.js?v=45";
+import { createHud } from "./hud.js?v=45";
+import { createControls } from "./controls.js?v=45";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=45";
+import { createAudio, trackFor } from "./audio.js?v=45";
+import { createHaptics } from "./haptics.js?v=45";
+import { createRain2D } from "./rain2d.js?v=45";
+import { createLoading } from "./loading.js?v=45";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=45";
+import { setSurreal, tickStyle } from "./surreal.js?v=45";
+import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=45";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=45";
 
 const $ = (id) => document.getElementById(id);
 
@@ -221,8 +221,8 @@ function askPilot() {
   box?.focus();
 }
 function pilotList() {
-  const rows = loadPilots().list.map((r) => `<button type="button" data-name="${r.name}">${r.name} · MISSION ${r.n} · ${r.score}</button>`).join("") || "<p>NO SAVED PILOTS</p>";
-  showPanel("PILOTS", `<div id="pilot-list">${rows}</div>`);
+  const rows = loadPilots().list.slice(0, 10).map((r) => `<button type="button" data-name="${r.name}">${r.name} - LEVEL ${r.n || 1}</button>`).join("") || "<p>NO SAVED GAMES</p>";
+  showPanel("SAVED GAMES", `<div id="pilot-list">${rows}</div>`);
   document.getElementById("pilot-list")?.addEventListener("click", (e) => {
     const b = e.target.closest("[data-name]"); if (!b) return;
     $("panel").classList.add("hidden"); document.body.classList.remove("panel-open");
@@ -246,7 +246,6 @@ const MENU_BUTTONS = [
   { id: "new", label: "NEW", sub: "NEW SORTIE", primary: true, run: () => { clearSave(); play(); } },
 ];
 const SEC_LINKS = [
-  { label: "PILOTS", run: () => pilotList() },
   { label: "HOW TO", run: () => showPanel("How to", HOW_HTML + `<p style="text-align:center;margin-top:14px"><a class="t26-cont" style="display:inline-block;text-decoration:none" href="howto/" target="_blank" rel="noopener"><span>OPEN FULL HOW-TO GUIDE</span></a></p>`) },    // PLACEHOLDER (function pending)
   { label: "LEVELS", run: () => { showPanel("Levels", levelsHtml()); const f = document.getElementById("lv-jump"); f?.addEventListener("submit", (e) => { e.preventDefault(); const n = Math.max(1, Math.min(999, parseInt(document.getElementById("lv-num").value, 10) || 1)); levelNo = n; saveLevelNo(n); $("panel").classList.add("hidden"); document.body.classList.remove("panel-open"); clearSave(); play(); }); } },
 ];
@@ -295,10 +294,14 @@ function buildMenu() {
   const box = $("menu-buttons"); box.innerHTML = "";
   const last = loadPilots().last || "GUEST";
   const tapT = $("tap-fly")?.querySelector(".t26-tapt"); if (tapT) tapT.textContent = `CONTINUE ${last}`;
-  const neu = document.createElement("button");
-  neu.type = "button"; neu.className = "plate"; neu.innerHTML = `<span class="pt">NEW PILOT</span>`;
-  neu.addEventListener("click", (e) => { e.stopPropagation(); askPilot(); });
-  box.appendChild(neu);
+  const plate = (label, fn) => {
+    const el = document.createElement("button");
+    el.type = "button"; el.className = "plate"; el.innerHTML = `<span class="pt">${label}</span>`;
+    el.addEventListener("click", (e) => { e.stopPropagation(); fn(); });
+    box.appendChild(el);
+  };
+  plate("NEW PILOT", askPilot);
+  plate("SAVED GAMES", pilotList);
   const sl = $("sec-links"); sl.innerHTML = "";
   for (const b of SEC_LINKS) { const el = document.createElement("button"); el.type = "button"; el.className = "slink"; el.textContent = b.label; el.addEventListener("click", (e) => { e.stopPropagation(); b.run(); }); sl.appendChild(el); }
 }

@@ -1077,6 +1077,13 @@ body.title-hold .screen.title, body.title-hold .loading { opacity: 0 !important;
 body.title-ready .screen.title { animation: titleIn .5s ease both; }
 @keyframes titleIn { from { opacity: 0; } to { opacity: 1; } }
 .cel-trophy { display: none !important; }
+body.on-title #menu-buttons.menu-buttons { position: fixed !important; left: 50% !important; right: auto !important; top: auto !important; bottom: calc(env(safe-area-inset-bottom) + 168px) !important; transform: translateX(-50%) !important; width: auto !important; max-width: calc(100vw - 16px); display: flex !important; flex-direction: row !important; gap: 10px !important; justify-content: center; z-index: 40; }
+body.on-title #menu-buttons .plate { flex: 0 0 auto; min-width: 132px; margin: 0; padding: 10px 12px; text-align: center; letter-spacing: .06em; }
+@media (orientation: landscape) {
+  body.on-title #menu-buttons.menu-buttons { left: auto !important; right: calc(env(safe-area-inset-right) + 12px) !important; transform: none !important; bottom: calc(env(safe-area-inset-bottom) + 86px) !important; }
+}
+.gift-flash { animation: gflash .45s ease; }
+@keyframes gflash { 40% { box-shadow: 0 0 18px #ffe7a0; } }
 /* 1.43: takeoff card sits off the center instruments */
 body.in-game .ops { top: auto !important; left: 50% !important; right: auto !important; bottom: calc(env(safe-area-inset-bottom) + 188px) !important; transform: translateX(-50%) !important; width: min(176px, 42vw); gap: 6px; z-index: 8; }
 body.in-game .ops-bars { width: 100%; }

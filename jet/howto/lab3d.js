@@ -1,7 +1,7 @@
 // b38: the how-to stick lab flies the REAL game jet (same model, control surfaces and afterburner as in game)
 import * as THREE from "three";
-import { initEnv, createPlayerJet } from "../js/models.js?v=44";
-import { JET_TYPES } from "../js/variety.js?v=44";
+import { initEnv, createPlayerJet } from "../js/models.js?v=45";
+import { JET_TYPES } from "../js/variety.js?v=45";
 const sky = document.getElementById("lab-sky");
 if (sky) try {
   const L = () => window.LAB || {};
