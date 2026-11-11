@@ -1,7 +1,7 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=46";
-import { tr } from "./i18n.js?v=46";
+import { LABEL } from "./missions.js?v=47";
+import { tr } from "./i18n.js?v=47";
 
 const ALLY = "#3dff8b";
 const COL = { boss:"#ff3b3b", bossweapon:"#ff8a40", jet: "#ff3b3b", tank: "#ff9c35", flak: "#ff9c35", sam: "#ff9c35", base: "#ff9c35", ship: "#bd6aff", pad: "#3dff8b", ring: "#ffe14d" };
@@ -194,7 +194,8 @@ export function createHud() {
       if (!t.alive) continue;
       const d = t.pos.distanceTo(s.player.pos);
       const pr = project(t.pos, cam);
-      const color = COL[t.kind] || "#fff";
+      const color = s.night ? "#b6ffc8" : (COL[t.kind] || "#fff");
+      if (s.night && pr.on) { ctx.save(); ctx.strokeStyle = "rgba(140,255,170,0.85)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(pr.x, pr.y, 10, 0, 7); ctx.stroke(); ctx.restore(); }
       if (pr.on && d < 9000) {
         const air = t.kind === "jet" || t.kind === "boss" || t.kind === "bossweapon";
         if ((t === s.lockCand || t === s.lockTarget) && s.lockTime > 0) {

@@ -1,7 +1,7 @@
 // b38: the how-to stick lab flies the REAL game jet (same model, control surfaces and afterburner as in game)
 import * as THREE from "three";
-import { initEnv, createPlayerJet } from "../js/models.js?v=46";
-import { JET_TYPES } from "../js/variety.js?v=46";
+import { initEnv, createPlayerJet } from "../js/models.js?v=47";
+import { JET_TYPES } from "../js/variety.js?v=47";
 const sky = document.getElementById("lab-sky");
 if (sky) try {
   const L = () => window.LAB || {};
@@ -12,10 +12,16 @@ if (sky) try {
   initEnv(R);
   scene.add(new THREE.HemisphereLight(0xcfe4ff, 0x3a3020, 1.6)); const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(-6, 12, 6); scene.add(sun);
   const dirt = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), new THREE.MeshStandardMaterial({ color: 0x6a7348, roughness: 1 })); dirt.rotation.x = -Math.PI / 2; dirt.position.y = -1.7; scene.add(dirt);
-  const gifts = [0x3dff6a, 0xff9a1f, 0xd8e6ff, 0xff4040, 0x4db4ff, 0xfff2c4].map((col, i) => {
-    const m = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 12), new THREE.MeshStandardMaterial({ color: col, transparent: true, opacity: 0.55, roughness: 0.15, metalness: 0.2, emissive: col, emissiveIntensity: 0.6 }));
-    m.position.set(-6 + i * 2.2, 1.2, -8); scene.add(m); return m;
-  });
+  const giftMat = (col) => new THREE.MeshStandardMaterial({ color: col, transparent: true, opacity: 0.62, roughness: 0.2, metalness: 0.25, emissive: col, emissiveIntensity: 0.55 });
+  const gifts = [
+    new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 1.1, 10), giftMat(0x3dff6a)),
+    new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.95, 8), giftMat(0xff9a1f)),
+    new THREE.Mesh(new THREE.ConeGeometry(0.22, 1.15, 8), giftMat(0xd8e6ff)),
+    new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.18, 0.18), giftMat(0xff4040)),
+    new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.08, 8, 16), giftMat(0x4db4ff)),
+    new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 1.35, 10), giftMat(0xc9a227)),
+  ];
+  gifts.forEach((m, i) => { m.position.set(-6 + i * 2.2, 1.4, -8); scene.add(m); });
   const ridge = new THREE.Mesh(new THREE.ConeGeometry(7, 5, 5), new THREE.MeshStandardMaterial({ color: 0x8a7a62, roughness: 0.9 })); ridge.position.set(-10, 0.6, -16); scene.add(ridge);
   const jk = new URLSearchParams(location.search).get("jet"), JK = JET_TYPES[jk] ? jk : "f35"; const jet = createPlayerJet(JK, JET_TYPES[JK]); jet.scale.setScalar(0.5); scene.add(jet); const u = jet.userData;
   if (u.canopy) u.canopy.visible = true; u.setGear?.(0);
