@@ -10,12 +10,12 @@
 //  - Desktop: arrows/WASD, space = guns, F = missile, B = bomb, shift = boost, V = camera.
 const D2R = Math.PI / 180;
 
-/** Strong expo: almost nothing near center, full rate only at a hard pull. Same curve for stick and tilt. */
+/** Tiny dead zone, then a smooth curve. Small inputs move the jet at once; full deflection is still full. Stick and tilt share it. */
 export function expoAxis(v) {
-  const dz = 0.16, a = Math.abs(v);
+  const dz = 0.012, a = Math.abs(v);
   if (a <= dz) return 0;
   const u = Math.min(1, (a - dz) / (1 - dz));
-  return Math.sign(v) * Math.pow(u, 4.2);
+  return Math.sign(v) * Math.pow(u, 1.08);
 }
 
 // ---- easy-to-adjust configuration ----
@@ -24,7 +24,7 @@ export const CONTROL_CFG = {
   stickRadiusPx: 56,         // drag distance for full deflection
   tiltRangePitchDeg: 32,     // degrees of tilt for full pitch input
   tiltRangeRollDeg: 38,      // degrees of tilt for full roll input
-  tiltDeadZoneDeg: 4.8,
+  tiltDeadZoneDeg: 1.2,
   tiltSmoothing: 24,         // higher = snappier
   stickReturn: 12,           // spring-back speed of the joystick
   lookYawPerScreen: 5.2,     // head-look: radians of view yaw for a swipe across the full screen width
@@ -308,7 +308,7 @@ export function createControls() {
     // Curve each analog source on its own, then add. A small tilt and a small stick stay small.
     const p = Math.max(-1, Math.min(1, expoAxis(tp) + expoAxis(jp) + kp));
     const r = Math.max(-1, Math.min(1, expoAxis(tr) + expoAxis(jr) + kr));
-    const k = 1 - Math.exp(-dt * 34);
+    const k = 1 - Math.exp(-dt * 60);
     stick.pitch += (p - stick.pitch) * k;
     stick.roll += (r - stick.roll) * k;
     // head-look eases back to forward when released

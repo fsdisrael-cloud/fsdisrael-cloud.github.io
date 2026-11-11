@@ -1,7 +1,7 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=44";
-import { tr } from "./i18n.js?v=44";
+import { LABEL } from "./missions.js?v=45";
+import { tr } from "./i18n.js?v=45";
 
 const ALLY = "#3dff8b";
 const COL = { boss:"#ff3b3b", bossweapon:"#ff8a40", jet: "#ff3b3b", tank: "#ff9c35", flak: "#ff9c35", sam: "#ff9c35", base: "#ff9c35", ship: "#bd6aff", pad: "#3dff8b", ring: "#ffe14d" };
@@ -261,18 +261,24 @@ export function createHud() {
     if (s.ccip) { const pr = project(s.ccip, cam); if (pr.on) { circle(pr.x, pr.y, 9, "#ff8a2a", 3); ctx.fillStyle = "#ff8a2a"; ctx.beginPath(); ctx.arc(pr.x, pr.y, 3, 0, 7); ctx.fill(); } }
     // b21: bomb aim: line from the impact point to the snapped ground target + a bright cross on the target
     if (s.bombAim) {
-      const pa = project(s.bombAim, cam), pc = s.ccip ? project(s.ccip, cam) : null;
-      if (!pa.on) edgeArrow(s.bombAim, cam, s.bombKind === "ship" ? "#bd6aff" : "#ff9c35", false, null, 1);
-      if (pa.on) {
-        const bc = s.bombKind === "ship" ? "#bd6aff" : "#ff9c35"; ctx.save(); ctx.strokeStyle = bc; ctx.fillStyle = bc;   // b30: sea = purple, ground = orange ctx.shadowColor = "rgba(0,0,0,.8)"; ctx.shadowBlur = 3;
-        // b23: always a clear line from the aim point (or the jet) to the selected ground target
-        { const fx = pc && pc.on ? pc.x : W / 2, fy = pc && pc.on ? pc.y : H * 0.62;
-          ctx.lineWidth = 2.5; ctx.setLineDash([]); ctx.globalAlpha = 0.95; ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(pa.x, pa.y); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
-        if (s.tgtFlash > 0) { ctx.lineWidth = 3; ctx.globalAlpha = Math.min(1, s.tgtFlash); ctx.beginPath(); ctx.arc(pa.x, pa.y, 24 + (1.2 - s.tgtFlash) * 40, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
-        if (s.bombName) { ctx.font = "700 12px 'Black Ops One', Fredoka, sans-serif"; ctx.textAlign = "left"; ctx.fillText(`TGT ${s.bombName} ${s.bombDist > 1000 ? (s.bombDist / 1000).toFixed(1) + " km" : Math.round(s.bombDist) + " m"}`, pa.x + 22, pa.y - 14); }
-        const r = s.bombLocked ? 15 : 10; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(pa.x - r, pa.y - r); ctx.lineTo(pa.x + r, pa.y + r); ctx.moveTo(pa.x + r, pa.y - r); ctx.lineTo(pa.x - r, pa.y + r); ctx.stroke();
-        ctx.beginPath(); ctx.arc(pa.x, pa.y, r + 5, 0, 7); ctx.lineWidth = s.bombLocked ? 3 : 2; ctx.stroke(); if (s.bombLocked) { ctx.beginPath(); ctx.arc(pa.x, pa.y, r + 12, 0, 7); ctx.lineWidth = 1.5; ctx.stroke(); } ctx.restore();
+      const pa = project(s.bombAim, cam);
+      const bc = s.bombKind === "ship" ? "#bd6aff" : "#ff9c35";
+      const nx = W * 0.5, ny = H * 0.62;
+      let ex = pa.x, ey = pa.y;
+      if (!pa.on || pa.behind) {
+        const dx = (pa.behind ? nx - pa.x : pa.x - nx) || 0.001, dy = (pa.behind ? ny - pa.y : pa.y - ny) || 0.001;
+        const sx = ((dx > 0 ? W - 28 : 28) - nx) / dx, sy = ((dy > 0 ? H - 28 : 28) - ny) / dy;
+        const sc = Math.max(0.02, Math.min(sx > 0 ? sx : 1e9, sy > 0 ? sy : 1e9));
+        ex = nx + dx * sc; ey = ny + dy * sc;
+        edgeArrow(s.bombAim, cam, bc, false, null, 1);
       }
+      ctx.save(); ctx.strokeStyle = bc; ctx.fillStyle = bc;
+      ctx.lineWidth = 2.5; ctx.globalAlpha = 0.95; ctx.beginPath(); ctx.moveTo(nx, ny); ctx.lineTo(ex, ey); ctx.stroke(); ctx.globalAlpha = 1;
+      const cx = pa.on ? pa.x : ex, cy = pa.on ? pa.y : ey;
+      if (s.tgtFlash > 0 && pa.on) { ctx.lineWidth = 3; ctx.globalAlpha = Math.min(1, s.tgtFlash); ctx.beginPath(); ctx.arc(cx, cy, 24 + (1.2 - s.tgtFlash) * 40, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
+      if (s.bombName && pa.on) { ctx.font = "700 12px 'Black Ops One', Fredoka, sans-serif"; ctx.textAlign = "left"; ctx.fillText(`TGT ${s.bombName} ${s.bombDist > 1000 ? (s.bombDist / 1000).toFixed(1) + " km" : Math.round(s.bombDist) + " m"}`, cx + 22, cy - 14); }
+      const r = s.bombLocked ? 15 : 10; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx - r, cy - r); ctx.lineTo(cx + r, cy + r); ctx.moveTo(cx + r, cy - r); ctx.lineTo(cx - r, cy + r); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, r + 5, 0, 7); ctx.lineWidth = s.bombLocked ? 3 : 2; ctx.stroke(); ctx.restore();
     }
 
     domT -= dt;
@@ -537,7 +543,7 @@ export function createHud() {
       if (al) { const approach = mode === "app" || mode === "final", can = s.hasStrip && (approach || !mode) && !s.crashing && !s.landing; al.classList.toggle("hidden", !can); al.classList.toggle("urgent", approach || can && fv < 0.25); al.textContent = approach ? "GO AROUND" : "▼ AUTO LAND"; }
       const mb = $n("btn-moab"), sb = $n("btn-shield");
       if (mb) { const n = s.moabs ?? 0; mb.classList.toggle("empty", n <= 0); const c = mb.querySelector(".cnt"); if (c) c.textContent = String(n); }
-      if (sb) { sb.classList.toggle("on", (s.shieldT || 0) > 0); const c = sb.querySelector(".cnt"); if (c) c.textContent = (s.shieldT || 0) > 0 ? s.shieldT.toFixed(1) : String(s.shields ?? 0); }
+      if (sb) { sb.classList.toggle("on", (s.shieldT || 0) > 0); const c = sb.querySelector(".cnt"); if (c) c.textContent = String(s.shields ?? 0); }
     }
     dom.spd.textContent = Math.round(s.player.speed * 3.6); if (dom.thr) dom.thr.textContent = dom.spd.textContent;
     dom.alt.textContent = Math.round(s.player.pos.y); if (dom.fl) dom.fl.textContent = s.player.flares ?? 0; if (dom.trk) dom.trk.classList.toggle("on", !!s.track);
