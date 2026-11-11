@@ -10,12 +10,12 @@
 //  - Desktop: arrows/WASD, space = guns, F = missile, B = bomb, shift = boost, V = camera.
 const D2R = Math.PI / 180;
 
-/** Tiny dead zone, then a smooth curve. Small inputs move the jet at once; full deflection is still full. Stick and tilt share it. */
+/** Almost direct. A hair of dead zone only, then the stick and the tilt match the hand. */
 export function expoAxis(v) {
-  const dz = 0.012, a = Math.abs(v);
+  const dz = 0.008, a = Math.abs(v);
   if (a <= dz) return 0;
   const u = Math.min(1, (a - dz) / (1 - dz));
-  return Math.sign(v) * Math.pow(u, 1.08);
+  return Math.sign(v) * u;
 }
 
 // ---- easy-to-adjust configuration ----
@@ -171,7 +171,11 @@ export function createControls() {
         if (m > 1) { dx /= m; dy /= m; }
         const dist = Math.hypot(x - joy.sx, y - joy.sy), over = dist - C.stickRadiusPx * 1.6;
         if (over > 0) { const k = over / dist; joy.sx += (x - joy.sx) * k; joy.sy += (y - joy.sy) * k; }
-        if (Math.abs(dx) > 0.72 && Math.abs(dy) < 0.45) joy.side = Math.sign(dx);
+        if (Math.abs(dx) > 0.45 && Math.abs(dy) < 0.55) {
+          joy.side = Math.sign(dx);
+          const now = e.timeStamp || performance.now();
+          if (flickDir && joy.side === flickDir && now - flickAt < 700 && !joy.rolled) { rollEdge = joy.side * 2; joy.rolled = true; flickAt = -1000; say("roll"); }
+        }
         joy.x = dx; joy.y = dy; joy.maxd = Math.max(joy.maxd || 0, m);
       },
       up(e, id, eventType) {
@@ -180,8 +184,8 @@ export function createControls() {
         const now = e.timeStamp || performance.now();   // input time, not handler time: robust when a frame is slow
         if (eventType === "pointercancel" || eventType === "touchcancel") { clearTimeout(tapTO); tapN = 0; joy.x = joy.y = 0; return; }
         if (joy.maxd > 0.5) { clearTimeout(tapTO); tapN = 0; }
-        if (enabled && joy.side && now - joy.t0 < 250) {
-          if (joy.side === flickDir && now - flickAt < 480) { rollEdge = joy.side * 2; flickAt = -1000; say("roll"); }
+        if (enabled && joy.side && now - joy.t0 < 420 && !joy.rolled) {
+          if (joy.side === flickDir && now - flickAt < 700) { rollEdge = joy.side * 2; flickAt = -1000; say("roll"); }
           else { flickDir = joy.side; flickAt = now; }
         }
         if (enabled && now - (joy.t0 || 0) < 230 && (joy.maxd || 0) < 0.32) {
@@ -308,7 +312,7 @@ export function createControls() {
     // Curve each analog source on its own, then add. A small tilt and a small stick stay small.
     const p = Math.max(-1, Math.min(1, expoAxis(tp) + expoAxis(jp) + kp));
     const r = Math.max(-1, Math.min(1, expoAxis(tr) + expoAxis(jr) + kr));
-    const k = 1 - Math.exp(-dt * 60);
+    const k = 1 - Math.exp(-dt * 90);
     stick.pitch += (p - stick.pitch) * k;
     stick.roll += (r - stick.roll) * k;
     // head-look eases back to forward when released

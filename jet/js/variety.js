@@ -129,18 +129,18 @@ export function loadScene() {
 
 /** b33: pre-made title art: one image per jet, each with its own terrain / season / weather / time (the run matches the art) */
 export const TITLE_ART = {
-  viper:  { img: "title_viper.jpg?v=45",  biome: "mountains", sea: true, time: "dusk",  season: "summer", weather: "cloudy" },
-  falcon: { img: "title_falcon.jpg?v=45", biome: "snow",      sea: true, time: "night", season: "winter", weather: "snow" },
-  tomcat: { img: "title_tomcat.jpg?v=45", biome: "valley",    sea: true, time: "day",   season: "summer", weather: "clear" },
-  raptor: { img: "title_raptor.jpg?v=45", biome: "valley",    sea: false, time: "dusk", season: "autumn", weather: "storm" },
-  arctic: { img: "title_arctic.jpg?v=45", biome: "desert",    sea: null, time: "dawn",  season: "summer", weather: "clear" },
-  f35:    { img: "title_f35.jpg?v=45",    biome: "snow",      sea: null, time: "night", season: "winter", weather: "clear" },
-  b21:    { img: "title_b21.jpg?v=45",    biome: "desert",    sea: null, time: "night", season: "summer", weather: "clear" },
-  f47:    { img: "title_f47.jpg?v=45",    biome: "snow",      sea: null, time: "dawn",  season: "winter", weather: "cloudy" },
-  tempest:{ img: "title_tempest.jpg?v=45",biome: "valley",    sea: true, time: "dusk",  season: "summer", weather: "cloudy" },
-  j36:    { img: "title_j36.jpg?v=45",    biome: "valley",    sea: true, time: "dusk",  season: "autumn", weather: "storm" },
-  sr71:   { img: "title_sr71.jpg?v=45",   biome: "desert",    sea: null, time: "day",   season: "summer", weather: "clear" },
-  a12:    { img: "title_a12.jpg?v=45",    biome: "snow",      sea: true, time: "night", season: "winter", weather: "clear" },
+  viper:  { img: "title_viper.jpg?v=46",  biome: "mountains", sea: true, time: "dusk",  season: "summer", weather: "cloudy" },
+  falcon: { img: "title_falcon.jpg?v=46", biome: "snow",      sea: true, time: "night", season: "winter", weather: "snow" },
+  tomcat: { img: "title_tomcat.jpg?v=46", biome: "valley",    sea: true, time: "day",   season: "summer", weather: "clear" },
+  raptor: { img: "title_raptor.jpg?v=46", biome: "valley",    sea: false, time: "dusk", season: "autumn", weather: "storm" },
+  arctic: { img: "title_arctic.jpg?v=46", biome: "desert",    sea: null, time: "dawn",  season: "summer", weather: "clear" },
+  f35:    { img: "title_f35.jpg?v=46",    biome: "snow",      sea: null, time: "night", season: "winter", weather: "clear" },
+  b21:    { img: "title_b21.jpg?v=46",    biome: "desert",    sea: null, time: "night", season: "summer", weather: "clear" },
+  f47:    { img: "title_f47.jpg?v=46",    biome: "snow",      sea: null, time: "dawn",  season: "winter", weather: "cloudy" },
+  tempest:{ img: "title_tempest.jpg?v=46",biome: "valley",    sea: true, time: "dusk",  season: "summer", weather: "cloudy" },
+  j36:    { img: "title_j36.jpg?v=46",    biome: "valley",    sea: true, time: "dusk",  season: "autumn", weather: "storm" },
+  sr71:   { img: "title_sr71.jpg?v=46",   biome: "desert",    sea: null, time: "day",   season: "summer", weather: "clear" },
+  a12:    { img: "title_a12.jpg?v=46",    biome: "snow",      sea: true, time: "night", season: "winter", weather: "clear" },
 };
 export const TITLE_JETS = Object.keys(TITLE_ART);
 export function titleRun(jet) {

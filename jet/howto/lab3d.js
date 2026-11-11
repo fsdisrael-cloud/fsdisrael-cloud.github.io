@@ -1,7 +1,7 @@
 // b38: the how-to stick lab flies the REAL game jet (same model, control surfaces and afterburner as in game)
 import * as THREE from "three";
-import { initEnv, createPlayerJet } from "../js/models.js?v=45";
-import { JET_TYPES } from "../js/variety.js?v=45";
+import { initEnv, createPlayerJet } from "../js/models.js?v=46";
+import { JET_TYPES } from "../js/variety.js?v=46";
 const sky = document.getElementById("lab-sky");
 if (sky) try {
   const L = () => window.LAB || {};
@@ -12,6 +12,10 @@ if (sky) try {
   initEnv(R);
   scene.add(new THREE.HemisphereLight(0xcfe4ff, 0x3a3020, 1.6)); const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(-6, 12, 6); scene.add(sun);
   const dirt = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), new THREE.MeshStandardMaterial({ color: 0x6a7348, roughness: 1 })); dirt.rotation.x = -Math.PI / 2; dirt.position.y = -1.7; scene.add(dirt);
+  const gifts = [0x3dff6a, 0xff9a1f, 0xd8e6ff, 0xff4040, 0x4db4ff, 0xfff2c4].map((col, i) => {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 12), new THREE.MeshStandardMaterial({ color: col, transparent: true, opacity: 0.55, roughness: 0.15, metalness: 0.2, emissive: col, emissiveIntensity: 0.6 }));
+    m.position.set(-6 + i * 2.2, 1.2, -8); scene.add(m); return m;
+  });
   const ridge = new THREE.Mesh(new THREE.ConeGeometry(7, 5, 5), new THREE.MeshStandardMaterial({ color: 0x8a7a62, roughness: 0.9 })); ridge.position.set(-10, 0.6, -16); scene.add(ridge);
   const jk = new URLSearchParams(location.search).get("jet"), JK = JET_TYPES[jk] ? jk : "f35"; const jet = createPlayerJet(JK, JET_TYPES[JK]); jet.scale.setScalar(0.5); scene.add(jet); const u = jet.userData;
   if (u.canopy) u.canopy.visible = true; u.setGear?.(0);
@@ -34,6 +38,7 @@ if (sky) try {
     jet.position.set((S.x || 0) / Math.max(1, w) * 9, -(S.y || 0) / Math.max(1, h) * 6 + (S.dy || 0) * -0.02, far);
     cam.position.z = 19 + far;
     cam.lookAt(0.4, 0.2 + noseTilt, -2);
+    gifts.forEach((m, i) => { m.rotation.y += 0.02; m.position.y = 1.2 + Math.sin(performance.now() / 400 + i) * 0.25; });
     u.ctl?.({ pitch: -p + noseTilt, roll: bank, yaw: bank * 0.4, flap: T < 0.4 ? 0.8 : 0, brake: T < 0.38 ? 1 : brk, burn: T > 0.85 ? 1 : 0 });
     u.burn?.(0.25 + T * 0.9, T > 0.85 ? (T - 0.85) * 6 : 0);
     if (eng) { eng.g.gain.value = 0.05 + T * 0.16; eng.f.frequency.value = 250 + T * 1400; }
