@@ -11,7 +11,7 @@ export const BIOMES = {
   valley: "Green valley",
   mountains: "Mountains",
 };
-import { rollRun, EARTH_PLACES } from "./variety.js?v=46";
+import { rollRun, EARTH_PLACES } from "./variety.js?v=47";
 const P = {
   seward: { name: "Resurrection Bay, Alaska", lat: 60.05, lon: -149.4 },
   monument: { name: "Monument Valley", lat: 36.99, lon: -110.10 },
@@ -58,7 +58,13 @@ export function buildLevel(n, run0) {
     if (nightOps) run = { ...run, time: "night" };
     else if (run.time === "night") run = { ...run, time: "day" };
   }
-  try { if (!new URLSearchParams(location.search).get("jet")) run = { ...run, jet: "f35" }; } catch { run = { ...run, jet: "f35" }; }
+  try {
+    const q = new URLSearchParams(location.search);
+    const seasons = ["spring", "summer", "autumn", "winter"];
+    const times = ["dawn", "day", "dusk", "day"];
+    const weathers = ["clear", "cloudy", "rain", "storm", "fog"];
+    run = { ...run, season: q.get("season") || seasons[n % 4], time: q.get("time") || (nightOps ? "night" : times[n % 4]), weather: q.get("weather") || weathers[n % 5], place: q.get("place") != null && EARTH_PLACES[+q.get("place")] ? EARTH_PLACES[+q.get("place")] : EARTH_PLACES[n % EARTH_PLACES.length], jet: q.get("jet") || "f35" };
+  } catch { run = { ...run, jet: "f35" }; }
   const carrierOnly = n % 5 === 4;
   if (carrierOnly) {
     const coasts = EARTH_PLACES.filter((p) => p.sea);

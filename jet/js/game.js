@@ -1,15 +1,15 @@
 // Ubu game world: flight model, camera, targets, AI, weapons, effects, objectives.
-import { createPost } from "./post.js?v=46";
+import { createPost } from "./post.js?v=47";
 import * as THREE from "three";
-import { buildTerrain } from "./terrain.js?v=46";
-import { createSky } from "./sky.js?v=46";
-import { createPilot, createSeat, createChute, createAirstrip, STRIP, createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createShip, createWarship, createSub, createSamSite, createRocket, createHeli, createBomb, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=46";
-import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=46";
-import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=46";
-import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=46";
-import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=46";
-import { setQuality, FX as FXQ } from "./tex.js?v=46";
-import { style, patchTerrain, waveAt, createDreamShapes, onStyle, setLake } from "./surreal.js?v=46";
+import { buildTerrain } from "./terrain.js?v=47";
+import { createSky } from "./sky.js?v=47";
+import { createPilot, createSeat, createChute, createAirstrip, STRIP, createPlayerJet, setCockpitMode, createEnemyJet, createAllyJet, createTank, createJeep, createShip, createWarship, createSub, createSamSite, createRocket, createHeli, createBomb, createMoab, puffGeometry, initEnv, createCarrier, CARRIER, createBaseBuilding, createFlakGun, HARDPOINTS, setTargetStyle, glowSprite } from "./models.js?v=47";
+import { JET_TYPES, FOE_TYPES, SEASONS, runLabel } from "./variety.js?v=47";
+import { createRing, createBalloon, createPracticeTarget, createDrone } from "./entities.js?v=47";
+import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUniforms } from "./toon.js?v=47";
+import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=47";
+import { setQuality, FX as FXQ } from "./tex.js?v=47";
+import { style, patchTerrain, waveAt, createDreamShapes, onStyle, setLake } from "./surreal.js?v=47";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V(), tE = V();
@@ -191,10 +191,10 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   for (let i = 0; i < 6; i++) { const o = createRocket(0xe8eaee, 0x3a4048); o.scale.multiplyScalar(3.1); o.visible = false; scene.add(o); missiles.push({ o, active: false, p: V(), v: V() }); }
   const bombs = [];
   for (let i = 0; i < 12; i++) {
-    const o = new THREE.Group(), model = createBomb(), glow = glowSprite(0xffffff, 14, 0.95);
+    const o = new THREE.Group(), model = createBomb(), moabModel = createMoab(), glow = glowSprite(0xffffff, 14, 0.95);
     const core = new THREE.Mesh(G.sphereLo, new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false, fog: false })); core.scale.setScalar(1.3);
-    glow.visible = false; core.visible = false; o.add(model, glow, core); o.visible = false; scene.add(o);
-    bombs.push({ o, model, glow, core, active: false, p: V(), v: V() });
+    moabModel.visible = false; glow.visible = false; core.visible = false; o.add(model, moabModel, glow, core); o.visible = false; scene.add(o);
+    bombs.push({ o, model, moabModel, glow, core, active: false, p: V(), v: V() });
   }
   // weapon style for this world: std = realistic missiles and bombs, (Earth only)
   const WS = { kind: "std", fx: 0xffffff };
@@ -1669,13 +1669,20 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   function camOverlay(dt) {
     const c = camCut; if (!c) return;
     c.t += dt;
-    if (c.kind === "moab" || c.kind === "overhead") {
+    if (c.kind === "overhead") {
       if (c.t >= c.dur) { camCut = null; return; }
       const back = fwdFrom(player.yaw, 0, V());
       const live = bombs.find((b) => b.active);
-      const at = c.kind === "overhead" && live ? live.p : c.at;
-      camera.position.set(player.pos.x - back.x * (c.kind === "moab" ? 40 : 16), player.pos.y + (c.kind === "moab" ? 70 : 80), player.pos.z - back.z * (c.kind === "moab" ? 40 : 16));
-      camera.up.set(0, 1, 0); camera.lookAt(at.x, at.y, at.z); camera.fov = c.kind === "moab" ? 70 : 58; camera.updateProjectionMatrix();
+      const at = live ? live.p : c.at;
+      camera.position.set(player.pos.x - back.x * 16, player.pos.y + 80, player.pos.z - back.z * 16);
+      camera.up.set(0, 1, 0); camera.lookAt(at.x, at.y, at.z); camera.fov = 58; camera.updateProjectionMatrix();
+      return;
+    }
+    if (c.kind === "moab") {
+      if (c.t >= c.dur) { camCut = null; return; }
+      const fwd = fwdFrom(player.yaw, 0, V());
+      camera.position.set(player.pos.x + fwd.x * 70, player.pos.y + 95, player.pos.z + fwd.z * 70);
+      camera.up.set(0, 1, 0); camera.lookAt(c.at.x, Math.max(0, c.at.y), c.at.z); camera.fov = 72; camera.updateProjectionMatrix();
       return;
     }
     let w, az, r, el, fov;
@@ -2118,10 +2125,10 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     const aim = aimT ? fwdFrom(player.yaw, player.pitch, V()).angleTo(V().subVectors(aimT.pos, player.pos).normalize()) : 1.2;
     const q = locked ? THREE.MathUtils.clamp(1 - aim / 0.4, 0.45, 1) : Math.min(0.3, lockTime * 0.3);
     const groundShot = !!(aimT && aimT.kind !== "jet" && aimT.kind !== "boss" && !aimT.heli);
-    r.active = true; r.life = groundShot ? 16 : 8; r.target = (locked || (aimT && aim < 0.55)) ? aimT : null; r.trail = 0; r.arm = 0.28; r.hp = hi; r.result = null; r.seen = false; r.lost = false;
+    r.active = true; r.life = groundShot ? 24 : 8; r.target = (locked || (aimT && (groundShot || aim < 0.55))) ? aimT : null; r.trail = 0; r.arm = 0.28; r.hp = hi; r.result = null; r.seen = false; r.lost = false;
     r.lockQ = q;
     r.hitChance = locked ? THREE.MathUtils.clamp(0.16 + 0.28 * q - Math.max(0, aim - 0.08) * 1.1, 0.08, 0.42) : THREE.MathUtils.clamp(0.015 + lockTime * 0.04, 0.015, 0.07);
-    r.seekerGood = Math.random() < r.hitChance; r.missAt = locked ? 90 + Math.random() * 80 : 260 + Math.random() * 280;
+    r.seekerGood = (groundShot && locked) || Math.random() < r.hitChance; r.missAt = (groundShot && locked) ? 20 : locked ? 90 + Math.random() * 80 : 260 + Math.random() * 280;
     r.p.copy(tA.set(hp[0], hp[1] - 0.2, hp[2]).applyMatrix4(plane.matrixWorld));
     const fw = fwdFrom(player.yaw, player.pitch, V());
     r.v.copy(fw).multiplyScalar(player.speed + 45);
@@ -2194,9 +2201,10 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     moabs--; bombCd = 0.4;
     const b = bombs.find((x) => !x.active) || bombs[0];
     b.active = true; b.life = 20; b.moab = true; b.result = null; b.target = null;
+    if (b.model) b.model.visible = false; if (b.moabModel) b.moabModel.visible = true;
     b.p.copy(tA.set(0, -1.4, 0.2).applyMatrix4(plane.matrixWorld));
     b.v.copy(player.vel).add(tB.set(0, -8, 0));
-    b.o.visible = true; b.o.scale.setScalar(3.2);
+    b.o.visible = true; b.o.scale.setScalar(1);
     audio.bombRelease(); events.toast?.("MOAB AWAY", "bad");
     return true;
   }
@@ -2258,8 +2266,13 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (plane) {
       let ball = plane.userData.shieldBall;
       if (shieldT > 0) {
-        if (!ball) { ball = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10), new THREE.MeshBasicMaterial({ color: 0x4db4ff, transparent: true, opacity: 0.45, wireframe: true, depthWrite: false })); ball.scale.set(2.4, 0.7, 4.2); plane.add(ball); plane.userData.shieldBall = ball; }
-        ball.visible = true; ball.material.opacity = 0.12 + 0.42 * (shieldT / 7); ball.rotation.y += dt * 3;
+        if (!ball) {
+          const mat = new THREE.MeshBasicMaterial({ color: 0x4db4ff, wireframe: true, transparent: true, opacity: 0.45, depthWrite: false });
+          ball = plane.clone(true);
+          ball.traverse((o) => { if (o.isMesh) o.material = mat; });
+          ball.scale.setScalar(1.16); plane.add(ball); plane.userData.shieldBall = ball; plane.userData.shieldMat = mat;
+        }
+        ball.visible = true; plane.userData.shieldMat.opacity = (0.12 + 0.4 * (shieldT / 7)) * (0.65 + 0.35 * Math.abs(Math.sin(elapsed * 28)));
       } else if (ball) ball.visible = false;
     }
     if (!ops && !crashing && !ended) { prizeT -= dt; if (prizeT <= 0) { prizeT = 22 + Math.random() * 10; spawnPrize(); } }
@@ -2680,7 +2693,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
         // opening group: right ahead (one is a chase target); every replacement: random 360 deg bearing at the radar edge, flying in
         if (!first && ((L && L.n) || 1) >= 8 && jetSpawner.remaining > 2 && jetSpawner.n % 7 === 0 && spawnQuotaShip()) { /* rare extra ship, still inside the air budget */ }
         else if (first) (k === 2 ? spawnHeli : spawnJetAhead)(player.pos, k === 1);
-        else if (k === 2) { const h = spawnHeli(player.pos), a = rng() * Math.PI * 2, r = 2400 + rng() * 700; events.toast?.("Enemy chopper inbound!"); h.pos.set(player.pos.x + Math.cos(a) * r, 0, player.pos.z + Math.sin(a) * r); h.pos.y = h.hoverY = Math.max(groundAt(h.pos.x, h.pos.z) + 260, 60); h.yaw = Math.atan2(-(player.pos.x - h.pos.x), -(player.pos.z - h.pos.z)); }
+        else if (k === 2) { const h = spawnHeli(player.pos), a = rng() * Math.PI * 2, r = 2400 + rng() * 700; events.toast?.("Enemy chopper inbound!"); h.pos.set(player.pos.x + Math.cos(a) * r, player.pos.y, player.pos.z + Math.sin(a) * r); h.hoverY = player.pos.y; h.yaw = Math.atan2(-(player.pos.x - h.pos.x), -(player.pos.z - h.pos.z)); }
         else spawnJet(player.pos);
         jetSpawner.remaining--;
       }
@@ -3285,7 +3298,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     }
     for (const m of missiles) {
       if (!m.active) { if (m.rb) { rbStop(m.rb); rbStop(m.rf); m.rb = m.rf = null; } continue; }
-      m.life -= dt; if (Math.random() < dt * 40) puff(m.p.clone(), null, 2.2, 7, 1.6, 0xdcdcdc);   /* b37: smoke trail */
+      m.life -= dt; if (Math.random() < dt * 90) puff(m.p.clone(), null, 3.4, 14, 2.2, 0xf2f2f2);
       if (assist && !m.decoy && elapsed - flareAt > 1.3 && player.flares > 0 && m.p.distanceTo(player.pos) < 420 && !crashing) deployFlares(m);
       if (m.decoy && m.decoy.life <= 0) { m.active = false; m.o.visible = false; explode(m.p.clone(), 6, 0.4); continue; }
       tA.copy(m.decoy ? m.decoy.p : player.pos).sub(m.p);
@@ -3337,11 +3350,14 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
         b.active = false; b.o.visible = false; b.result = "hit";
         b.p.y = Math.max(b.p.y, gh + 1);
         if (b.moab) {
-          b.moab = false; b.o.scale.setScalar(1.35);
+          b.moab = false; if (b.model) b.model.visible = true; if (b.moabModel) b.moabModel.visible = false; b.o.scale.setScalar(1);
           explode(b.p.clone(), 80, 3.4); shock(b.p.clone(), 280); shake = Math.max(shake, 2.4);
           for (let i = 0; i < 18; i++) puff(tA.set(b.p.x, gh + 8 + i * 10, b.p.z), tB.set((Math.random() - 0.5) * 12, 30, (Math.random() - 0.5) * 12), 14, 40, 3.5, i < 6 ? 0xffb060 : 0x6a5648);
           if (terrain.isWater(b.p.x, b.p.z)) waterSplash(b.p, 2.4);
-          blast(b.p, 900, 400); audio.explosion(2.4, 0); haptics.crash?.() || haptics.pulse?.();
+          blast(b.p, 1600, 900); audio.explosion(2.4, 0);
+          for (const t of targets) if (t.alive && !GROUND_NO[t.kind] && t.pos.distanceTo(b.p) < 1400) damageTarget(t, 9999, "blast");
+          try { navigator.vibrate?.([90, 40, 140, 50, 220]); } catch { /* ignore */ }
+          haptics.crash?.(); haptics.pulse?.();
           for (let i = 0; i < 16; i++) puff(tA.set(b.p.x, gh + 20 + i * 18, b.p.z), tB.set((Math.random() - 0.5) * 8, 40, (Math.random() - 0.5) * 8), 18, 50, 4, i < 8 ? 0xffb060 : 0x6a5648);
           for (let i = 0; i < 10; i++) { const a = i / 10 * 6.28; puff(tA.set(b.p.x + Math.cos(a) * 30, gh + 280, b.p.z + Math.sin(a) * 30), tB.set(Math.cos(a) * 12, 8, Math.sin(a) * 12), 22, 40, 3.5, 0x8a7560); }
           shake = Math.max(shake, 3.2);
