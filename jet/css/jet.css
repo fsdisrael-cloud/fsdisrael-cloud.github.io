@@ -612,6 +612,8 @@ body.tp-b .menu-buttons, body.tp-b .sec-links { visibility: hidden; opacity: 0; 
 @keyframes tkPulse { 50% { box-shadow: inset 0 0 0 4px rgba(10,12,14,.82), 0 5px 12px rgba(0,0,0,.7), 0 0 36px rgba(255,154,31,.9); } }
 .autoland { position: absolute; left: 50%; bottom: calc(var(--safe-b, 0px) + 54px); transform: translateX(-50%); font-size: clamp(13px, 3vmin, 17px); z-index: 6; }
 .autoland.urgent { border-color: #ff4a3a; animation: tkPulse .6s ease-in-out infinite; }
+#btn-autoland.dead { opacity: .4; filter: grayscale(1); }
+body.in-game #btn-autoland.autoland { display: block !important; }
 .ops { position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 12px; z-index: 6; pointer-events: none; }
 .ops-title { font: 700 clamp(15px, 3.6vmin, 22px) var(--mil, "Rajdhani", sans-serif); letter-spacing: .3em; color: #ffb84a; text-shadow: 0 2px 4px #000; background: rgba(8,10,12,.45); padding: 4px 16px; border-left: 3px solid #ff9a1f; }
 .ops-bars { display: flex; flex-direction: column; gap: 6px; width: clamp(200px, 40vmin, 300px); background: rgba(8,10,12,.45); padding: 8px 10px; border: 1px solid rgba(255,154,31,.5); }

@@ -509,7 +509,8 @@ export function createHud() {
     {   // b24: target counter = what is still alive in the air / on the ground / at sea, plus mission progress
       const cn = s.counts || { air: 0, gnd: 0, sea: 0 };
       const need = s.objectives.reduce((a, o) => a + (o.kind === "land" ? 0 : o.need), 0), got = s.objectives.reduce((a, o) => a + (o.kind === "land" ? 0 : Math.min(o.need, s.progress[o.kind] || 0)), 0);
-      const html = `<div class="tally"><span class="air${cn.air ? "" : " zero"}">AIR<b>${cn.air}</b></span><span class="gnd${cn.gnd ? "" : " zero"}">GND<b>${cn.gnd}</b></span><span class="sea${cn.sea ? "" : " zero"}">SEA<b>${cn.sea}</b></span></div><div class="tally"><span>MISSION<b>${got}/${need}</b></span></div>`;
+      const frac = (alive, n) => `${Math.max(0, (n || 0) - (alive || 0))}/${n || 0}`;
+      const html = `<div class="tally"><span class="air${cn.air ? "" : " zero"}">AIR<b>${frac(cn.air, cn.airN)}</b></span><span class="gnd${cn.gnd ? "" : " zero"}">GND<b>${frac(cn.gnd, cn.gndN)}</b></span><span class="sea${cn.sea ? "" : " zero"}">SEA<b>${frac(cn.sea, cn.seaN)}</b></span></div><div class="tally"><span>MISSION<b>${got}/${need}</b></span></div>`;
       if (html !== dom._tally) { dom._tally = html; dom.obj.innerHTML = html; }
     }
     { const hp = Math.round(Math.max(0, Math.min(100, s.hull ?? 100))), bar = el("hud-hull"); if (bar) { bar.style.width = hp + "%"; bar.classList.toggle("critical", hp < 30); bar.parentElement.setAttribute("aria-valuenow", hp); el("hud-hull-value").textContent = hp + "%"; } }
@@ -536,13 +537,13 @@ export function createHud() {
       if (s.night && !s._nvA && !window.__nvAuto) { window.__nvAuto = 1; setNV(true); } if (!s.night) window.__nvAuto = 0; document.body.classList.toggle("night", !!s.night);
       { const sx = $n("btn-six"); if (sx) sx.classList.toggle("warn", !!s.six); }
       const al = $n("btn-autoland");
-      if (al) { const approach = mode === "app" || mode === "final", can = !s.crashing && fv > 0 && (approach || !mode); al.classList.toggle("hidden", !can); al.classList.toggle("urgent", approach); al.textContent = approach ? "GO AROUND" : "AUTO LAND"; }
+      if (al) { const approach = mode === "app" || mode === "final", dry = fv <= 0 || !!s.crashing; al.classList.remove("hidden"); al.disabled = dry; al.classList.toggle("dead", dry); al.classList.toggle("urgent", approach && !dry); al.textContent = approach ? "GO AROUND" : "AUTO LAND"; }
       const mb = $n("btn-moab"), sb = $n("btn-shield");
       if (mb) { const n = s.moabs ?? 0; mb.classList.toggle("empty", n <= 0); const c = mb.querySelector(".cnt"); if (c) c.textContent = String(n); }
       if (sb) { sb.classList.toggle("on", (s.shieldT || 0) > 0); const c = sb.querySelector(".cnt"); if (c) c.textContent = (s.shieldT || 0) > 0 ? s.shieldT.toFixed(1) : String(s.shields ?? 0); }
     }
-    dom.spd.textContent = Math.round(s.player.speed * 3.6); if (dom.thr) dom.thr.textContent = dom.spd.textContent;
-    dom.alt.textContent = Math.round(s.player.pos.y); if (dom.fl) dom.fl.textContent = s.player.flares ?? 0; if (dom.trk) dom.trk.classList.toggle("on", !!s.track);
+    dom.spd.textContent = Number.isFinite(s.player.speed) ? Math.round(s.player.speed * 3.6) : "0"; if (dom.thr) dom.thr.textContent = dom.spd.textContent;
+    dom.alt.textContent = Number.isFinite(s.player.pos.y) ? Math.round(s.player.pos.y) : "0"; if (dom.fl) dom.fl.textContent = s.player.flares ?? 0; if (dom.trk) dom.trk.classList.toggle("on", !!s.track);
     // weapons: the same ring (arc = how much is ready) on all three buttons
     const rack = s.rack || 10;
     const ringSet = (b, p, cls, cnt) => {
