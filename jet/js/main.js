@@ -1,17 +1,17 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=47";
-import { createHud } from "./hud.js?v=47";
-import { createControls } from "./controls.js?v=47";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=47";
-import { createAudio, trackFor } from "./audio.js?v=47";
-import { createHaptics } from "./haptics.js?v=47";
-import { createRain2D } from "./rain2d.js?v=47";
-import { createLoading } from "./loading.js?v=47";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=47";
-import { setSurreal, tickStyle } from "./surreal.js?v=47";
-import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=47";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=47";
+import { createGame } from "./game.js?v=48";
+import { createHud } from "./hud.js?v=48";
+import { createControls } from "./controls.js?v=48";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=48";
+import { createAudio, trackFor } from "./audio.js?v=48";
+import { createHaptics } from "./haptics.js?v=48";
+import { createRain2D } from "./rain2d.js?v=48";
+import { createLoading } from "./loading.js?v=48";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=48";
+import { setSurreal, tickStyle } from "./surreal.js?v=48";
+import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=48";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=48";
 
 const $ = (id) => document.getElementById(id);
 
@@ -30,7 +30,7 @@ try {
   document.documentElement.style.setProperty("--worn", `url(${wc.toDataURL("image/png")})`);
 } catch (e) { /* plain gradients if canvas is unavailable */ }
 const BUILD = 39;
-{ const t = $("build-tag"); if (t) t.textContent = "JET-X b" + BUILD; }
+{ const t = $("build-tag"); if (t) t.textContent = "X-JET b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;
   try { if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, "1"); } catch { /* ignore */ }
@@ -180,56 +180,6 @@ const HOW_HTML = `<p><b>Tilt</b> your phone like a wheel: top edge toward you = 
 // Opening flow: logo + live scene while terrain loads -> HUD powers on -> tap anywhere -> CONT / NEW plates.
 // CONT resumes the autosave (jet-save-v1); it is disabled when there is no save. LEVELS / HOW TO FLY are small placeholder links.
 const SAVE_KEY = "jet-save-v1";
-const PILOTS_KEY = "jet-players-v1";
-function loadPilots() { try { const v = JSON.parse(localStorage.getItem(PILOTS_KEY)); if (v && Array.isArray(v.list)) return v; } catch { /* ignore */ } return { last: "", list: [] }; }
-function cleanCall(v) { return String(v || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5); }
-function rememberPilot(name, n, score) {
-  name = cleanCall(name);
-  if (name.length < 1) return;
-  const p = loadPilots();
-  p.list = [{ name, n: n || 1, score: score | 0, t: Date.now() }, ...p.list.filter((x) => x.name !== name)].slice(0, 16);
-  p.last = name;
-  try { localStorage.setItem(PILOTS_KEY, JSON.stringify(p)); } catch { /* ignore */ }
-}
-let flyNow = false;
-function closePanel() { $("panel").classList.add("hidden"); document.body.classList.remove("panel-open"); }
-function continuePilot(name) {
-  name = cleanCall(name) || "GUEST";
-  let row = loadPilots().list.find((x) => x.name === name);
-  if (!row) { rememberPilot(name, 1, 0); row = loadPilots().list.find((x) => x.name === name); }
-  const p = loadPilots(); p.last = name; try { localStorage.setItem(PILOTS_KEY, JSON.stringify(p)); } catch { /* ignore */ }
-  const sv = readSave();
-  levelNo = row.n || 1; saveLevelNo(levelNo);
-  if (!(sv && sv.n === levelNo && sv.snap)) flyNow = true;
-  if (sv && sv.n === levelNo) play(sv); else play();
-}
-function commitPilot(raw) {
-  const name = cleanCall(raw);
-  if (!name) { closePanel(); flyTitle(); return; }
-  const prev = loadPilots().list.find((x) => x.name === name);
-  rememberPilot(name, prev ? prev.n : 1, prev ? prev.score : 0);
-  closePanel();
-  levelNo = prev ? prev.n : 1; saveLevelNo(levelNo); clearSave();
-  flyNow = true; play();
-}
-function askPilot() {
-  showPanel("NEW PILOT", `<form id="pilot-form" autocomplete="off"><label>CALL SIGN<input id="pilot-call" name="callsign" maxlength="5" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go"></label></form>`);
-  const form = document.getElementById("pilot-form");
-  const box = document.getElementById("pilot-call");
-  form?.addEventListener("submit", (e) => { e.preventDefault(); commitPilot(box?.value); });
-  box?.addEventListener("input", () => { const u = box.value.toUpperCase(); if (box.value !== u) box.value = u; });
-  box?.focus();
-}
-function pilotList() {
-  const rows = loadPilots().list.slice(0, 10).map((r) => `<button type="button" data-name="${r.name}">${r.name} - LEVEL ${r.n || 1}</button>`).join("") || "<p>NO SAVED GAMES</p>";
-  showPanel("SAVED GAMES", `<div id="pilot-list">${rows}</div>`);
-  document.getElementById("pilot-list")?.addEventListener("click", (e) => {
-    const b = e.target.closest("[data-name]"); if (!b) return;
-    $("panel").classList.add("hidden"); document.body.classList.remove("panel-open");
-    continuePilot(b.dataset.name);
-  });
-}
-function flyTitle() { continuePilot(loadPilots().last || "GUEST"); }
 function readSave() { try { const v = JSON.parse(localStorage.getItem(SAVE_KEY) || "null"); return v && v.v === 1 && v.run && PLANETS[v.run.planetKey] ? v : null; } catch { return null; } }
 function writeSave() {
   if (state !== "playing") return;
@@ -237,7 +187,6 @@ function writeSave() {
     const L = game.level(), hs = game.hudState(); if (!L?.run) return;
     const { planet, ...run } = L.run;
     localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, n: levelNo, run, score: hs.score | 0, timeLeft: Math.max(5, Math.round(hs.timeLeft || 0)), endless: false, snap: game.snapshot(), t: Date.now() }));
-    rememberPilot(loadPilots().last, levelNo, hs.score | 0);
   } catch { /* ignore */ }
 }
 function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ } }
@@ -260,31 +209,21 @@ function starTotal(add = 0) {
 }
 function showCelebration(opt, done) {
   const box = $("celebrate"); box.classList.remove("hidden");
-  $("cel-title").textContent = opt.giant ? "MISSION 999 COMPLETE" : `LEVEL ${opt.level || ""} COMPLETE`;
-  $("cel-stars").innerHTML = "★".repeat(opt.stars || 0) + `<span style="opacity:.35">${"☆".repeat(Math.max(0, 5 - (opt.stars || 0)))}</span>`;
-  let sub = $("cel-sub");
-  if (!sub) { sub = document.createElement("div"); sub.id = "cel-sub"; $("cel-title").after(sub); }
-  sub.textContent = `WELL DONE\n${opt.stats || ""}\nNext: ${opt.nextName || "next sortie"}`;
-  const go = $("cel-next"); if (go) go.textContent = "TAP TO START";
-  const trophy = $("cel-trophy"); if (trophy) trophy.style.display = "none";
+  $("cel-title").textContent = opt.giant ? "MISSION 999" : "BOSS CLEAR";
+  $("cel-stars").textContent = "★".repeat(opt.stars) + "☆".repeat(5 - opt.stars) + `   ${opt.total} STARS`;
+  const trophy = $("cel-trophy");
+  const hues = ["#ffd36a", "#9ad7ff", "#ff8a6a", "#d7ffa0", "#e0b0ff", "#fff6d0"];
+  trophy.style.setProperty("--th", hues[(opt.total || 1) % hues.length]);
+  trophy.dataset.kind = String((opt.total || 1) % 6);
   const cv = $("cel-cv"), ctx = cv.getContext("2d");
   let raf; const t0 = performance.now();
   const frame = (now) => {
     const t = (now - t0) / 1000; cv.width = innerWidth; cv.height = innerHeight; ctx.clearRect(0, 0, cv.width, cv.height);
-    const cx = cv.width / 2, cy = cv.height * 0.36;
-    ctx.save(); ctx.translate(cx, cy);
-    ctx.fillStyle = "#1c222a"; ctx.strokeStyle = "#9aa3ad"; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(0, 8, 58, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.arc(0, 8, 40, 0, Math.PI * 2); ctx.strokeStyle = "#d4b15c"; ctx.lineWidth = 5; ctx.stroke();
-    ctx.fillStyle = "#e7e2d4"; ctx.font = "700 22px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("★", 0, 10);
-    ctx.fillStyle = "#8d949c"; ctx.fillRect(-16, 62, 32, 10); ctx.fillStyle = "#c5ccd3"; ctx.fillRect(-22, 70, 44, 6);
-    for (let i = 0; i < 8; i++) {
-      const a = t * 0.45 + i * 0.8, r = 78 + (i % 3) * 16;
-      ctx.globalAlpha = 0.25 + 0.35 * Math.max(0, Math.sin(t * 4 + i));
-      ctx.fillStyle = i % 2 ? "#f3e2b4" : "#ffb060";
-      ctx.fillRect(Math.cos(a) * r, Math.sin(a) * r * 0.55 - 6, 2, 2);
-    }
-    ctx.restore();
+    for (let i = 0; i < 48; i++) { const x = (i * 97 + t * 90) % cv.width, y = (i * 53 + t * 160) % cv.height; ctx.fillStyle = hues[i % hues.length]; ctx.fillRect(x, y, 6, 9); }
+    const phase = Math.min(1, Math.max(0, (t - 1.2) / 1.3));
+    const cx = cv.width / 2 + Math.sin(t * 5) * (1 - phase) * 90, cy = cv.height * 0.46;
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(phase * Math.PI); ctx.fillStyle = "#e7eef6";
+    ctx.beginPath(); ctx.moveTo(0, -16); ctx.lineTo(36, 10); ctx.lineTo(8, 4); ctx.lineTo(0, 18); ctx.lineTo(-8, 4); ctx.lineTo(-36, 10); ctx.closePath(); ctx.fill(); ctx.restore();
     raf = requestAnimationFrame(frame);
   };
   raf = requestAnimationFrame(frame);
@@ -292,25 +231,22 @@ function showCelebration(opt, done) {
 }
 function buildMenu() {
   const box = $("menu-buttons"); box.innerHTML = "";
-  const last = loadPilots().last || "GUEST";
-  const tapT = $("tap-fly")?.querySelector(".t26-tapt"); if (tapT) tapT.textContent = `CONTINUE ${last}`;
-  const plate = (label, fn) => {
+  const sv = readSave();
+  for (const b of MENU_BUTTONS) {
     const el = document.createElement("button");
-    el.type = "button"; el.className = "plate"; el.innerHTML = `<span class="pt">${label}</span>`;
-    el.addEventListener("click", (e) => { e.stopPropagation(); fn(); });
+    const off = b.id === "cont" && !sv;
+    if (off || b.id === "new") continue;   // b26: TAP TO FLY starts a new sortie; CONT only shows when there is a save
+    el.type = "button"; el.className = "plate" + (b.primary ? " go" : "") + (off ? " off" : ""); el.disabled = off;
+    if (b.id === "cont") { el.className = "t26-cont"; el.innerHTML = `<span>${b.label}</span>`; }   // b31: same style as the TAP TO FLY plate
+    else el.innerHTML = `<i class="led"></i><span class="pt">${b.label}</span><em class="ps">${off ? "NO SAVE" : b.sub}</em>`;
+    el.addEventListener("click", (e) => { e.stopPropagation(); b.run(); });
     box.appendChild(el);
-  };
-  plate("NEW PILOT", askPilot);
-  plate("SAVED GAMES", pilotList);
+  }
   const sl = $("sec-links"); sl.innerHTML = "";
   for (const b of SEC_LINKS) { const el = document.createElement("button"); el.type = "button"; el.className = "slink"; el.textContent = b.label; el.addEventListener("click", (e) => { e.stopPropagation(); b.run(); }); sl.appendChild(el); }
 }
 function showPanel(title, html) { $("panel-title").textContent = title; $("panel-body").innerHTML = html; $("panel").classList.remove("hidden"); document.body.classList.add("panel-open"); }
-$("panel-close").addEventListener("click", () => {
-  const form = document.getElementById("pilot-form");
-  if (form && !$("panel").classList.contains("hidden")) { form.requestSubmit(); return; }
-  closePanel();
-});
+$("panel-close").addEventListener("click", () => { $("panel").classList.add("hidden"); document.body.classList.remove("panel-open"); });
 
 // ---------- b26: language picker ----------
 initLang();
@@ -344,7 +280,6 @@ window.__jet.game = game; window.__jet.audio = audio;
 // ---------- start / levels ----------
 async function launch(n, fromTap, sv) {
   if (state === "loading") return;
-  const roll = flyNow; flyNow = false;
   state = "loading";
   levelNo = n; saveLevelNo(n);
   document.body.classList.remove("tp-a", "tp-b", "tp-c", "preview", "rolling"); previewOn = false; game.titleOff();
@@ -375,7 +310,7 @@ async function launch(n, fromTap, sv) {
   game.dbg.setLives(carryLives);
   if (sv?.snap) { try { game.restoreSnap(sv.snap); } catch { /* ignore */ } }
   window.__settingsOpen?.(false);
-  game.start(); if (roll && !sv?.snap) game.takeoffNow?.(); try { controls.calibrate(); } catch { /* ignore */ }   // b35: tilt neutral = how the phone is held at launch
+  game.start(); try { controls.calibrate(); } catch { /* ignore */ }   // b35: tilt neutral = how the phone is held at launch
   { const b = $("lvl-banner"), lv = game.level?.() || {}, ob = (lv.objectives || []).map((o) => o.label).filter(Boolean)[0] || "Destroy the enemy";   // b34: clear level goal
     $("lvl-b1").textContent = `LEVEL ${n}`; $("lvl-b2").textContent = ob.toUpperCase() + ((n % 5 === 0) ? " · BOSS!" : "");
     b.classList.remove("hidden", "go"); void b.offsetWidth; b.classList.add("go"); clearTimeout(window.__lvlB); window.__lvlB = setTimeout(() => b.classList.add("hidden"), 4200); }
@@ -408,19 +343,19 @@ function onLevelEnd(r) {
   let next;
   if (won) { audio.win(); next = n + 1; saveLevelNo(next); carryScore = r.score; carryLives = game.dbg.lives(); }
   else { audio.lose(); carryLives = 5; next = 1; saveLevelNo(1); carryScore = 0; }
-  rememberPilot(loadPilots().last, won ? next : n, r.score | 0);
   $("res-btn-label").textContent = won ? "NEXT LEVEL" : "NEW GAME";
   $("res-btn").onclick = () => launch(next);
-  setTimeout(() => { if (state === "results" && !preload) startPreload(next); }, 400);
+  setTimeout(() => { if (state === "results" && !preload) startPreload(next); }, 1800);
+  // b34 arcade flow: level complete auto-advances; game over offers instant CONTINUE on the same level
   clearInterval(window.__resCd); const cdEl = $("res-count"), b2 = $("res-btn2"); b2.hidden = true; cdEl.textContent = "";
   $("results").classList.toggle("won", won); $("results").classList.toggle("lost", !won);
-  if (won) {
+  if (won && (n % 5 === 0 || n >= 999)) {
     const total = starTotal(stars);
-    const nxt = buildLevel(Math.min(999, next));
     $("results").classList.add("hidden");
-    showCelebration({ giant: n >= 999, level: n, stars, total, stats: rows.join(" · ") || "All targets destroyed", nextName: (nxt.title || "").replace(/^\d+\.\s*/, "") }, () => { if (n >= 999) showHighScores(r.score, () => launch(1), n); else launch(next); });
+    showCelebration({ giant: n >= 999, stars, total }, () => { if (n >= 999) showHighScores(r.score, () => launch(1), n); else launch(next); });
     return;
   }
+  if (won) { $("results").classList.remove("hidden"); let c = 6; cdEl.textContent = `Next level in ${c}`; window.__resCd = setInterval(() => { if (state !== "results") return clearInterval(window.__resCd); if (--c <= 0) { clearInterval(window.__resCd); launch(next); } else cdEl.textContent = `Next level in ${c}`; }, 1000); return; }
   if (!won) {
     $("results").classList.remove("hidden"); $("res-title").textContent = "SHOT DOWN";
     $("res-btn-label").textContent = `CONTINUE ▶ LEVEL ${n}`; carryLives = 5; carryScore = 0;
@@ -443,7 +378,7 @@ function loadScores() { try { const v = JSON.parse(localStorage.getItem(SCORE_KE
 // then the list scrolls to your rank and highlights it. TOP jumps to #1, HOME returns to the starting page.
 function showHighScores(score, done, lv = 1) {
   const box = $("hs"), card = box.querySelector(".hs-card"), data = loadScores(), wrap = $("hs-wrap");
-  const hsTitle = box.querySelector(".hs-title"); if (hsTitle) hsTitle.innerHTML = `<small>JET-X COMMAND · ${starTotal()} STARS</small>HIGH SCORES`;
+  const hsTitle = box.querySelector(".hs-title"); if (hsTitle) hsTitle.innerHTML = `<small>X-JET COMMAND · ${starTotal()} STARS</small>HIGH SCORES`;
   const entering = score > 0;
   if (!entering && !data.list.length) { done(); return; }
   let mine = null;
@@ -596,14 +531,14 @@ requestAnimationFrame(frame);
 // start loading the first level right away; the opening screen shows only the logo until it is ready
 {
   const body = document.body;
-  body.classList.add("tp-a", "title-hold");
+  body.classList.add("tp-a");
   let sceneHist = [], sceneIdx = -1;
   const forced = /[?&](time|planet|place|weather|season)=/.test(location.search);
   const p0 = startPreload(levelNo, forced ? undefined : titleRun("f35"));
   p0.promise.then((ok) => { preloadReady = ok; });
   const t0 = performance.now();
   function setArtFor(jet) { const A = TITLE_ART[jet] || TITLE_ART.viper, s = document.documentElement.style, u = `url("${new URL("img/art/" + A.img, location.href).href}")`; s.setProperty("--title-p", u, "important"); s.setProperty("--title-l", `url("${new URL("img/art/" + A.img.replace(".jpg", "_l.jpg"), location.href).href}")`, "important"); }   // b33/b35
-  /* art is applied once, with the fade-in, after the level is ready */
+  setArtFor("f35"); setTimeout(() => { for (const k of TITLE_JETS) { const im = new Image(); im.src = "img/art/" + TITLE_ART[k].img.replace(".jpg", innerWidth > innerHeight ? "_l.jpg" : ".jpg"); } }, 2500);
   $("scene-label")?.addEventListener("click", (e) => { e.stopPropagation(); reroll(1); });
   const setLabel = () => { const r = preload?.level?.run; if (r) setArtFor(r.jet); const jn = JET_TYPES[r?.jet]?.name || "", j0 = jn.split(" ")[0]; $("scene-label").textContent = r ? `${r.place?.name || runLabel(r)} · ${/\d/.test(j0) ? j0 : jn}`.toUpperCase() : "";   /* b36: scene + jet only */ };
   // dir 0 / 1: a new random scene; -1: step back to the previous scene; swiping left/right on the menu calls this
@@ -624,7 +559,7 @@ requestAnimationFrame(frame);
   // Art variants follow scene changes; never reveal the rejected live/plain menu.
   let art = window.__titleArt ?? 0;   // b30: ONE art per session, chosen in <head> before first paint
 
-  $("tap-fly").addEventListener("click", (e) => { e.stopPropagation(); if (preloadReady && state === "title") flyTitle(); });
+  $("tap-fly").addEventListener("click", (e) => { e.stopPropagation(); if (preloadReady && state === "title") { clearSave(); play(); } });
   $("btn-reroll").addEventListener("pointerdown", (e) => e.stopPropagation());
   $("btn-reroll").addEventListener("click", (e) => { e.stopPropagation(); reroll(1); });
   // swipe left = next scene, swipe right = previous scene (title menu only, never starting a swipe on a button)
@@ -639,7 +574,7 @@ requestAnimationFrame(frame);
     try { $("hud-timer").textContent = timeSec ? `${Math.floor(timeSec / 60)}:00` : "0:00"; } catch { /* ignore */ }
     setLabel(); previewOn = ok; body.classList.toggle("preview", !!ok);
     if (ok) { sceneHist = [preload.level.run]; sceneIdx = 0; saveScene(preload.level.run); }
-    body.classList.remove("tp-a", "title-hold"); body.classList.add("tp-b", "title-ready");
+    body.classList.remove("tp-a"); body.classList.add("tp-b");
   });
   // b26: TAP TO FLY (or a tap anywhere that is not a control) starts the sortie directly
   let tapGuard = 0;
@@ -647,7 +582,7 @@ requestAnimationFrame(frame);
     if (state !== "title" || !(body.classList.contains("tp-b") || body.classList.contains("tp-c"))) return;
     if (e.target.closest("button, #settings, #lang-btn, #lang-list, .slink, .plate, #panel, .menu-buttons, .sec-links")) return;
     if (performance.now() < tapGuard) return;
-    flyTitle();
+    clearSave(); play();
   });
   window.__langTapGuard = () => { tapGuard = performance.now() + 350; };
 }
@@ -656,7 +591,7 @@ requestAnimationFrame(frame);
 setInterval(() => { if (state === "playing" && !document.hidden) writeSave(); }, 4000);
 window.addEventListener("jet-tap", (e) => { try { const d = e.detail; if (!(d && typeof d.x === "number" && game.tapSelect(d.x, d.y))) game.lockNearest(); } catch { /* ignore */ } });
 window.addEventListener("keydown", (e) => { if (e.code === "KeyT" && !e.repeat) { try { game.lockNearest(); } catch { /* ignore */ } } });
-$("btn-eject")?.addEventListener("click", () => game.eject());
+$("btn-eject")?.addEventListener("click", () => game.ejectNow?.() || game.eject());
 { const h = $("eject-handles"); let tm = 0, held = false;
   const go = (e) => { e.preventDefault(); e.stopPropagation(); held = true; h.classList.add("pull"); try { h.setPointerCapture(e.pointerId); } catch { /* ignore */ } clearTimeout(tm); tm = setTimeout(() => { if (!held) return; held = false; h.classList.remove("pull"); game.ejectNow?.(); }, 1000); };
   const stop = () => { held = false; clearTimeout(tm); h.classList.remove("pull"); };

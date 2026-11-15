@@ -1,14 +1,14 @@
 // Layered 3D logo: emblem plate (back), chrome letters + jet (middle, own specular sweep), embers (front).
 // Tilt the phone (DeviceOrientation) and the layers parallax + the whole plate rotates a few degrees, like a depth wallpaper.
 // Fallbacks: touch/mouse drag tilts it, and an idle float runs when nothing else moves it.
-const V = "?v=47";
+const V = "?v=48";
 export function logo3dHTML(cls = "") {
   let em = "";
   for (let i = 0; i < 16; i++) {
     const r = (a, b) => (a + Math.random() * (b - a)).toFixed(2);
     em += `<i style="--x:${r(8, 92)}%;--y:${r(55, 95)}%;--s:${r(2, 4.2)}px;--d:${r(2.6, 5.2)}s;--t:${r(0, 4)}s;--dx:${r(-14, 14)}px"></i>`;
   }
-  return `<div class="logo3d ${cls}" role="img" aria-label="JET-X"><div class="l3-stage"><img class="l3-plate" src="img/logo7_plate.webp${V}" alt="" draggable="false"><img class="l3-letters" src="img/logo7_letters.webp${V}" alt="" draggable="false"><div class="l3-shine"></div><div class="l3-embers">${em}</div></div></div>`;
+  return `<div class="logo3d ${cls}" role="img" aria-label="X-JET"><div class="l3-stage"><img class="l3-plate" src="img/logo7_plate.webp${V}" alt="" draggable="false"><img class="l3-letters" src="img/logo7_letters.webp${V}" alt="" draggable="false"><div class="l3-shine"></div><div class="l3-embers">${em}</div></div></div>`;
 }
 let started = false;
 export function initLogo3d() {

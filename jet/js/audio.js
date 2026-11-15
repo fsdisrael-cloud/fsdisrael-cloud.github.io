@@ -614,6 +614,7 @@ export function createAudio() {
     flare() { tone({ f0: 110, f1: 48, dur: 0.2, peak: 0.34, a: 0.003 }); noise({ dur: 0.14, peak: 0.26, type: "lowpass", f0: 900, f1: 220, a: 0.002 }); noise({ dur: 1.0, peak: 0.16, type: "bandpass", f0: 3400, f1: 1200, q: 0.8, a: 0.06 }); },
     hiss() { noise({ dur: 0.9, peak: 0.2, type: "highpass", f0: 4500, f1: 2200, a: 0.03 }); },
     /** subtle rack-reload tick (missile / bomb back in the rack) and empty-rack click; both respect the Effects toggle */
+    gift() { tone({ f0: 880, f1: 1320, dur: 0.1, peak: 0.14, type: "sine", a: 0.004, prio: 1 }); tone({ f0: 1320, f1: 1760, dur: 0.16, peak: 0.11, type: "sine", a: 0.008, delay: 0.07, prio: 1 }); },
     reload(kind = "missile") { if (!gate("rl", 600)) return; tone({ f0: kind === "bomb" ? 330 : 560, dur: 0.1, peak: 0.03, a: 0.02, prio: 0 }); },
     empty() { if (!gate("em", 700)) return; tone({ f0: 200, dur: 0.08, peak: 0.035, prio: 0 }); },
     cool() { if (!gate("cool", 2000)) return; tone({ f0: 760, f1: 980, dur: 0.18, peak: 0.04, a: 0.03 }); },

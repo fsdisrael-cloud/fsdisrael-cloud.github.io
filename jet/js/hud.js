@@ -1,7 +1,7 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=47";
-import { tr } from "./i18n.js?v=47";
+import { LABEL } from "./missions.js?v=48";
+import { tr } from "./i18n.js?v=48";
 
 const ALLY = "#3dff8b";
 const COL = { boss:"#ff3b3b", bossweapon:"#ff8a40", jet: "#ff3b3b", tank: "#ff9c35", flak: "#ff9c35", sam: "#ff9c35", base: "#ff9c35", ship: "#bd6aff", pad: "#3dff8b", ring: "#ffe14d" };
@@ -194,8 +194,7 @@ export function createHud() {
       if (!t.alive) continue;
       const d = t.pos.distanceTo(s.player.pos);
       const pr = project(t.pos, cam);
-      const color = s.night ? "#b6ffc8" : (COL[t.kind] || "#fff");
-      if (s.night && pr.on) { ctx.save(); ctx.strokeStyle = "rgba(140,255,170,0.85)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(pr.x, pr.y, 10, 0, 7); ctx.stroke(); ctx.restore(); }
+      const color = COL[t.kind] || "#fff";
       if (pr.on && d < 9000) {
         const air = t.kind === "jet" || t.kind === "boss" || t.kind === "bossweapon";
         if ((t === s.lockCand || t === s.lockTarget) && s.lockTime > 0) {
@@ -251,7 +250,7 @@ export function createHud() {
       else arrows.push({ t: { kind: "ring", pos: r.pos }, d: r.pos.distanceTo(s.player.pos), pr });
     }
     arrows.sort((a, b) => a.d - b.d);
-    arrows.slice(0, 3).forEach((a, i) => { if (a.t.alive === false || a.t.hp <= 0) return; edgeArrow(a.t.pos, cam, a.t.kind === "jet" ? "#ff2a2a" : (COL[a.t.kind] || "#fff"), false, null, i === 0 ? 1.8 : 1.25); });
+    arrows.slice(0, 3).forEach((a, i) => edgeArrow(a.t.pos, cam, a.t.kind === "jet" ? "#ff2a2a" : (COL[a.t.kind] || "#fff"), false, null, i === 0 ? 1.8 : 1.25));   // b35: big nearest-target arrow
     /* b21: horizon cue line removed (read as stray streaks across the sky) */
     const boss=s.targets.find(t=>t.alive&&t.kind==="boss");
     if(boss){const pods=boss.pods.filter(t=>t.alive).length,hp=(boss.hp+boss.pods.reduce((n,t)=>n+(t.alive?t.hp:0),0))/(boss.maxHp+boss.pods.reduce((n,t)=>n+t.maxHp,0));ctx.save();ctx.fillStyle="rgba(8,12,20,.8)";ctx.fillRect(W*.2,Math.max(H*.18,112),W*.6,30);ctx.fillStyle="#ff593e";ctx.fillRect(W*.2+3,Math.max(H*.18,112)+22,(W*.6-6)*Math.max(0,hp),5);label(W*.5,Math.max(H*.18,112)+14,`${boss.name}  |  ${pods} WEAPONS`,"#ffb28f",11);ctx.restore();}
@@ -262,24 +261,18 @@ export function createHud() {
     if (s.ccip) { const pr = project(s.ccip, cam); if (pr.on) { circle(pr.x, pr.y, 9, "#ff8a2a", 3); ctx.fillStyle = "#ff8a2a"; ctx.beginPath(); ctx.arc(pr.x, pr.y, 3, 0, 7); ctx.fill(); } }
     // b21: bomb aim: line from the impact point to the snapped ground target + a bright cross on the target
     if (s.bombAim) {
-      const pa = project(s.bombAim, cam);
-      const bc = s.bombKind === "ship" ? "#bd6aff" : "#ff9c35";
-      const nx = W * 0.5, ny = H * 0.62;
-      let ex = pa.x, ey = pa.y;
-      if (!pa.on || pa.behind) {
-        const dx = (pa.behind ? nx - pa.x : pa.x - nx) || 0.001, dy = (pa.behind ? ny - pa.y : pa.y - ny) || 0.001;
-        const sx = ((dx > 0 ? W - 28 : 28) - nx) / dx, sy = ((dy > 0 ? H - 28 : 28) - ny) / dy;
-        const sc = Math.max(0.02, Math.min(sx > 0 ? sx : 1e9, sy > 0 ? sy : 1e9));
-        ex = nx + dx * sc; ey = ny + dy * sc;
-        edgeArrow(s.bombAim, cam, bc, false, null, 1);
+      const pa = project(s.bombAim, cam), pc = s.ccip ? project(s.ccip, cam) : null;
+      if (!pa.on) edgeArrow(s.bombAim, cam, s.bombKind === "ship" ? "#bd6aff" : "#ff9c35", false, null, 1);
+      if (pa.on) {
+        const bc = s.bombKind === "ship" ? "#bd6aff" : "#ff9c35"; ctx.save(); ctx.strokeStyle = bc; ctx.fillStyle = bc;   // b30: sea = purple, ground = orange ctx.shadowColor = "rgba(0,0,0,.8)"; ctx.shadowBlur = 3;
+        // b23: always a clear line from the aim point (or the jet) to the selected ground target
+        { const fx = pc && pc.on ? pc.x : W / 2, fy = pc && pc.on ? pc.y : H * 0.62;
+          ctx.lineWidth = 2.5; ctx.setLineDash([]); ctx.globalAlpha = 0.95; ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(pa.x, pa.y); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
+        if (s.tgtFlash > 0) { ctx.lineWidth = 3; ctx.globalAlpha = Math.min(1, s.tgtFlash); ctx.beginPath(); ctx.arc(pa.x, pa.y, 24 + (1.2 - s.tgtFlash) * 40, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
+        if (s.bombName) { ctx.font = "700 12px 'Black Ops One', Fredoka, sans-serif"; ctx.textAlign = "left"; ctx.fillText(`TGT ${s.bombName} ${s.bombDist > 1000 ? (s.bombDist / 1000).toFixed(1) + " km" : Math.round(s.bombDist) + " m"}`, pa.x + 22, pa.y - 14); }
+        const r = s.bombLocked ? 15 : 10; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(pa.x - r, pa.y - r); ctx.lineTo(pa.x + r, pa.y + r); ctx.moveTo(pa.x + r, pa.y - r); ctx.lineTo(pa.x - r, pa.y + r); ctx.stroke();
+        ctx.beginPath(); ctx.arc(pa.x, pa.y, r + 5, 0, 7); ctx.lineWidth = s.bombLocked ? 3 : 2; ctx.stroke(); if (s.bombLocked) { ctx.beginPath(); ctx.arc(pa.x, pa.y, r + 12, 0, 7); ctx.lineWidth = 1.5; ctx.stroke(); } ctx.restore();
       }
-      ctx.save(); ctx.strokeStyle = bc; ctx.fillStyle = bc;
-      ctx.lineWidth = 2.5; ctx.globalAlpha = 0.95; ctx.beginPath(); ctx.moveTo(nx, ny); ctx.lineTo(ex, ey); ctx.stroke(); ctx.globalAlpha = 1;
-      const cx = pa.on ? pa.x : ex, cy = pa.on ? pa.y : ey;
-      if (s.tgtFlash > 0 && pa.on) { ctx.lineWidth = 3; ctx.globalAlpha = Math.min(1, s.tgtFlash); ctx.beginPath(); ctx.arc(cx, cy, 24 + (1.2 - s.tgtFlash) * 40, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
-      if (s.bombName && pa.on) { ctx.font = "700 12px 'Black Ops One', Fredoka, sans-serif"; ctx.textAlign = "left"; ctx.fillText(`TGT ${s.bombName} ${s.bombDist > 1000 ? (s.bombDist / 1000).toFixed(1) + " km" : Math.round(s.bombDist) + " m"}`, cx + 22, cy - 14); }
-      const r = s.bombLocked ? 15 : 10; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx - r, cy - r); ctx.lineTo(cx + r, cy + r); ctx.moveTo(cx + r, cy - r); ctx.lineTo(cx - r, cy + r); ctx.stroke();
-      ctx.beginPath(); ctx.arc(cx, cy, r + 5, 0, 7); ctx.lineWidth = s.bombLocked ? 3 : 2; ctx.stroke(); ctx.restore();
     }
 
     domT -= dt;
@@ -333,7 +326,7 @@ export function createHud() {
     v.copy(p).applyMatrix4(cam.matrixWorldInverse);
     let ang = Math.atan2(-v.y, v.x);
     if (v.z > 0 && Math.abs(v.x) < 1e-3) ang = Math.PI / 2;
-    const cx = W / 2, cy = H / 2, rx = W / 2 - 118, ry = H / 2 - 132;
+    const cx = W / 2, cy = H / 2, rx = W / 2 - 46, ry = H / 2 - 56;
     const x = cx + Math.cos(ang) * rx, y = cy + Math.sin(ang) * ry;
     ctx.save(); ctx.globalAlpha = 0.6; ctx.translate(x, y); ctx.rotate(ang); ctx.scale(sc * 0.85, sc * 0.85);
     ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-8, -11); ctx.quadraticCurveTo(-2, 0, -8, 11); ctx.closePath();
@@ -450,11 +443,9 @@ export function createHud() {
       rctx.fillStyle = t.kind === "ship" ? "#bd6aff" : "#ff9c35"; rctx.fill(); outline(1.2);
     }
     /* b38: runways / carrier deck = short green lines along their heading */
-    for (const r of (s.runways || [])) { const L = 420, dx = -Math.sin(r.hd) * L, dz = -Math.cos(r.hd) * L, qa = toScope({ x: r.x - dx, y: 0, z: r.z - dz }), qb = toScope({ x: r.x + dx, y: 0, z: r.z + dz }); rctx.save(); rctx.lineCap = "round"; rctx.strokeStyle = "#062b14"; rctx.lineWidth = 5.5 * u; rctx.beginPath(); rctx.moveTo(qa.x, qa.y); rctx.lineTo(qb.x, qb.y); rctx.stroke(); rctx.strokeStyle = "#c9b48a"; rctx.lineWidth = 3 * u; rctx.stroke(); rctx.restore(); }
+    for (const r of (s.runways || [])) { const L = 420, dx = -Math.sin(r.hd) * L, dz = -Math.cos(r.hd) * L, qa = toScope({ x: r.x - dx, y: 0, z: r.z - dz }), qb = toScope({ x: r.x + dx, y: 0, z: r.z + dz }); rctx.save(); rctx.lineCap = "round"; rctx.strokeStyle = "#062b14"; rctx.lineWidth = 5.5 * u; rctx.beginPath(); rctx.moveTo(qa.x, qa.y); rctx.lineTo(qb.x, qb.y); rctx.stroke(); rctx.strokeStyle = "#4dff8a"; rctx.lineWidth = 3 * u; rctx.stroke(); rctx.restore(); }
     // b30: incoming enemy missiles = small yellow dot + thin yellow trail
     for (const m of s.missiles) if (m.active) { const q = toScope(m.p), v = m.v || m.vel; if (v) { const tq = toScope({ x: m.p.x - v.x * 2.2, y: m.p.y, z: m.p.z - v.z * 2.2 }); rctx.beginPath(); rctx.moveTo(tq.x, tq.y); rctx.lineTo(q.x, q.y); rctx.strokeStyle = "rgba(255,225,77,.85)"; rctx.lineWidth = 1.1 * u; rctx.stroke(); } rctx.beginPath(); rctx.arc(q.x, q.y, 2.4 * u, 0, 7); rctx.fillStyle = "#ffe14d"; rctx.fill(); }
-    const gCol = { bomb: "#ff9a1f", bombs: "#ff6a1a", missile: "#d8e6ff", shield: "#4db4ff", health: "#ff4040", fuel: "#3dff6a" };
-    for (const g of s.gifts || []) { const q = toScope(g); rctx.beginPath(); rctx.arc(q.x, q.y, 2.1 * u, 0, 7); rctx.fillStyle = gCol[g.kind] || "#fff2c4"; rctx.fill(); }
     // enemy planes: red triangles pointing along their heading
     for (const t of s.targets) {
       if (!t.alive || !["jet","boss","bossweapon"].includes(t.kind)) continue;
@@ -466,6 +457,12 @@ export function createHud() {
       rctx.beginPath(); rctx.moveTo(0, -z * 1.15); rctx.lineTo(z * 0.85, z * 0.8); rctx.lineTo(-z * 0.85, z * 0.8); rctx.closePath();
       rctx.fillStyle = "#ff2e2e"; rctx.fill(); outline(2); rctx.strokeStyle = "rgba(255,255,255,0.9)"; rctx.lineWidth = 1.2 * u; rctx.stroke();
       rctx.beginPath(); rctx.arc(0, 0, z * (1.3 + 0.35 * Math.sin(s.elapsed * 6)), 0, 7); rctx.strokeStyle = "rgba(255,60,60,0.55)"; rctx.stroke(); rctx.restore();
+    }
+    for (const gft of s.gifts || []) {
+      const q = toScope(gft), pulse = 0.6 + 0.4 * Math.sin((s.elapsed || 0) * 7);
+      rctx.beginPath(); rctx.arc(q.x, q.y, (5 + 2.4 * pulse) * u, 0, 7);
+      rctx.fillStyle = gft.col || "#ffe14a"; rctx.fill();
+      rctx.lineWidth = 1.6 * u; rctx.strokeStyle = "#fff"; rctx.stroke();
     }
     // FRIENDLY forces (green): jets = triangles pointing along their heading, ground forces = squares, ships = diamonds
     for (const a of s.allies || []) {
@@ -510,11 +507,9 @@ export function createHud() {
     dom.timer.classList.toggle("urgent", !s.endless && t <= 20);
     dom.score.textContent = s.score;
     {   // b24: target counter = what is still alive in the air / on the ground / at sea, plus mission progress
-      const pg = s.progress || {}, needOf = (k) => (s.objectives.find((o) => o.kind === k) || {}).need || 0;
-      const airN = needOf("jet"), seaN = needOf("ship"), gndN = ["tank", "base", "flak", "sam"].reduce((a, k) => a + needOf(k), 0);
-      const airG = Math.min(airN, pg.jet || 0), seaG = Math.min(seaN, pg.ship || 0), gndG = ["tank", "base", "flak", "sam"].reduce((a, k) => a + Math.min(needOf(k), pg[k] || 0), 0);
-      const need = s.objectives.reduce((a, o) => a + (o.kind === "land" ? 0 : o.need), 0), got = s.objectives.reduce((a, o) => a + (o.kind === "land" ? 0 : Math.min(o.need, pg[o.kind] || 0)), 0);
-      const html = `<div class="tally"><span class="air">AIR<b>${airG}/${airN}</b></span><span class="gnd">GND<b>${gndG}/${gndN}</b></span><span class="sea">SEA<b>${seaG}/${seaN}</b></span></div><div class="tally"><span>MISSION<b>${got}/${need}</b></span></div>`;
+      const cn = s.counts || { air: 0, gnd: 0, sea: 0 };
+      const need = s.objectives.reduce((a, o) => a + (o.kind === "land" ? 0 : o.need), 0), got = s.objectives.reduce((a, o) => a + (o.kind === "land" ? 0 : Math.min(o.need, s.progress[o.kind] || 0)), 0);
+      const html = `<div class="tally"><span class="air${cn.air ? "" : " zero"}">AIR<b>${cn.air}</b></span><span class="gnd${cn.gnd ? "" : " zero"}">GND<b>${cn.gnd}</b></span><span class="sea${cn.sea ? "" : " zero"}">SEA<b>${cn.sea}</b></span></div><div class="tally"><span>MISSION<b>${got}/${need}</b></span></div>`;
       if (html !== dom._tally) { dom._tally = html; dom.obj.innerHTML = html; }
     }
     { const hp = Math.round(Math.max(0, Math.min(100, s.hull ?? 100))), bar = el("hud-hull"); if (bar) { bar.style.width = hp + "%"; bar.classList.toggle("critical", hp < 30); bar.parentElement.setAttribute("aria-valuenow", hp); el("hud-hull-value").textContent = hp + "%"; } }
@@ -541,10 +536,10 @@ export function createHud() {
       if (s.night && !s._nvA && !window.__nvAuto) { window.__nvAuto = 1; setNV(true); } if (!s.night) window.__nvAuto = 0; document.body.classList.toggle("night", !!s.night);
       { const sx = $n("btn-six"); if (sx) sx.classList.toggle("warn", !!s.six); }
       const al = $n("btn-autoland");
-      if (al) { const approach = mode === "app" || mode === "final", can = s.hasStrip && (approach || !mode) && !s.crashing && !s.landing; al.classList.toggle("hidden", !can); al.classList.toggle("urgent", approach || can && fv < 0.25); al.textContent = approach ? "GO AROUND" : "▼ AUTO LAND"; }
+      if (al) { const approach = mode === "app" || mode === "final", can = !s.crashing && fv > 0 && (approach || !mode); al.classList.toggle("hidden", !can); al.classList.toggle("urgent", approach); al.textContent = approach ? "GO AROUND" : "AUTO LAND"; }
       const mb = $n("btn-moab"), sb = $n("btn-shield");
       if (mb) { const n = s.moabs ?? 0; mb.classList.toggle("empty", n <= 0); const c = mb.querySelector(".cnt"); if (c) c.textContent = String(n); }
-      if (sb) { sb.classList.toggle("on", (s.shieldT || 0) > 0); const c = sb.querySelector(".cnt"); if (c) c.textContent = String(s.shields ?? 0); }
+      if (sb) { sb.classList.toggle("on", (s.shieldT || 0) > 0); const c = sb.querySelector(".cnt"); if (c) c.textContent = (s.shieldT || 0) > 0 ? s.shieldT.toFixed(1) : String(s.shields ?? 0); }
     }
     dom.spd.textContent = Math.round(s.player.speed * 3.6); if (dom.thr) dom.thr.textContent = dom.spd.textContent;
     dom.alt.textContent = Math.round(s.player.pos.y); if (dom.fl) dom.fl.textContent = s.player.flares ?? 0; if (dom.trk) dom.trk.classList.toggle("on", !!s.track);

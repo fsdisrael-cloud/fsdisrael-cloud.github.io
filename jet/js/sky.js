@@ -1,8 +1,8 @@
 // Time of day + weather: sky dome, sun/moon, stars, lights, fog, toon clouds, rain/snow, lightning.
-import { FX } from "./tex.js?v=47";
+import { FX } from "./tex.js?v=48";
 import * as THREE from "three";
-import { PartBuilder, G, getGradientMap, outlineMaterial } from "./toon.js?v=47";
-import { style, skyHueChunk } from "./surreal.js?v=47";
+import { PartBuilder, G, getGradientMap, outlineMaterial } from "./toon.js?v=48";
+import { style, skyHueChunk } from "./surreal.js?v=48";
 
 export const TIMES = ["dawn", "day", "dusk", "night"];
 export const WEATHERS = ["clear", "cloudy", "rain", "fog", "snow", "storm"];
@@ -14,12 +14,12 @@ const TOD = {
   night: { elev: 28, az: 200, top: 0x10243f, hor: 0x3d8f62, bot: 0x1c3a32, sun: 0xd0ecff, sunI: 1.45, hs: 0x7aab86, hg: 0x2a3830, hI: 1.25, fog: 0x243e36, tint: 0xb7c8b4, cloud: 0x9eb4a4, exp: 1.28, stars: 0.8 },
 };
 const WX = {
-  clear: { over: 0.0, near: 3000, far: 18000, clouds: 9, sunK: 1, rain: 0, snow: 0, lightning: false },
-  cloudy: { over: 0.45, near: 2000, far: 12000, clouds: 30, sunK: 0.7, rain: 0, snow: 0, lightning: false },
-  rain: { over: 0.78, near: 300, far: 4200, clouds: 46, sunK: 0.42, rain: 1, snow: 0, lightning: true },
-  fog: { over: 0.65, near: 40, far: 1300, clouds: 6, sunK: 0.6, rain: 0, snow: 0, lightning: false },
-  snow: { over: 0.6, near: 250, far: 3600, clouds: 24, sunK: 0.6, rain: 0, snow: 1, lightning: false },
-  storm: { over: 0.92, near: 250, far: 3000, clouds: 50, sunK: 0.35, rain: 1.6, snow: 0, lightning: true },
+  clear: { over: 0.0, near: 9000, far: 42000, clouds: 6, sunK: 1, rain: 0, snow: 0, lightning: false },
+  cloudy: { over: 0.06, near: 9000, far: 40000, clouds: 12, sunK: 0.95, rain: 0, snow: 0, lightning: false },
+  rain: { over: 0.04, near: 9000, far: 40000, clouds: 10, sunK: 0.92, rain: 0.28, snow: 0, lightning: false },
+  fog: { over: 0.02, near: 9000, far: 40000, clouds: 7, sunK: 0.96, rain: 0, snow: 0, lightning: false },
+  snow: { over: 0.03, near: 9000, far: 40000, clouds: 8, sunK: 0.96, rain: 0, snow: 0.28, lightning: false },
+  storm: { over: 0.08, near: 9000, far: 38000, clouds: 14, sunK: 0.88, rain: 0.35, snow: 0, lightning: false },
 };
 
 function grey(c, amt, lum = null) {
@@ -40,7 +40,7 @@ export function createSky(scene, renderer) {
   const sun = new THREE.DirectionalLight(0xffffff, 2);
   const amb = new THREE.AmbientLight(0xffffff, 0.2);
   scene.add(hemi, sun, sun.target, amb);
-  scene.fog = new THREE.Fog(0xffffff, 1000, 10000);
+  scene.fog = null;
 
   const skyMat = new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false,
@@ -66,7 +66,7 @@ export function createSky(scene, renderer) {
           col = h > 0.0 ? mix(hor, top, pow(1.0 - exp(-hh * 3.6), 1.15)) : mix(hor, bot, smoothstep(0.0, -0.2, h));
           col *= 1.0 - 0.16 * pow(hh, 0.7) * (1.0 - over);
           float hz = exp(-abs(h) * 7.0);
-          col = mix(col, hor * 1.04, hz * 0.55);
+          col = mix(col, hor * 1.04, hz * 0.16);
           float sunSide = pow(sdot, 3.0);
           col += sunCol * sunSide * hz * 0.38 * (1.0 - over * 0.7);
           float g = 0.78; float mie = (1.0 - g * g) / pow(1.0 + g * g - 2.0 * g * sdot, 1.5);
@@ -291,10 +291,8 @@ export function createSky(scene, renderer) {
     terrainMats = terrain;
     const T = TOD[time] || TOD.day, W = WX[weather] || WX.clear;
     const over = W.over;
-    const top = grey(new THREE.Color(T.top), over * 0.85), hor = grey(new THREE.Color(T.hor), over * 0.8), bot = grey(new THREE.Color(T.bot), over * 0.8);
-    const fogCol = grey(new THREE.Color(T.fog), over * 0.7);
-    if (over > 0.5) { hor.lerp(fogCol, over); bot.copy(fogCol); }
-    if (weather === "fog") { top.lerp(fogCol, 0.6); hor.copy(fogCol); bot.copy(fogCol); }
+    const top = new THREE.Color(T.top), hor = new THREE.Color(T.hor), bot = new THREE.Color(T.bot);
+    const fogCol = new THREE.Color(T.hor);
     if (style.surreal) {
       const n = time === "night" ? 0.45 : 1;
       top.setHex(0xa98bff).multiplyScalar(n); hor.setHex(0xffc2ea).multiplyScalar(n); bot.setHex(0xc4fff0).multiplyScalar(n);
@@ -329,9 +327,7 @@ export function createSky(scene, renderer) {
     hemi.intensity = baseHemi;
     baseAmb = time === "night" ? 0.62 : 0.24;
     amb.intensity = baseAmb;
-    scene.fog.color.copy(fogCol);
-    scene.fog.near = W.near * (time === "night" ? 0.95 : 1);
-    scene.fog.far = W.far * (time === "night" ? 0.95 : 1);
+    scene.fog = null;
     renderer.toneMappingExposure = T.exp;
     renderer.setClearColor(fogCol);
     const tint = new THREE.Color(style.surreal ? (time === "night" ? 0xb0a0e0 : 0xffffff) : T.tint);

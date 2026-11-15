@@ -2,8 +2,8 @@
 // Player + enemy jets: PBR-lit (metal, glossy canopy, environment reflections) with a thin illustrated outline.
 // Ground units: toon + outline. Illustrated look, readable colours.
 import * as THREE from "three";
-import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=47";
-import { patchDetail, missileTex } from "./tex.js?v=47";
+import { PartBuilder, toonModel, G, toonMaterial, outlineMaterial, smoothNormals } from "./toon.js?v=48";
+import { patchDetail, missileTex } from "./tex.js?v=48";
 
 const PI = Math.PI;
 
@@ -762,32 +762,16 @@ export function createRocket(color = 0xe6e9ec, tip = 0x2b3036) {
 }
 
 export function createBomb() {
-  const geo = cached("bomb47", () => {
+  const geo = cached("bomb39", () => {
     const b = new PartBuilder();
-    b.add(G.capsule, 0x6e747c, { rot: [PI / 2, 0, 0], scale: [0.34, 1.15, 0.34] });
-    b.add(G.cone, 0x8d939a, { pos: [0, 0, -1.45], rot: [-PI / 2, 0, 0], scale: [0.34, 0.62, 0.34] });
-    b.add(G.cyl, 0xc45a12, { pos: [0, 0, -0.55], rot: [PI / 2, 0, 0], scale: [0.36, 0.1, 0.36] });
-    b.add(G.cyl, 0x3a3f46, { pos: [0, 0, 0.35], rot: [PI / 2, 0, 0], scale: [0.36, 0.18, 0.36] });
-    for (const r of [0, PI / 2, PI / 4, -PI / 4]) b.add(G.box, 0x4a5158, { pos: [0, 0, 1.05], rot: [0, 0, r], scale: [0.85, 0.03, 0.42] });
+    b.add(G.capsule, 0x8a9096, { rot: [PI / 2, 0, 0], scale: [0.28, 0.85, 0.28] });
+    b.add(G.cone, 0x9aa0a6, { pos: [0, 0, -1.15], rot: [-PI / 2, 0, 0], scale: [0.28, 0.55, 0.28] });
+    b.add(G.cyl, 0xf0c21a, { pos: [0, 0, -0.72], rot: [PI / 2, 0, 0], scale: [0.3, 0.16, 0.3] });
+    for (const r of [0, PI / 2]) b.add(G.box, 0x5c636a, { pos: [0, 0, 0.95], rot: [0, 0, r], scale: [0.7, 0.035, 0.28] });
     return b.build();
   });
   const g = toonModel(geo, { outlineScale: 0.7, detail: { kind: "panel", s: 1.2, k: 0.8 } });
   g.scale.setScalar(1.8);
-  return g;
-}
-
-export function createMoab() {
-  const geo = cached("moab47", () => {
-    const b = new PartBuilder();
-    b.add(G.capsule, 0x6a6e58, { rot: [PI / 2, 0, 0], scale: [0.55, 2.4, 0.55] });
-    b.add(G.cone, 0x8a8e78, { pos: [0, 0, -2.7], rot: [-PI / 2, 0, 0], scale: [0.55, 0.9, 0.55] });
-    b.add(G.cyl, 0xc9a227, { pos: [0, 0, -0.2], rot: [PI / 2, 0, 0], scale: [0.58, 0.16, 0.58] });
-    b.add(G.cyl, 0x2e322c, { pos: [0, 0, 1.7], rot: [PI / 2, 0, 0], scale: [0.28, 0.7, 0.28] });
-    for (const r of [0, PI / 2]) b.add(G.box, 0x3c4038, { pos: [0, 0, 2.15], rot: [0, 0, r], scale: [1.5, 0.06, 0.7] });
-    return b.build();
-  });
-  const g = toonModel(geo, { outlineScale: 0.6, detail: { kind: "panel", s: 1.1, k: 0.7 } });
-  g.scale.setScalar(2.2);
   return g;
 }
 
