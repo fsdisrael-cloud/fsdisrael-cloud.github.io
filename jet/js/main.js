@@ -1,7 +1,7 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=49";
-import { createHud } from "./hud.js?v=48";
+import { createGame } from "./game.js?v=50";
+import { createHud } from "./hud.js?v=50";
 import { createControls } from "./controls.js?v=48";
 import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=48";
 import { createAudio, trackFor } from "./audio.js?v=48";
@@ -592,10 +592,15 @@ setInterval(() => { if (state === "playing" && !document.hidden) writeSave(); },
 window.addEventListener("jet-tap", (e) => { try { const d = e.detail; if (!(d && typeof d.x === "number" && game.tapSelect(d.x, d.y))) game.lockNearest(); } catch { /* ignore */ } });
 window.addEventListener("keydown", (e) => { if (e.code === "KeyT" && !e.repeat) { try { game.lockNearest(); } catch { /* ignore */ } } });
 $("btn-eject")?.addEventListener("click", () => game.ejectNow?.() || game.eject());
-{ const h = $("eject-handles"); let tm = 0, held = false;
-  const go = (e) => { e.preventDefault(); e.stopPropagation(); held = true; h.classList.add("pull"); try { h.setPointerCapture(e.pointerId); } catch { /* ignore */ } clearTimeout(tm); tm = setTimeout(() => { if (!held) return; held = false; h.classList.remove("pull"); game.ejectNow?.(); }, 1000); };
-  const stop = () => { held = false; clearTimeout(tm); h.classList.remove("pull"); };
-  h?.addEventListener("pointerdown", go); h?.addEventListener("pointerup", stop); h?.addEventListener("pointercancel", stop);
+{ const h = $("eject-handles");
+  if (h) {
+    let y0 = 0, fired = false;
+    const fire = (e) => { if (fired) return; fired = true; e?.preventDefault?.(); e?.stopPropagation?.(); h.classList.add("pull"); game.ejectNow?.(); setTimeout(() => { fired = false; h.classList.remove("pull"); }, 600); };
+    const down = (e) => { e.preventDefault(); e.stopPropagation(); const p = e.touches ? e.touches[0] : e; y0 = p.clientY; try { h.setPointerCapture(e.pointerId); } catch { /* ignore */ } };
+    const move = (e) => { const p = e.touches ? e.touches[0] : e; if (y0 && y0 - p.clientY > 16) fire(e); };
+    h.addEventListener("pointerdown", down); h.addEventListener("pointermove", move); h.addEventListener("pointerup", fire);
+    h.addEventListener("touchstart", down, { passive: false }); h.addEventListener("touchmove", move, { passive: false }); h.addEventListener("touchend", fire);
+  }
 }
 $("btn-moab")?.addEventListener("click", (e) => { e.stopPropagation(); game.dropMoab?.(); });
 $("btn-shield")?.addEventListener("click", (e) => { e.stopPropagation(); game.armShield?.(); });
