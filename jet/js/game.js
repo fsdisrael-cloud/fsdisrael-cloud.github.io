@@ -1286,7 +1286,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     const boost = controls.boost() ? 1 : 0;
     let target = (52 + throttle * 190) * (assist ? 1 - 0.2 * ezv() : 1) + boost * 55 - Math.sin(player.pitch) * 55;   // throttle lever: 120 (slow) .. 320 (fast)
     // b32 ARCADE CHASE: an enemy close ahead -> auto match its speed (sit ~250 m behind) and softly slide in behind it (height + line)
-    { const ct = (lockTarget && lockTarget.alive) ? lockTarget : null; if (ct && !boost && sp < 0.1) { const d = ct.pos.distanceTo(player.pos), want = ct.speed + THREE.MathUtils.clamp((d - 280) * 0.1, -20, 30); target += (want - target) * 0.35;
+    { const ct = (lockTarget && lockTarget.alive) ? lockTarget : null; if (ct && !boost && !stickOn) { const d = ct.pos.distanceTo(player.pos), want = ct.speed + THREE.MathUtils.clamp((d - 280) * 0.1, -20, 30); target += (want - target) * 0.35;
       player.pos.y += THREE.MathUtils.clamp(ct.pos.y - player.pos.y, -40, 40) * 0.35 * dt;
       tB.subVectors(ct.pos, player.pos); const ex = -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw); rotWorld(AY, -THREE.MathUtils.clamp(ex, -0.25, 0.25) * 0.45 * dt); chaseOn = true; } else chaseOn = false; }
     target *= 1 - 0.5 * brkV; target -= 16 * Math.min(1, Math.max(Math.abs(aP), Math.abs(aR) * 0.5)) * (1 - boost);
