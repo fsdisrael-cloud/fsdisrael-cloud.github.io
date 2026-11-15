@@ -10,12 +10,12 @@
 //  - Desktop: arrows/WASD, space = guns, F = missile, B = bomb, shift = boost, V = camera.
 const D2R = Math.PI / 180;
 
-/** Strong expo: almost nothing near center, full rate only at a hard pull. Same curve for stick and tilt. */
+/** 1.45 feel: tiny dead zone, quick near the center, full authority at the stop. Same curve for tilt. */
 export function expoAxis(v) {
-  const dz = 0.06, a = Math.abs(v);
+  const dz = 0.012, a = Math.abs(v);
   if (a <= dz) return 0;
   const u = Math.min(1, (a - dz) / (1 - dz));
-  return Math.sign(v) * Math.pow(u, 2.45);
+  return Math.sign(v) * Math.pow(u, 1.08);
 }
 
 // ---- easy-to-adjust configuration ----

@@ -1,17 +1,17 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=40";
-import { createHud } from "./hud.js?v=40";
-import { createControls } from "./controls.js?v=40";
-import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=40";
-import { createAudio, trackFor } from "./audio.js?v=40";
-import { createHaptics } from "./haptics.js?v=40";
-import { createRain2D } from "./rain2d.js?v=40";
-import { createLoading } from "./loading.js?v=40";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=40";
-import { setSurreal, tickStyle } from "./surreal.js?v=40";
-import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=40";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=40";
+import { createGame } from "./game.js?v=48";
+import { createHud } from "./hud.js?v=48";
+import { createControls } from "./controls.js?v=48";
+import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=48";
+import { createAudio, trackFor } from "./audio.js?v=48";
+import { createHaptics } from "./haptics.js?v=48";
+import { createRain2D } from "./rain2d.js?v=48";
+import { createLoading } from "./loading.js?v=48";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=48";
+import { setSurreal, tickStyle } from "./surreal.js?v=48";
+import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=48";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=48";
 
 const $ = (id) => document.getElementById(id);
 
@@ -30,7 +30,7 @@ try {
   document.documentElement.style.setProperty("--worn", `url(${wc.toDataURL("image/png")})`);
 } catch (e) { /* plain gradients if canvas is unavailable */ }
 const BUILD = 39;
-{ const t = $("build-tag"); if (t) t.textContent = "JET-X b" + BUILD; }
+{ const t = $("build-tag"); if (t) t.textContent = "X-JET b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;
   try { if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, "1"); } catch { /* ignore */ }
@@ -378,7 +378,7 @@ function loadScores() { try { const v = JSON.parse(localStorage.getItem(SCORE_KE
 // then the list scrolls to your rank and highlights it. TOP jumps to #1, HOME returns to the starting page.
 function showHighScores(score, done, lv = 1) {
   const box = $("hs"), card = box.querySelector(".hs-card"), data = loadScores(), wrap = $("hs-wrap");
-  const hsTitle = box.querySelector(".hs-title"); if (hsTitle) hsTitle.innerHTML = `<small>JET-X COMMAND · ${starTotal()} STARS</small>HIGH SCORES`;
+  const hsTitle = box.querySelector(".hs-title"); if (hsTitle) hsTitle.innerHTML = `<small>X-JET COMMAND · ${starTotal()} STARS</small>HIGH SCORES`;
   const entering = score > 0;
   if (!entering && !data.list.length) { done(); return; }
   let mine = null;
@@ -591,7 +591,7 @@ requestAnimationFrame(frame);
 setInterval(() => { if (state === "playing" && !document.hidden) writeSave(); }, 4000);
 window.addEventListener("jet-tap", (e) => { try { const d = e.detail; if (!(d && typeof d.x === "number" && game.tapSelect(d.x, d.y))) game.lockNearest(); } catch { /* ignore */ } });
 window.addEventListener("keydown", (e) => { if (e.code === "KeyT" && !e.repeat) { try { game.lockNearest(); } catch { /* ignore */ } } });
-$("btn-eject")?.addEventListener("click", () => game.eject());
+$("btn-eject")?.addEventListener("click", () => game.ejectNow?.() || game.eject());
 { const h = $("eject-handles"); let tm = 0, held = false;
   const go = (e) => { e.preventDefault(); e.stopPropagation(); held = true; h.classList.add("pull"); try { h.setPointerCapture(e.pointerId); } catch { /* ignore */ } clearTimeout(tm); tm = setTimeout(() => { if (!held) return; held = false; h.classList.remove("pull"); game.ejectNow?.(); }, 1000); };
   const stop = () => { held = false; clearTimeout(tm); h.classList.remove("pull"); };

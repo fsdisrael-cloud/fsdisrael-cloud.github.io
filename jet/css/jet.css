@@ -619,6 +619,7 @@ body.tp-b .menu-buttons, body.tp-b .sec-links { visibility: hidden; opacity: 0; 
 .ops-bars i { flex: 1; height: 8px; background: #121518; border: 1px solid #50575d; display: block; } .ops-bars b { display: block; height: 100%; width: 0; background: repeating-linear-gradient(90deg, #ff9a1f 0 6px, #b8630a 6px 8px); }
 .ops .mil-btn { pointer-events: auto; }
 body.on-title .ops, body.on-title .autoland, body.on-title .fuel-dial { display: none !important; }
+body.in-game #btn-autoland.autoland:not(.hidden) { display: block !important; position: fixed !important; left: calc(env(safe-area-inset-left) + 8px) !important; right: auto !important; top: auto !important; bottom: 42% !important; transform: none !important; z-index: 40 !important; max-width: 132px; }
 
 /* ===================== b26: opening screen (concept-art style) ===================== */
 body.on-title .hud, body.on-title .settings, body.on-title .build-tag, body.on-title .ver-b { display: none !important; }
@@ -1061,4 +1062,10 @@ body.in-game .thr-knob { width: 44px; height: 22px; margin-left: -22px; }
   body.in-game #stats.stats { left: calc(var(--safe-l) + 8px) !important; right: auto !important; top: calc(var(--safe-t) + 228px) !important; bottom: auto !important; transform: none !important; width: 146px !important; }
   body.in-game #eject-handles.ej-h { left: calc(env(safe-area-inset-left) + 8px) !important; right: auto !important; transform: none !important; bottom: calc(env(safe-area-inset-bottom) + 188px) !important; z-index: 40; }
   body.in-game .specials { left: auto !important; right: calc(var(--safe-r) + 6px) !important; top: calc(var(--safe-t) + 248px) !important; bottom: auto !important; flex-direction: column !important; }
+}
+.gift-flash { animation: giftflash .7s ease; }
+@keyframes giftflash {
+  0% { filter: brightness(1); }
+  30% { filter: brightness(2.8); box-shadow: 0 0 22px 8px rgba(255, 214, 90, .95); }
+  100% { filter: none; box-shadow: none; }
 }

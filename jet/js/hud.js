@@ -1,7 +1,7 @@
 // Ubu HUD: round radar (top), target markers / lock / crosshair / bomb circle (2D overlay), DOM readouts.
 import * as THREE from "three";
-import { LABEL } from "./missions.js?v=40";
-import { tr } from "./i18n.js?v=40";
+import { LABEL } from "./missions.js?v=48";
+import { tr } from "./i18n.js?v=48";
 
 const ALLY = "#3dff8b";
 const COL = { boss:"#ff3b3b", bossweapon:"#ff8a40", jet: "#ff3b3b", tank: "#ff9c35", flak: "#ff9c35", sam: "#ff9c35", base: "#ff9c35", ship: "#bd6aff", pad: "#3dff8b", ring: "#ffe14d" };
@@ -458,6 +458,12 @@ export function createHud() {
       rctx.fillStyle = "#ff2e2e"; rctx.fill(); outline(2); rctx.strokeStyle = "rgba(255,255,255,0.9)"; rctx.lineWidth = 1.2 * u; rctx.stroke();
       rctx.beginPath(); rctx.arc(0, 0, z * (1.3 + 0.35 * Math.sin(s.elapsed * 6)), 0, 7); rctx.strokeStyle = "rgba(255,60,60,0.55)"; rctx.stroke(); rctx.restore();
     }
+    for (const gft of s.gifts || []) {
+      const q = toScope(gft), pulse = 0.6 + 0.4 * Math.sin((s.elapsed || 0) * 7);
+      rctx.beginPath(); rctx.arc(q.x, q.y, (5 + 2.4 * pulse) * u, 0, 7);
+      rctx.fillStyle = gft.col || "#ffe14a"; rctx.fill();
+      rctx.lineWidth = 1.6 * u; rctx.strokeStyle = "#fff"; rctx.stroke();
+    }
     // FRIENDLY forces (green): jets = triangles pointing along their heading, ground forces = squares, ships = diamonds
     for (const a of s.allies || []) {
       if (!a.alive) continue;
@@ -530,7 +536,7 @@ export function createHud() {
       if (s.night && !s._nvA && !window.__nvAuto) { window.__nvAuto = 1; setNV(true); } if (!s.night) window.__nvAuto = 0; document.body.classList.toggle("night", !!s.night);
       { const sx = $n("btn-six"); if (sx) sx.classList.toggle("warn", !!s.six); }
       const al = $n("btn-autoland");
-      if (al) { const approach = mode === "app" || mode === "final", can = s.hasStrip && (approach || !mode) && !s.crashing && !s.landing; al.classList.toggle("hidden", !can); al.classList.toggle("urgent", approach || can && fv < 0.25); al.textContent = approach ? "GO AROUND" : "▼ AUTO LAND"; }
+      if (al) { const approach = mode === "app" || mode === "final", can = !s.crashing && fv > 0 && (approach || !mode); al.classList.toggle("hidden", !can); al.classList.toggle("urgent", approach); al.textContent = approach ? "GO AROUND" : "AUTO LAND"; }
       const mb = $n("btn-moab"), sb = $n("btn-shield");
       if (mb) { const n = s.moabs ?? 0; mb.classList.toggle("empty", n <= 0); const c = mb.querySelector(".cnt"); if (c) c.textContent = String(n); }
       if (sb) { sb.classList.toggle("on", (s.shieldT || 0) > 0); const c = sb.querySelector(".cnt"); if (c) c.textContent = (s.shieldT || 0) > 0 ? s.shieldT.toFixed(1) : String(s.shields ?? 0); }
