@@ -160,7 +160,8 @@ h2 { font-size: 12px; letter-spacing: .14em; margin: 18px 0 8px; }
   position: absolute;
   z-index: 3;
   top: 6px;
-  left: 8px;
+  right: max(8px, env(safe-area-inset-right));
+  left: auto;
   width: min(28vw, 210px);
   aspect-ratio: 16/9;
   background: #111;

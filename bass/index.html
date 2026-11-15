@@ -10,7 +10,7 @@
 <title>X-BASS</title>
 <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
-<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/app.css?v=1.1">
 </head>
 <body>
 <main id="app">
@@ -25,7 +25,7 @@
     <button id="hit-saved" class="hit" type="button" data-aria="savedPlayers" aria-label="Saved players"></button>
     <button id="hit-go" class="hit" type="button" data-aria="continue" aria-label="Continue"></button>
     <button id="hit-gear" class="hit" type="button" data-aria="settings" aria-label="Settings"></button>
-    <div class="ver">v1.0</div>
+    <div class="ver">v1.1</div>
   </section>
 
   <section id="view-players" class="view">
@@ -75,57 +75,84 @@
         <defs>
           <linearGradient id="pink" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stop-color="#f9c9d8"/>
-            <stop offset="1" stop-color="#f398b6"/>
+            <stop offset="1" stop-color="#f29db8"/>
           </linearGradient>
           <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#f3d7b0"/>
-            <stop offset=".45" stop-color="#e4bc8d"/>
-            <stop offset="1" stop-color="#d7a56c"/>
+            <stop offset="0" stop-color="#f8e2c2"/>
+            <stop offset=".5" stop-color="#e8c392"/>
+            <stop offset="1" stop-color="#d9b07a"/>
           </linearGradient>
           <linearGradient id="wood2" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#f6e0c0"/>
-            <stop offset="1" stop-color="#e2b98a"/>
+            <stop offset="0" stop-color="#f8e6c8"/>
+            <stop offset="1" stop-color="#e4c094"/>
+          </linearGradient>
+          <linearGradient id="skin" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#f8d2ba"/>
+            <stop offset=".55" stop-color="#f0c0a4"/>
+            <stop offset="1" stop-color="#e3aa90"/>
+          </linearGradient>
+          <radialGradient id="nail" cx="35%" cy="32%" r="75%">
+            <stop offset="0" stop-color="#ff7d88"/>
+            <stop offset=".4" stop-color="#ee2340"/>
+            <stop offset="1" stop-color="#b10e28"/>
+          </radialGradient>
+          <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#f7f9fb"/>
+            <stop offset=".5" stop-color="#d5dbe3"/>
+            <stop offset="1" stop-color="#f4f6f8"/>
           </linearGradient>
           <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
             <feGaussianBlur stdDeviation="5" result="b"/>
             <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
         </defs>
-        <path fill="url(#pink)" d="M0 18c90-16 220-22 380-8 180 16 300-6 460-8h420c90 0 220 8 340 28v150c-140 28-320 18-500 6-200-14-340 22-560 18C300 198 120 176 0 150Z"/>
-        <path fill="#fff" d="M168 62h470c46 0 62 30 50 64l-18 52H196c-40 0-58-36-44-72 8-22 8-44 16-44z"/>
-        <rect x="900" y="46" width="620" height="132" fill="url(#wood2)"/>
-        <rect x="1468" y="46" width="12" height="132" fill="#f7f4ee"/>
+        <path fill="url(#pink)" d="M0 40h470c150-16 300-6 430 14l40 8v148l-70 12c-170 22-390 8-600-8-90-6-200-4-270-18V168C0 188 0 60 0 40Z"/>
+        <path fill="#fff" d="M520 56h400c58 0 78 28 66 62l-28 62H548c-52 0-64-38-52-74 8-24 10-50 24-50z"/>
+        <path fill="#f4f7fa" d="M548 78h330c28 0 36 14 30 28l-16 36H560c-24 0-30-16-24-34 4-12 8-30 32-30z" opacity=".55"/>
+        <rect x="1008" y="50" width="520" height="146" fill="url(#wood)"/>
+        <rect x="1512" y="46" width="12" height="140" rx="2" fill="#f6f3ec"/>
+        <path fill="url(#wood2)" stroke="#d7b48a" stroke-width="1.5" d="M1522 58l74-16v148l-74-16z"/>
+        <circle cx="1572" cy="116" r="10" fill="#e7ebf0" stroke="#9aa3ad"/>
         <g id="top-frets"></g>
-        <g transform="translate(48,78)">
-          <rect width="26" height="112" rx="3" fill="#eef1f5" stroke="#b7bec8"/>
-          <g fill="#98a2ae">
-            <rect x="5" y="14" width="16" height="10" rx="2"/>
-            <rect x="5" y="38" width="16" height="10" rx="2"/>
-            <rect x="5" y="62" width="16" height="10" rx="2"/>
-            <rect x="5" y="86" width="16" height="10" rx="2"/>
+        <g transform="translate(36,88)">
+          <rect width="36" height="124" rx="3" fill="url(#metal)" stroke="#9aa3ad"/>
+          <rect x="5" y="6" width="26" height="112" rx="2" fill="#fbfcfd" stroke="#c5ccd4"/>
+          <g fill="#8e98a4">
+            <rect x="7" y="16" width="22" height="8" rx="2"/>
+            <rect x="7" y="40" width="22" height="8" rx="2"/>
+            <rect x="7" y="64" width="22" height="8" rx="2"/>
+            <rect x="7" y="88" width="22" height="8" rx="2"/>
           </g>
         </g>
         <g id="pickups"></g>
         <g id="top-strings"></g>
         <g id="pluck-hand">
-          <path fill="#f6c7ad" stroke="#e4ad90" stroke-width="2" d="M58 8c-28 0-46 30-42 68 4 40 28 58 74 60 78 4 132-20 136-64 4-40-24-64-62-64-16 0-28 8-36 8-6-8-16-8-28-8z"/>
-          <g transform="translate(18,86) rotate(-36)">
-            <rect x="-15" y="0" width="30" height="52" rx="15" fill="#f6c7ad" stroke="#e4ad90" stroke-width="2"/>
-            <ellipse cx="0" cy="52" rx="12" ry="9" fill="#e3182d"/>
+          <path fill="url(#skin)" stroke="#e2b198" stroke-width="1.5" d="M78-6c-34 0-54 26-50 66 4 38 28 60 72 66 62 8 112-12 120-52 8-40-18-80-58-80-16 0-28 8-36 8s-14-8-28-8z"/>
+          <path fill="#e7b396" opacity=".28" d="M48 78c22 36 78 48 132 16-28 28-96 30-132-16z"/>
+          <g transform="translate(6,78) rotate(-42)">
+            <path fill="url(#skin)" stroke="#e2b198" stroke-width="1.5" d="M-10 0c-6 20 0 44 12 54 14 10 26-2 22-20C20 16 10 0 2 0c-6 0-10 0-12 0z"/>
+            <ellipse cx="8" cy="54" rx="11" ry="8" fill="url(#nail)"/>
+            <ellipse cx="5" cy="52" rx="4" ry="2.4" fill="#ffe0e3" opacity=".8"/>
           </g>
           <g id="pf-index">
-            <rect x="46" y="112" width="34" height="64" rx="17" fill="#f8ccb4" stroke="#e4ad90" stroke-width="2"/>
-            <ellipse cx="63" cy="178" rx="13" ry="10" fill="#ef1c2c"/>
-            <ellipse cx="60" cy="175" rx="6" ry="3" fill="#ffc1c4" opacity=".8"/>
+            <path fill="url(#skin)" stroke="#e2b198" stroke-width="1.5" d="M46 88c-4 26-6 52 0 74 4 12 12 20 20 14 10-8 14-26 12-52-2-22-6-36-12-44-8-6-16-4-20 8z"/>
+            <path d="M48 120q14 8 28-2" fill="none" stroke="#d9a48c" stroke-width="1.4" stroke-linecap="round"/>
+            <path d="M49 148q14 8 26-2" fill="none" stroke="#d9a48c" stroke-width="1.15" stroke-linecap="round"/>
+            <ellipse cx="63" cy="174" rx="12" ry="9" fill="url(#nail)"/>
+            <ellipse cx="59" cy="171" rx="5" ry="2.6" fill="#ffe0e3" opacity=".85"/>
           </g>
           <g id="pf-middle">
-            <rect x="88" y="118" width="36" height="78" rx="18" fill="#f8ccb4" stroke="#e4ad90" stroke-width="2"/>
-            <ellipse cx="106" cy="198" rx="14" ry="11" fill="#ef1c2c"/>
-            <ellipse cx="103" cy="195" rx="6" ry="3" fill="#ffc1c4" opacity=".75"/>
+            <path fill="url(#skin)" stroke="#e2b198" stroke-width="1.5" d="M86 94c-4 32-6 62 2 86 6 14 18 18 26 8 10-12 14-34 10-66-4-24-10-36-16-42-10-4-18-2-22 14z"/>
+            <path d="M88 130q16 10 34-2" fill="none" stroke="#d9a48c" stroke-width="1.4" stroke-linecap="round"/>
+            <path d="M88 160q18 10 32-2" fill="none" stroke="#d9a48c" stroke-width="1.15" stroke-linecap="round"/>
+            <ellipse cx="106" cy="190" rx="13" ry="10" fill="url(#nail)"/>
+            <ellipse cx="102" cy="186" rx="5" ry="2.8" fill="#ffe0e3" opacity=".85"/>
           </g>
           <g id="pf-ring">
-            <rect x="132" y="110" width="32" height="54" rx="16" fill="#f5c2a6" stroke="#e4ad90" stroke-width="2"/>
-            <ellipse cx="148" cy="166" rx="12" ry="9" fill="#e3182d"/>
+            <path fill="url(#skin)" stroke="#e2b198" stroke-width="1.5" d="M132 86c-4 24-2 46 6 64 6 12 18 14 24 2 8-16 8-38 2-58-6-14-16-16-22-12-4 2-8 2-10 4z"/>
+            <path d="M134 118q16 8 32-2" fill="none" stroke="#d9a48c" stroke-width="1.2" stroke-linecap="round"/>
+            <ellipse cx="152" cy="156" rx="11" ry="8" fill="url(#nail)"/>
+            <ellipse cx="149" cy="153" rx="4" ry="2.2" fill="#ffe0e3" opacity=".8"/>
           </g>
         </g>
         <rect x="0" y="236" width="1600" height="14" fill="#d9f4fc"/>
@@ -252,6 +279,6 @@
     </form>
   </div>
 </main>
-<script src="js/app.js"></script>
+<script src="js/app.js?v=1.1"></script>
 </body>
 </html>
