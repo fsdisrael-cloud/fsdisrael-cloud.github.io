@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="X-BASS">
+<meta name="theme-color" content="#07070a">
+<title>X-BASS</title>
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<main id="app">
+
+  <section id="view-home" class="view on">
+    <img class="home-bg" src="img/home.jpg" alt="">
+    <div class="home-chrome">
+      <button class="nav-btn" type="button" data-nav="back" data-aria="back" aria-label="Back">←</button>
+      <button class="nav-btn" type="button" data-nav="home" data-aria="home" aria-label="Home">⌂</button>
+    </div>
+    <button id="hit-new" class="hit" type="button" data-aria="newPlayer" aria-label="New player"></button>
+    <button id="hit-saved" class="hit" type="button" data-aria="savedPlayers" aria-label="Saved players"></button>
+    <button id="hit-go" class="hit" type="button" data-aria="continue" aria-label="Continue"></button>
+    <button id="hit-gear" class="hit" type="button" data-aria="settings" aria-label="Settings"></button>
+    <div class="ver">v1.0</div>
+  </section>
+
+  <section id="view-players" class="view">
+    <header class="bar">
+      <button class="nav-btn" type="button" data-nav="back" data-aria="back" aria-label="Back">←</button>
+      <button class="nav-btn" type="button" data-nav="home" data-aria="home" aria-label="Home">⌂</button>
+      <h1 data-i="savedPlayers">SAVED PLAYERS</h1>
+    </header>
+    <div class="sheet">
+      <ul id="player-list" class="list"></ul>
+    </div>
+  </section>
+
+  <section id="view-song" class="view">
+    <header class="bar">
+      <button class="nav-btn" type="button" data-nav="back" data-aria="back" aria-label="Back">←</button>
+      <button class="nav-btn" type="button" data-nav="home" data-aria="home" aria-label="Home">⌂</button>
+      <h1 data-i="song">SONG</h1>
+      <span id="song-who" class="who"></span>
+      <span class="spacer"></span>
+      <button class="text-btn" type="button" data-nav="tuner" data-i="tuner">TUNER</button>
+    </header>
+    <div class="sheet">
+      <form id="song-form" class="song-form">
+        <input id="song-url" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://youtu.be/…" data-ph="paste">
+        <button class="play-go" type="submit" data-i="play">PLAY</button>
+      </form>
+      <p id="song-error" class="error" hidden></p>
+      <button id="upload-btn" class="ghost-btn" type="button" data-i="upload">Upload mp3/mp4</button>
+      <input id="file-input" type="file" accept="audio/*,video/*,.mp3,.mp4,.m4a,.wav,.webm" hidden>
+      <h2 data-i="recent">RECENT</h2>
+      <div id="recent-list" class="recents"></div>
+    </div>
+  </section>
+
+  <section id="view-play" class="view">
+    <header class="bar play-bar">
+      <button class="nav-btn" type="button" data-nav="back" data-aria="back" aria-label="Back">←</button>
+      <button class="nav-btn" type="button" data-nav="home" data-aria="home" aria-label="Home">⌂</button>
+      <h1 class="logo-type">X-BASS</h1>
+      <span class="spacer"></span>
+      <button class="text-btn" type="button" data-nav="tuner" data-i="tuner">TUNER</button>
+    </header>
+    <div class="stage">
+      <div id="media-slot" class="media-slot"></div>
+      <svg id="stage-svg" viewBox="0 0 1600 540" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <linearGradient id="pink" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#f9c9d8"/>
+            <stop offset="1" stop-color="#f398b6"/>
+          </linearGradient>
+          <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#f3d7b0"/>
+            <stop offset=".45" stop-color="#e4bc8d"/>
+            <stop offset="1" stop-color="#d7a56c"/>
+          </linearGradient>
+          <linearGradient id="wood2" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#f6e0c0"/>
+            <stop offset="1" stop-color="#e2b98a"/>
+          </linearGradient>
+          <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
+            <feGaussianBlur stdDeviation="5" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <path fill="url(#pink)" d="M0 18c90-16 220-22 380-8 180 16 300-6 460-8h420c90 0 220 8 340 28v150c-140 28-320 18-500 6-200-14-340 22-560 18C300 198 120 176 0 150Z"/>
+        <path fill="#fff" d="M168 62h470c46 0 62 30 50 64l-18 52H196c-40 0-58-36-44-72 8-22 8-44 16-44z"/>
+        <rect x="900" y="46" width="620" height="132" fill="url(#wood2)"/>
+        <rect x="1468" y="46" width="12" height="132" fill="#f7f4ee"/>
+        <g id="top-frets"></g>
+        <g transform="translate(48,78)">
+          <rect width="26" height="112" rx="3" fill="#eef1f5" stroke="#b7bec8"/>
+          <g fill="#98a2ae">
+            <rect x="5" y="14" width="16" height="10" rx="2"/>
+            <rect x="5" y="38" width="16" height="10" rx="2"/>
+            <rect x="5" y="62" width="16" height="10" rx="2"/>
+            <rect x="5" y="86" width="16" height="10" rx="2"/>
+          </g>
+        </g>
+        <g id="pickups"></g>
+        <g id="top-strings"></g>
+        <g id="pluck-hand">
+          <path fill="#f6c7ad" stroke="#e4ad90" stroke-width="2" d="M58 8c-28 0-46 30-42 68 4 40 28 58 74 60 78 4 132-20 136-64 4-40-24-64-62-64-16 0-28 8-36 8-6-8-16-8-28-8z"/>
+          <g transform="translate(18,86) rotate(-36)">
+            <rect x="-15" y="0" width="30" height="52" rx="15" fill="#f6c7ad" stroke="#e4ad90" stroke-width="2"/>
+            <ellipse cx="0" cy="52" rx="12" ry="9" fill="#e3182d"/>
+          </g>
+          <g id="pf-index">
+            <rect x="46" y="112" width="34" height="64" rx="17" fill="#f8ccb4" stroke="#e4ad90" stroke-width="2"/>
+            <ellipse cx="63" cy="178" rx="13" ry="10" fill="#ef1c2c"/>
+            <ellipse cx="60" cy="175" rx="6" ry="3" fill="#ffc1c4" opacity=".8"/>
+          </g>
+          <g id="pf-middle">
+            <rect x="88" y="118" width="36" height="78" rx="18" fill="#f8ccb4" stroke="#e4ad90" stroke-width="2"/>
+            <ellipse cx="106" cy="198" rx="14" ry="11" fill="#ef1c2c"/>
+            <ellipse cx="103" cy="195" rx="6" ry="3" fill="#ffc1c4" opacity=".75"/>
+          </g>
+          <g id="pf-ring">
+            <rect x="132" y="110" width="32" height="54" rx="16" fill="#f5c2a6" stroke="#e4ad90" stroke-width="2"/>
+            <ellipse cx="148" cy="166" rx="12" ry="9" fill="#e3182d"/>
+          </g>
+        </g>
+        <rect x="0" y="236" width="1600" height="14" fill="#d9f4fc"/>
+        <g id="board"></g>
+        <g id="fret-hand"></g>
+      </svg>
+    </div>
+    <footer class="transport">
+      <button id="btn-song" class="pill" type="button" data-nav="song" data-i="song">SONG</button>
+      <div class="faders">
+        <button class="fader" type="button" data-mute="guitar"><span class="stem"><i></i></span><span data-i="guitar">GUITAR</span></button>
+        <button class="fader" type="button" data-mute="piano"><span class="stem"><i></i></span><span data-i="piano">PIANO</span></button>
+        <button class="fader" type="button" data-mute="vocals"><span class="stem"><i></i></span><span data-i="vocals">VOCALS</span></button>
+        <button class="fader" type="button" data-mute="drums"><span class="stem"><i></i></span><span data-i="drums">DRUMS</span></button>
+      </div>
+      <div class="bpm">
+        <button id="bpm-tap" type="button" data-aria="tap" aria-label="Tap tempo">♩</button>
+        <button id="bpm-dec" type="button" aria-label="BPM down">−</button>
+        <div class="bpm-read"><b id="bpm-val">96</b><small>BPM</small></div>
+        <button id="bpm-inc" type="button" aria-label="BPM up">+</button>
+      </div>
+      <label class="speed">
+        <input id="speed" type="range" min="0.5" max="1.5" step="0.05" value="1">
+        <span id="speed-val">1.00×</span>
+      </label>
+      <button id="btn-play" class="round" type="button" data-aria="play" aria-label="Play">▶</button>
+      <button id="btn-loop" class="round ghost" type="button" data-aria="loop" aria-label="Loop" aria-pressed="false">∞</button>
+    </footer>
+  </section>
+
+  <section id="view-tuner" class="view">
+    <header class="bar tuner-bar">
+      <button class="nav-btn" type="button" data-nav="back" data-aria="back" aria-label="Back">←</button>
+      <button class="nav-btn light" type="button" data-nav="home" data-aria="home" aria-label="Home">⌂</button>
+      <h1 class="logo-type">X-BASS <span class="pipe">|</span> <span data-i="tuner">TUNER</span></h1>
+    </header>
+    <div class="tune-body">
+      <div class="gauge-col">
+        <div class="gauge-wrap">
+          <svg class="gauge" viewBox="0 0 400 210">
+            <defs>
+              <linearGradient id="arcg" x1="0" x2="1">
+                <stop offset="0" stop-color="#e1061c"/>
+                <stop offset=".42" stop-color="#e1061c"/>
+                <stop offset=".5" stop-color="#2fce45"/>
+                <stop offset=".58" stop-color="#e0b000"/>
+                <stop offset="1" stop-color="#e0b000"/>
+              </linearGradient>
+            </defs>
+            <path d="M60 176 A140 140 0 0 1 340 176" fill="none" stroke="url(#arcg)" stroke-width="18"/>
+            <g id="needle">
+              <polygon points="200,44 194,176 206,176" fill="#f4f4f4"/>
+              <circle cx="200" cy="176" r="9" fill="#eee" stroke="#9aa" stroke-width="2"/>
+            </g>
+          </svg>
+          <div class="gauge-read">
+            <div id="tune-name">A</div>
+            <div id="tune-cents">—</div>
+            <div class="cents-word" data-i="cents">CENTS</div>
+          </div>
+        </div>
+        <div class="tune-scale">
+          <div id="lab-flat"><b data-i="flat">FLAT</b><span data-i="tuneUp">TUNE UP</span></div>
+          <div id="lab-ok"><b data-i="inTune">IN TUNE</b></div>
+          <div id="lab-sharp"><b data-i="sharp">SHARP</b><span data-i="tuneDown">TUNE DOWN</span></div>
+        </div>
+        <button id="mic-btn" class="mic" type="button" hidden data-i="enableMic">Enable microphone</button>
+        <p id="mic-msg" class="mic-msg" hidden></p>
+      </div>
+      <div class="head-col">
+        <svg id="head-svg" viewBox="0 0 640 320">
+          <defs>
+            <linearGradient id="hwood" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#f0d2a4"/>
+              <stop offset="1" stop-color="#e2b888"/>
+            </linearGradient>
+            <marker id="ah" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+              <path d="M0 0 L8 4 L0 8 Z" fill="#fff"/>
+            </marker>
+          </defs>
+          <rect x="0" y="100" width="270" height="130" fill="url(#hwood)" stroke="#1b1b1b" stroke-width="3"/>
+          <g id="hs-frets"></g>
+          <path d="M250 92 L500 40 L608 72 L596 236 L486 258 L250 222 Z" fill="#f3d7b2" stroke="#1b1b1b" stroke-width="3"/>
+          <rect x="244" y="96" width="14" height="136" rx="2" fill="#f6f3ec" stroke="#222"/>
+          <g id="hs-strings"></g>
+          <g id="hs-pegs"></g>
+          <g id="hs-hand"></g>
+          <g id="hs-arrow"></g>
+        </svg>
+      </div>
+    </div>
+    <div class="str-btns" id="str-btns">
+      <button type="button" data-string="0">E</button>
+      <button type="button" data-string="1" class="on">A</button>
+      <button type="button" data-string="2">D</button>
+      <button type="button" data-string="3">G</button>
+    </div>
+  </section>
+
+  <section id="view-settings" class="view">
+    <header class="bar">
+      <button class="nav-btn" type="button" data-nav="back" data-aria="back" aria-label="Back">←</button>
+      <button class="nav-btn" type="button" data-nav="home" data-aria="home" aria-label="Home">⌂</button>
+      <h1 data-i="settings">SETTINGS</h1>
+    </header>
+    <div class="sheet">
+      <h2 data-i="language">LANGUAGE</h2>
+      <div class="lang-row">
+        <button id="lang-en" class="lang on" type="button">English</button>
+        <button id="lang-he" class="lang" type="button">עברית</button>
+      </div>
+      <button class="play-go block" type="button" data-nav="tuner" data-i="tuner">TUNER</button>
+    </div>
+  </section>
+
+  <div id="modal" class="modal" hidden>
+    <form id="name-form" class="dialog">
+      <h2 data-i="playerName">Player name</h2>
+      <input id="name-input" maxlength="24" required autocomplete="nickname">
+      <div class="dialog-row">
+        <button type="button" id="name-cancel" data-i="back">Back</button>
+        <button type="submit" data-i="save">Save</button>
+      </div>
+    </form>
+  </div>
+</main>
+<script src="js/app.js"></script>
+</body>
+</html>
