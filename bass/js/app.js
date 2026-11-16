@@ -1,4 +1,4 @@
-/* X-BASS v1.5
+/* X-BASS v1.6
    Note source: default eighth-note groove at the BPM, locked to media currentTime.
    A real transcription plugs in as absolute media times:
      XBass.setTrack([{t: 0.0, string: 0, fret: 0}, {t: 0.5, string: 0, fret: 3}]);
@@ -22,10 +22,10 @@
     ["hit-go", 470, 564, 410, 80, "continue"],
     ["hit-gear", 1180, 14, 70, 90, "settings"]
   ];
-  const GEO = { nut: 1420, scale: 1853, boardY: 268, boardH: 250, boardL: 16, strings: [318, 372, 426, 480] };
-  const TOP_Y = [108, 134, 160, 186];
-  const TIP = { index: 183, middle: 200 };
-  const PLUCK_X = 230;
+  const GEO = { nut: 1496, scale: 1900, boardY: 268, boardH: 262, boardL: 0, strings: [316, 376, 436, 496] };
+  const TOP_Y = [102, 130, 158, 186];
+  const TIP = { index: 178, middle: 196 };
+  const PLUCK_X = 168;
   const I18N = {
     en: {
       dir: "ltr",
@@ -149,23 +149,23 @@
 
   function buildStage() {
     const frets = $("top-frets");
-    for (let n = 0; n <= 12; n++) {
-      const x = 1024 + n * 40;
-      if (x > 1508) break;
-      frets.appendChild(svg("line", { x1: x, y1: 52, x2: x, y2: 180, stroke: n ? "#c5c9d0" : "#f7f4ee", "stroke-width": n ? 2 : 7 }));
-      if (n === 3 || n === 5 || n === 7 || n === 9 || n === 12) {
-        frets.appendChild(svg("circle", { cx: x - 20, cy: 116, r: 5.5, fill: "#fffdf8" }));
+    for (let n = 0; n <= 11; n++) {
+      const x = 1108 + n * 38;
+      if (x > 1540) break;
+      frets.appendChild(svg("line", { x1: x, y1: 22, x2: x, y2: 228, stroke: n ? "#c5c9d0" : "#f7f4ee", "stroke-width": n ? 2 : 8 }));
+      if (n === 3 || n === 5 || n === 7 || n === 9) {
+        frets.appendChild(svg("circle", { cx: x - 19, cy: 125, r: 6, fill: "#fffdf8" }));
       }
     }
     const pk = $("pickups");
-    [148, 262].forEach((x) => {
-      const g = svg("g", { transform: "translate(" + x + ",84)" });
-      g.appendChild(svg("rect", { x: -2, y: -2, width: 42, height: 120, rx: 7, fill: "#3a3a3a" }));
-      g.appendChild(svg("rect", { width: 38, height: 116, rx: 5, fill: "#141414" }));
-      for (let i = 0; i < 6; i++) {
+    [118, 236].forEach((x) => {
+      const g = svg("g", { transform: "translate(" + x + ",58)" });
+      g.appendChild(svg("rect", { width: 44, height: 148, rx: 6, fill: "#111" }));
+      g.appendChild(svg("rect", { x: 18, y: 6, width: 8, height: 136, rx: 2, fill: "#1c1c1c" }));
+      for (let i = 0; i < 8; i++) {
         const cy = 14 + i * 16;
-        g.appendChild(svg("circle", { cx: 12, cy: cy, r: 3.2, fill: "#eef2f6", stroke: "#9aa3ad", "stroke-width": 0.6 }));
-        g.appendChild(svg("circle", { cx: 26, cy: cy, r: 3.2, fill: "#eef2f6", stroke: "#9aa3ad", "stroke-width": 0.6 }));
+        g.appendChild(svg("circle", { cx: 12, cy: cy, r: 3.3, fill: "#f2f4f7", stroke: "#9aa", "stroke-width": 0.5 }));
+        g.appendChild(svg("circle", { cx: 32, cy: cy, r: 3.3, fill: "#f2f4f7", stroke: "#9aa", "stroke-width": 0.5 }));
       }
       pk.appendChild(g);
     });
@@ -214,12 +214,13 @@
     for (let i = 0; i < 4; i++) {
       const g = svg("g", { id: "ff" + i });
       const lean = leans[i];
-      g.appendChild(svg("ellipse", { cx: lean * 0.15, cy: 78, rx: 13, ry: 26, fill: "url(#skin)", stroke: "#e0b09a", "stroke-width": 1.2 }));
-      g.appendChild(svg("ellipse", { cx: lean * 0.05, cy: 40, rx: 11, ry: 20, fill: "#f6c7ad", stroke: "#e0b09a", "stroke-width": 1.2 }));
-      g.appendChild(svg("ellipse", { cx: 0, cy: 58, rx: 12, ry: 5, fill: "#e7b396", opacity: 0.55 }));
-      g.appendChild(svg("circle", { class: "glow", cx: 0, cy: 12, r: 14, fill: "#ff2a3a", opacity: 0, filter: "url(#glow)" }));
-      g.appendChild(svg("ellipse", { cx: 0, cy: 14, rx: 10, ry: 7, fill: "url(#nail)" }));
-      g.appendChild(svg("ellipse", { cx: -2, cy: 12, rx: 4, ry: 2, fill: "#ffe0e3", opacity: 0.85 }));
+      const d = "M" + (-12 + lean * 0.05) + ",18 C" + (-16 + lean * 0.1) + ",40 " + (-14 + lean * 0.2) + ",70 " + (-8 + lean * 0.35) + ",92 C" + (-2 + lean * 0.4) + ",108 " + (10 + lean * 0.2) + ",110 " + (14 + lean * 0.1) + ",92 C" + (18) + ",68 " + (16) + ",40 " + (12) + ",18 C8,8 2,6 0,12 C-6,6 " + (-10) + ",10 " + (-12 + lean * 0.05) + ",18 Z";
+      g.appendChild(svg("path", { d: d, fill: "#f6c7ad", stroke: "#e4b196", "stroke-width": 1.6 }));
+      g.appendChild(svg("path", { d: "M-11,52 Q1,60 13,50", fill: "none", stroke: "#e0a888", "stroke-width": 1.4, "stroke-linecap": "round" }));
+      g.appendChild(svg("circle", { class: "glow", cx: 0, cy: 12, r: 13, fill: "#ff2a2a", opacity: 0, filter: "url(#glow)" }));
+      g.appendChild(svg("ellipse", { cx: 0, cy: 13, rx: 10, ry: 7, fill: "#e10600" }));
+      g.appendChild(svg("ellipse", { cx: -2, cy: 11, rx: 4, ry: 2, fill: "#ffd0d4", opacity: 0.9 }));
+      g.setAttribute("transform", "translate(" + fretX(5 + i) + "," + GEO.strings[1] + ")");
       hand.appendChild(g);
     }
     hand.appendChild(svg("ellipse", { id: "fret-palm", cx: 0, cy: 0, rx: 86, ry: 36, fill: "url(#skin)", stroke: "#e2b198", "stroke-width": 1.5 }));
@@ -1328,9 +1329,12 @@
       }
       return;
     }
-    let cw = 0;
-    for (let i = 0; i < words.length; i++) if (words[i].t <= score + 0.05) cw = i;
-    const line = words[cw].line;
+    let cw = -1;
+    for (let i = 0; i < words.length; i++) {
+      if (words[i].t <= score + 0.04) cw = i;
+      else break;
+    }
+    const line = words[cw < 0 ? 0 : cw].line;
     const row = words.filter((w) => w.line === line);
     const key = "L" + line;
     if (lyric.dataset.win !== key) {
@@ -1344,7 +1348,7 @@
       });
     }
     Array.prototype.forEach.call(lyric.children, (s) => {
-      s.classList.toggle("now", Math.abs(+s.dataset.t - words[cw].t) < 0.001);
+      s.classList.toggle("now", cw >= 0 && Math.abs(+s.dataset.t - words[cw].t) < 0.001);
     });
   }
   function parseLrc(text) {

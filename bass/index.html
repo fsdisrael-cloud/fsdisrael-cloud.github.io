@@ -10,7 +10,7 @@
 <title>X-BASS</title>
 <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
-<link rel="stylesheet" href="css/app.css?v=1.5">
+<link rel="stylesheet" href="css/app.css?v=1.6">
 </head>
 <body>
 <main id="app">
@@ -25,7 +25,7 @@
     <button id="hit-saved" class="hit" type="button" data-aria="savedPlayers" aria-label="Saved players"></button>
     <button id="hit-go" class="hit" type="button" data-aria="continue" aria-label="Continue"></button>
     <button id="hit-gear" class="hit" type="button" data-aria="settings" aria-label="Settings"></button>
-    <div class="ver">v1.5</div>
+    <div class="ver">v1.6</div>
   </section>
 
   <section id="view-players" class="view">
@@ -68,25 +68,37 @@
   </section>
 
   <section id="view-play" class="view">
-    <div class="staff-wrap">
-      <button id="btn-sync" type="button" data-i="sync">Sync</button>
-      <div id="note-strip" class="strip"></div>
-    </div>
-    <div id="lyric-strip" class="lyric-bar"><span class="lyric-ph">· · ·</span></div>
-    <div class="play-top">
-      <button class="nav-btn" type="button" data-nav="back" data-aria="back" aria-label="Back">←</button>
-      <button class="nav-btn" type="button" data-nav="home" data-aria="home" aria-label="Home">⌂</button>
-      <span id="status-play" class="status"></span>
+    <div class="top-band">
+      <div class="nav-col">
+        <button class="nav-btn" type="button" data-nav="home" data-aria="home" aria-label="Home">⌂</button>
+        <button class="nav-btn" type="button" data-nav="back" data-aria="back" aria-label="Back">←</button>
+      </div>
+      <div class="staff-col">
+        <div class="staff-wrap">
+          <button id="btn-sync" type="button" data-i="sync">Sync</button>
+          <div id="note-strip" class="strip"></div>
+        </div>
+        <div id="lyric-strip" class="lyric-bar"><span class="lyric-ph">· · ·</span></div>
+      </div>
     </div>
     <div class="stage-row">
       <div class="side-logo" aria-hidden="true">
-        <svg viewBox="0 0 36 180">
-          <text x="0" y="0" fill="#222" font-family="Arial Black, Impact, sans-serif" font-size="20" font-weight="800" transform="translate(27,150) rotate(-90)">BASS</text>
-          <path fill="#c41220" stroke="#fff" stroke-width="1" d="M5 148 L18 161 L5 174 L10 174 L18 166 L26 174 L31 174 L18 161 L31 148 L26 148 L18 156 L10 148 Z"/>
+        <svg viewBox="0 0 48 220">
+          <defs>
+            <linearGradient id="chromeV" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#ffffff"/>
+              <stop offset=".42" stop-color="#9aa3ae"/>
+              <stop offset=".72" stop-color="#f5f7f8"/>
+              <stop offset="1" stop-color="#5c656e"/>
+            </linearGradient>
+          </defs>
+          <text x="34" y="16" fill="url(#chromeV)" stroke="#141414" stroke-width="1.6" font-family="Arial Black, Impact, sans-serif" font-size="26" font-weight="800" transform="rotate(90 34 16)">BASS</text>
+          <path fill="#4a080e" d="M8 158 L24 174 L8 190 L14 190 L24 180 L34 190 L40 190 L24 174 L40 158 L34 158 L24 168 L14 158 Z"/>
+          <path fill="#e1061c" stroke="#141414" stroke-width="1.6" d="M7 152 L24 169 L7 186 L14 186 L24 176 L34 186 L41 186 L24 169 L41 152 L34 152 L24 162 L14 152 Z"/>
+          <path fill="#ff8a93" d="M14 156 L22 164 L16 164 Z"/>
         </svg>
       </div>
       <div class="stage">
-      <div id="media-slot" class="media-slot"></div>
       <svg id="stage-svg" viewBox="0 0 1600 540" preserveAspectRatio="xMidYMid meet">
         <defs>
           <linearGradient id="pink" x1="0" y1="0" x2="0" y2="1">
@@ -122,62 +134,73 @@
             <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
         </defs>
-        <path fill="url(#pink)" d="M0 40h470c150-16 300-6 430 14l40 8v148l-70 12c-170 22-390 8-600-8-90-6-200-4-270-18V168C0 188 0 60 0 40Z"/>
-        <path fill="#fff" d="M520 56h400c58 0 78 28 66 62l-28 62H548c-52 0-64-38-52-74 8-24 10-50 24-50z"/>
-        <path fill="#f4f7fa" d="M548 78h330c28 0 36 14 30 28l-16 36H560c-24 0-30-16-24-34 4-12 8-30 32-30z" opacity=".55"/>
-        <rect x="1008" y="50" width="520" height="146" fill="url(#wood)"/>
-        <rect x="1512" y="46" width="12" height="140" rx="2" fill="#f6f3ec"/>
-        <path fill="url(#wood2)" stroke="#d7b48a" stroke-width="1.5" d="M1522 58l74-16v148l-74-16z"/>
-        <circle cx="1572" cy="116" r="10" fill="#e7ebf0" stroke="#9aa3ad"/>
-        <g id="top-frets"></g>
-        <g transform="translate(36,88)">
-          <rect width="36" height="124" rx="3" fill="url(#metal)" stroke="#9aa3ad"/>
-          <rect x="5" y="6" width="26" height="112" rx="2" fill="#fbfcfd" stroke="#c5ccd4"/>
-          <g fill="#8e98a4">
-            <rect x="7" y="16" width="22" height="8" rx="2"/>
-            <rect x="7" y="40" width="22" height="8" rx="2"/>
-            <rect x="7" y="64" width="22" height="8" rx="2"/>
-            <rect x="7" y="88" width="22" height="8" rx="2"/>
-          </g>
+        <rect width="1600" height="252" fill="#c5ebf8"/>
+        <path fill="#f7b7cc" d="M0 0h1120c90 0 150 28 168 70 10 24 12 70 4 110-14 52-80 72-168 72H0Z"/>
+        <path fill="#fde7ef" d="M0 0h1120c70 8 120 30 140 58H0Z" opacity=".55"/>
+        <path fill="#fff" stroke="#eceff3" stroke-width="3" d="M520 18h520c78 0 108 36 96 84l-34 108H548c-70 0-96-46-78-96 12-34 18-96 50-96z"/>
+        <g fill="#e7eaee" stroke="#b7bec6">
+          <circle cx="560" cy="42" r="6"/><circle cx="980" cy="40" r="6"/>
+          <circle cx="548" cy="176" r="6"/><circle cx="990" cy="168" r="6"/>
         </g>
+        <rect x="1120" y="16" width="480" height="220" fill="#efd0a4"/>
+        <rect x="1120" y="16" width="480" height="220" fill="url(#wood)"/>
+        <rect x="1552" y="12" width="16" height="228" rx="3" fill="#f6f3ec" stroke="#e2c396"/>
+        <path fill="#f3d7b0" stroke="#d7b48a" stroke-width="2" d="M1566 20h34v212h-34z"/>
+        <circle cx="1582" cy="126" r="11" fill="#e7ebf0" stroke="#9aa3ad" stroke-width="2"/>
+        <circle cx="1582" cy="126" r="4" fill="#9aa3ad"/>
+        <g id="top-frets"></g>
         <g id="pickups"></g>
         <g id="top-strings"></g>
-        <g id="pluck-hand">
-          <path fill="url(#skin)" stroke="#e2b198" stroke-width="1.5" d="M78-6c-34 0-54 26-50 66 4 38 28 60 72 66 62 8 112-12 120-52 8-40-18-80-58-80-16 0-28 8-36 8s-14-8-28-8z"/>
-          <path fill="#e7b396" opacity=".28" d="M48 78c22 36 78 48 132 16-28 28-96 30-132-16z"/>
-          <g transform="translate(6,78) rotate(-42)">
-            <path fill="url(#skin)" stroke="#e2b198" stroke-width="1.5" d="M-10 0c-6 20 0 44 12 54 14 10 26-2 22-20C20 16 10 0 2 0c-6 0-10 0-12 0z"/>
-            <ellipse cx="8" cy="54" rx="11" ry="8" fill="url(#nail)"/>
-            <ellipse cx="5" cy="52" rx="4" ry="2.4" fill="#ffe0e3" opacity=".8"/>
+        <g transform="translate(8,62)">
+          <rect width="58" height="150" rx="4" fill="#eef1f4" stroke="#9aa3ad" stroke-width="2"/>
+          <rect x="7" y="8" width="44" height="134" rx="2" fill="#fbfcfd" stroke="#c5ccd4"/>
+          <g fill="#9aa3ad">
+            <rect x="10" y="16" width="38" height="9" rx="2"/>
+            <rect x="10" y="44" width="38" height="9" rx="2"/>
+            <rect x="10" y="72" width="38" height="9" rx="2"/>
+            <rect x="10" y="100" width="38" height="9" rx="2"/>
           </g>
-          <g id="pf-index">
-            <path fill="url(#skin)" stroke="#e2b198" stroke-width="1.5" d="M46 88c-4 26-6 52 0 74 4 12 12 20 20 14 10-8 14-26 12-52-2-22-6-36-12-44-8-6-16-4-20 8z"/>
-            <path d="M48 120q14 8 28-2" fill="none" stroke="#d9a48c" stroke-width="1.4" stroke-linecap="round"/>
-            <path d="M49 148q14 8 26-2" fill="none" stroke="#d9a48c" stroke-width="1.15" stroke-linecap="round"/>
-            <ellipse cx="63" cy="174" rx="12" ry="9" fill="url(#nail)"/>
-            <ellipse cx="59" cy="171" rx="5" ry="2.6" fill="#ffe0e3" opacity=".85"/>
-          </g>
-          <g id="pf-middle">
-            <path fill="url(#skin)" stroke="#e2b198" stroke-width="1.5" d="M86 94c-4 32-6 62 2 86 6 14 18 18 26 8 10-12 14-34 10-66-4-24-10-36-16-42-10-4-18-2-22 14z"/>
-            <path d="M88 130q16 10 34-2" fill="none" stroke="#d9a48c" stroke-width="1.4" stroke-linecap="round"/>
-            <path d="M88 160q18 10 32-2" fill="none" stroke="#d9a48c" stroke-width="1.15" stroke-linecap="round"/>
-            <ellipse cx="106" cy="190" rx="13" ry="10" fill="url(#nail)"/>
-            <ellipse cx="102" cy="186" rx="5" ry="2.8" fill="#ffe0e3" opacity=".85"/>
-          </g>
-          <g id="pf-ring">
-            <path fill="url(#skin)" stroke="#e2b198" stroke-width="1.5" d="M132 86c-4 24-2 46 6 64 6 12 18 14 24 2 8-16 8-38 2-58-6-14-16-16-22-12-4 2-8 2-10 4z"/>
-            <path d="M134 118q16 8 32-2" fill="none" stroke="#d9a48c" stroke-width="1.2" stroke-linecap="round"/>
-            <ellipse cx="152" cy="156" rx="11" ry="8" fill="url(#nail)"/>
-            <ellipse cx="149" cy="153" rx="4" ry="2.2" fill="#ffe0e3" opacity=".8"/>
+          <g fill="#d5dbe2">
+            <rect x="48" y="22" width="16" height="6" rx="1"/>
+            <rect x="48" y="50" width="16" height="6" rx="1"/>
+            <rect x="48" y="78" width="16" height="6" rx="1"/>
+            <rect x="48" y="106" width="16" height="6" rx="1"/>
           </g>
         </g>
-        <rect x="0" y="236" width="1600" height="14" fill="#d9f4fc"/>
+        <g id="pluck-hand" transform="translate(168,-4)">
+          <path fill="#f6c7ad" stroke="#e4b196" stroke-width="2" d="M62 2c-30 0-48 26-44 64 4 36 28 58 72 62 58 6 104-14 110-52 6-38-20-74-58-74-18 0-30 12-40 12S74 2 62 2z"/>
+          <path fill="#e8b496" opacity=".35" d="M46 70c18 28 70 36 118 10-24 22-84 24-118-10z"/>
+          <g transform="translate(10,78) rotate(-38)">
+            <path fill="#f8d0b8" stroke="#e4b196" stroke-width="2" d="M-2 0c-10 16-6 40 8 52 12 8 24-2 22-18C26 16 12 2 4 0z"/>
+            <ellipse cx="10" cy="50" rx="11" ry="8" fill="#e10600"/>
+            <ellipse cx="7" cy="48" rx="4" ry="2.4" fill="#ffd0d4"/>
+          </g>
+          <g id="pf-index">
+            <path fill="#f8d0b8" stroke="#e4b196" stroke-width="2" d="M38 96c-6 28-4 58 6 76 8 12 26 12 32-2 8-18 6-48-2-74-6-16-24-18-36 0z"/>
+            <path d="M42 128q16 8 30-2" fill="none" stroke="#e0a888" stroke-width="1.6" stroke-linecap="round"/>
+            <ellipse cx="58" cy="170" rx="13" ry="9" fill="#e10600"/>
+            <ellipse cx="54" cy="167" rx="5" ry="2.6" fill="#ffd0d4"/>
+          </g>
+          <g id="pf-middle">
+            <path fill="#f8d0b8" stroke="#e4b196" stroke-width="2" d="M82 100c-6 32-4 66 8 86 8 14 28 12 34-2 8-20 6-56-2-86-6-18-28-20-40 2z"/>
+            <path d="M86 136q18 10 34-2" fill="none" stroke="#e0a888" stroke-width="1.6" stroke-linecap="round"/>
+            <ellipse cx="106" cy="186" rx="14" ry="10" fill="#e10600"/>
+            <ellipse cx="102" cy="183" rx="5" ry="2.8" fill="#ffd0d4"/>
+          </g>
+          <g id="pf-ring">
+            <path fill="#f4c4a8" stroke="#e4b196" stroke-width="2" d="M128 92c-4 22-2 44 6 60 6 12 20 12 26 0 6-14 4-40-2-58-6-14-20-16-30-2z"/>
+            <path d="M132 120q14 8 26-2" fill="none" stroke="#e0a888" stroke-width="1.4" stroke-linecap="round"/>
+            <ellipse cx="148" cy="152" rx="11" ry="8" fill="#e10600"/>
+            <ellipse cx="145" cy="150" rx="4" ry="2" fill="#ffd0d4"/>
+          </g>
+        </g>
+        <rect x="0" y="250" width="1600" height="18" fill="#d9f4fc"/>
         <g id="board"></g>
         <g id="fret-hand"></g>
       </svg>
       </div>
-      <button class="tuner-vert" type="button" data-nav="tuner" data-i="tuner">TUNER</button>
     </div>
+    <div id="media-slot" class="media-slot"></div>
     <footer class="transport">
       <button id="btn-song" class="pill" type="button" data-nav="song" data-i="song">SONG</button>
       <div class="faders">
@@ -199,6 +222,7 @@
       <button id="btn-back" class="round jump" type="button" aria-label="Back 10 seconds">−10</button>
       <button id="btn-play" class="round" type="button" data-aria="play" aria-label="Play">▶</button>
       <button id="btn-fwd" class="round jump" type="button" aria-label="Forward 10 seconds">+10</button>
+      <button class="round" type="button" data-nav="tuner" data-aria="tuner" aria-label="Tuner"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="#fff" d="M12 2C8 2 5 5.2 5 9.2V12c0 .8.4 1.6 1 2-1.2 1.6-1.6 3.4-1 5.2h3.2c-.4-1.4 0-2.6.8-3.6.4.3.9.5 1.5.5h.2V9.2a1.3 1.3 0 0 1 2.6 0v4.2h1.6c.7 0 1.3-.6 1.3-1.3V9.2C16.2 5.2 13.8 2 12 2z"/></svg></button>
       <button id="btn-loop" class="round ghost" type="button" data-aria="loop" aria-label="Loop" aria-pressed="false">∞</button>
     </footer>
   </section>
@@ -299,6 +323,6 @@
     </form>
   </div>
 </main>
-<script src="js/app.js?v=1.5"></script>
+<script src="js/app.js?v=1.6"></script>
 </body>
 </html>

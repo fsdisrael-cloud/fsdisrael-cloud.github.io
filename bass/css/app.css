@@ -157,16 +157,19 @@ h2 { font-size: 12px; letter-spacing: .14em; margin: 18px 0 8px; }
 .recent img { display: block; width: 100%; height: 84px; object-fit: cover; background: #ccc; }
 .recent span { display: block; padding: 6px 8px 8px; font-size: 11px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-#view-play { background: #b9e6f6; }
+#view-play { background: #b9e6f6; position: relative; }
+.top-band {
+  display: flex; align-items: stretch; background: #d7f3fc; direction: ltr;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+}
+.nav-col { display: flex; flex-direction: column; flex: none; }
+.nav-col .nav-btn { width: 36px; height: 34px; flex: 1; }
+.staff-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .staff-wrap {
   display: flex; align-items: stretch; gap: 4px; direction: ltr;
-  background: #d7f3fc; padding: 2px 4px 0 max(2px, env(safe-area-inset-left));
+  background: #d7f3fc; padding: 2px 4px 0 2px; flex: 1;
 }
-.play-top {
-  display: flex; align-items: center; gap: 2px; min-height: 32px;
-  background: #d7f3fc; padding: 0 4px 0 0;
-}
-.play-top .nav-btn { width: 32px; height: 32px; }
 #btn-sync {
   flex: none; align-self: center; height: 36px; padding: 0 8px; border: 0; border-radius: 8px;
   background: #111; color: #fff; font-weight: 800; font-size: 12px;
@@ -177,8 +180,9 @@ h2 { font-size: 12px; letter-spacing: .14em; margin: 18px 0 8px; }
 }
 .staff-svg { display: block; width: 100%; height: 100%; }
 .lyric-bar {
-  direction: ltr; height: 28px; overflow: hidden; flex: none;
-  display: flex; align-items: center; gap: 8px; padding: 0 12px;
+  direction: ltr; height: 26px; overflow: hidden; flex: none;
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 max(12px, env(safe-area-inset-right, 0px)) 0 max(36px, calc(env(safe-area-inset-left, 0px) + 16px));
   background: #fff; color: #111; white-space: nowrap;
 }
 .lyric-bar span { font-weight: 800; font-size: 15px; color: #111; }
@@ -186,24 +190,20 @@ h2 { font-size: 12px; letter-spacing: .14em; margin: 18px 0 8px; }
 .lyric-ph { color: #b7bec8; letter-spacing: .4em; font-weight: 600; }
 .stage-row { flex: 1; min-height: 0; display: flex; align-items: stretch; direction: ltr; }
 .side-logo {
-  flex: none; width: 34px; display: flex; align-items: center; justify-content: center; overflow: hidden;
+  flex: none; width: 42px; display: flex; align-items: center; justify-content: center; overflow: hidden;
 }
-.side-logo svg { width: 34px; height: 100%; max-height: 220px; transform: none; }
-.tuner-vert {
-  flex: none; width: 34px; border: 0; background: #111; color: #fff;
-  font-weight: 800; letter-spacing: .18em; font-size: 13px;
-  writing-mode: vertical-rl; transform: rotate(180deg);
-}
+.side-logo svg { width: 42px; height: 100%; max-height: 240px; }
 .round.jump { font-size: 11px; font-weight: 800; }
 .stage { position: relative; flex: 1; min-width: 0; min-height: 0; direction: ltr; }
 .stage svg { width: 100%; height: 100%; display: block; }
 .media-slot {
   position: absolute;
   z-index: 3;
-  top: 6px;
-  right: max(8px, env(safe-area-inset-right));
+  top: 4px;
+  right: 4px;
   left: auto;
-  width: min(28vw, 210px);
+  width: min(20vw, 150px);
+  z-index: 8;
   aspect-ratio: 16/9;
   background: #111;
   border-radius: 10px;
