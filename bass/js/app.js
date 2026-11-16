@@ -1,4 +1,4 @@
-/* X-BASS v1.1
+/* X-BASS v1.2
    Note source: default eighth-note groove at the BPM, locked to media currentTime.
    A real transcription plugs in as absolute media times:
      XBass.setTrack([{t: 0.0, string: 0, fret: 0}, {t: 0.5, string: 0, fret: 3}]);
@@ -32,6 +32,9 @@
       newPlayer: "NEW PLAYER", savedPlayers: "SAVED PLAYERS", continue: "CONTINUE",
       settings: "SETTINGS", language: "LANGUAGE", song: "SONG", play: "PLAY",
       paste: "Paste a YouTube link", upload: "Upload mp3/mp4", recent: "RECENT",
+      search: "SEARCH", searchPh: "Song or artist", searching: "Searching…",
+      preparing: "Preparing…", ready: "Ready to play", noTab: "No bass tab found",
+      noVideo: "No video found", noSongs: "No songs found", searchFail: "Search failed",
       guitar: "GUITAR", piano: "PIANO", vocals: "VOCALS", drums: "DRUMS",
       tuner: "TUNER", flat: "FLAT", inTune: "IN TUNE", sharp: "SHARP",
       tuneUp: "TUNE UP", tuneDown: "TUNE DOWN", back: "Back", home: "Home",
@@ -45,6 +48,9 @@
       newPlayer: "נגן חדש", savedPlayers: "נגנים שמורים", continue: "המשך",
       settings: "הגדרות", language: "שפה", song: "שיר", play: "נגן",
       paste: "הדבק קישור יוטיוב", upload: "העלאת mp3/mp4", recent: "אחרונים",
+      search: "חיפוש", searchPh: "שיר או אמן", searching: "מחפש…",
+      preparing: "מכין…", ready: "מוכן לנגן", noTab: "לא נמצא טאב לבס",
+      noVideo: "לא נמצא סרטון", noSongs: "לא נמצאו שירים", searchFail: "החיפוש נכשל",
       guitar: "גיטרה", piano: "פסנתר", vocals: "שירה", drums: "תופים",
       tuner: "טיונר", flat: "נמוך", inTune: "מכוון", sharp: "גבוה",
       tuneUp: "מתח למעלה", tuneDown: "שחרר למטה", back: "חזרה", home: "בית",
@@ -475,6 +481,8 @@
   }
 
   function startYouTube(id, url) {
+    const slot = $("media-slot");
+    if (slot) slot.dataset.video = id;
     pushRecent(id, url);
     state.source = { type: "yt", id: id };
     pendingPlay = true;
@@ -482,6 +490,7 @@
     mountYouTube(id);
   }
   function startFile(file) {
+    state.track = null;
     state.source = { type: "file", name: file.name };
     go("play");
     mountFile(file);
@@ -537,7 +546,8 @@
         if (a[m].t <= time + 1e-4) { ans = m; lo = m + 1; } else hi = m - 1;
       }
       const n = a[ans];
-      return { string: clamp(n.string | 0, 0, 3), fret: clamp(n.fret | 0, 0, 20), key: "c" + ans };
+      if (n.rest) return { string: 0, fret: 0, key: "c" + ans, rest: true };
+      return { string: clamp(n.string | 0, 0, 3), fret: clamp(n.fret | 0, 0, 24), key: "c" + ans };
     }
     const eighth = 60 / state.bpm / 2;
     const idx = Math.floor(Math.max(0, time) / eighth + 1e-6);
@@ -806,10 +816,300 @@
   window.XBass = {
     setTrack: function (notes) {
       if (!notes) { state.track = null; return; }
-      state.track = notes.map((n) => ({ t: +n.t || 0, string: n.string | 0, fret: n.fret | 0 })).sort((a, b) => a.t - b.t);
+      state.track = notes.map((n) => ({ t: +n.t || 0, string: n.string | 0, fret: n.fret | 0, rest: !!n.rest })).sort((a, b) => a.t - b.t);
     },
-    clearTrack: function () { state.track = null; }
+    clearTrack: function () { state.track = null; },
+    getTrack: function () { return state.track; }
   };
+
+  function setStatus(text, kind) {
+    ["status-song", "status-play"].forEach((id) => {
+      const el = $(id);
+      if (!el) return;
+      el.textContent = text || "";
+      el.classList.toggle("warn", kind === "warn");
+    });
+  }
+  function parseMaybe(text) {
+    const s = String(text || "").trim();
+    try { return JSON.parse(s); } catch (e) {}
+    const a = s.indexOf("{"), b = s.lastIndexOf("}");
+    if (a >= 0 && b > a) return JSON.parse(s.slice(a, b + 1));
+    const a2 = s.indexOf("["), b2 = s.lastIndexOf("]");
+    if (a2 >= 0 && b2 > a2) return JSON.parse(s.slice(a2, b2 + 1));
+    throw new Error("parse");
+  }
+  async function getJson(url) {
+    const opt = {};
+    if (typeof AbortSignal !== "undefined" && AbortSignal.timeout) opt.signal = AbortSignal.timeout(20000);
+    try {
+      const r = await fetch(url, opt);
+      if (r.ok) return await r.json();
+    } catch (e) {}
+    const r = await fetch("https://r.jina.ai/" + url, Object.assign({ headers: { Accept: "application/json" } }, opt));
+    if (!r.ok) throw new Error("net");
+    const wrap = await r.json();
+    if (!wrap || !wrap.data || !wrap.data.content) throw new Error("empty");
+    return parseMaybe(wrap.data.content);
+  }
+  function isBassTrack(tr) {
+    const inst = tr.instrument || "";
+    const blob = (inst + " " + (tr.name || "")).toLowerCase();
+    const id = tr.instrumentId | 0;
+    if (/drum/.test(inst.toLowerCase())) return false;
+    if (id >= 32 && id <= 39) return true;
+    return blob.indexOf("bass") >= 0;
+  }
+  function bassIndex(tracks) {
+    let best = -1, score = -1;
+    (tracks || []).forEach((tr, i) => {
+      if (!isBassTrack(tr)) return;
+      let sc = tr.views || 0;
+      const id = tr.instrumentId | 0;
+      if (id >= 32 && id <= 39) sc += 1e9;
+      else if ((tr.instrument || "").toLowerCase().indexOf("bass") >= 0) sc += 5e8;
+      else sc += 1e8;
+      if ((tr.tuning || []).length === 4) sc += 1e7;
+      if (sc > score) { score = sc; best = i; }
+    });
+    return best;
+  }
+  function toBass(midi) {
+    const open = [28, 33, 38, 43];
+    let best = null;
+    for (let s = 0; s < 4; s++) {
+      const fret = midi - open[s];
+      if (fret >= 0 && fret <= 22 && (!best || fret < best.fret)) best = { string: s, fret: fret };
+    }
+    return best;
+  }
+  function beatSeconds(beat, bpm, beatType) {
+    const whole = (beatType || 4) * (60 / (bpm || 120));
+    const dur = beat.duration;
+    let frac = 0.25;
+    if (dur && dur.length === 2 && dur[1]) frac = dur[0] / dur[1];
+    else if (beat.type) {
+      frac = 1 / beat.type;
+      let dots = beat.dots || 0, add = frac;
+      while (dots-- > 0) { add /= 2; frac += add; }
+    }
+    return frac * whole;
+  }
+  function tabToNotes(part, points) {
+    const tuning = part.tuning || [43, 38, 33, 28];
+    const measures = part.measures || [];
+    const tempos = (part.automations && part.automations.tempo) || [];
+    const tempoAt = {};
+    tempos.forEach((tp) => { if (tp && tp.measure != null) tempoAt[tp.measure] = tp; });
+    let bpm = (tempos[0] && tempos[0].bpm) || 120;
+    let beatType = (tempos[0] && tempos[0].type) || 4;
+    const events = [];
+    let notation = 0;
+    measures.forEach((measure, mi) => {
+      if (tempoAt[mi]) {
+        if (tempoAt[mi].bpm) bpm = tempoAt[mi].bpm;
+        if (tempoAt[mi].type) beatType = tempoAt[mi].type;
+      }
+      const beats = (measure.voices && measure.voices[0] && measure.voices[0].beats) || [];
+      let off = 0;
+      const local = [];
+      beats.forEach((beat) => {
+        if (!beat || beat.graceNote) return;
+        if (beat.tempo && beat.tempo.bpm) bpm = beat.tempo.bpm;
+        const sec = beatSeconds(beat, bpm, beatType);
+        const ns = beat.notes || [];
+        const tied = ns.length && ns.every((n) => n && n.tie === true);
+        if (beat.rest || ns.some((n) => n && n.rest)) {
+          local.push({ off: off, rest: true });
+        } else if (!tied) {
+          let low = null;
+          ns.forEach((n) => {
+            if (!n || n.rest || n.tie === true || n.fret == null || n.string == null) return;
+            if (n.string < 0 || n.string >= tuning.length) return;
+            const midi = tuning[n.string] + n.fret;
+            if (low == null || midi < low) low = midi;
+          });
+          const mapped = low == null ? null : toBass(low);
+          if (mapped) local.push({ off: off, string: mapped.string, fret: mapped.fret });
+        }
+        off += sec;
+      });
+      local.forEach((ev) => {
+        const frac = off > 0 ? ev.off / off : 0;
+        let tt = notation + ev.off;
+        if (points && mi < points.length && isFinite(+points[mi])) {
+          const a = +points[mi];
+          const b = mi + 1 < points.length && isFinite(+points[mi + 1]) ? +points[mi + 1] : a + Math.max(off, 0.2);
+          tt = b > a ? a + frac * (b - a) : a;
+        }
+        events.push({ t: Math.max(0, tt), string: ev.string || 0, fret: ev.fret || 0, rest: !!ev.rest });
+      });
+      notation += off;
+    });
+    events.sort((a, b) => a.t - b.t);
+    const out = [];
+    events.forEach((ev) => {
+      const prev = out[out.length - 1];
+      if (prev && Math.abs(prev.t - ev.t) < 0.02 && prev.rest === ev.rest && prev.string === ev.string && prev.fret === ev.fret) return;
+      out.push(ev);
+    });
+    return out.filter((ev) => ev.rest || ev.fret >= 0).slice(0, 6000);
+  }
+  function pickVideo(videos, points, partIndex, hash) {
+    function featScore(f) {
+      if (f === "playthrough" || !f) return 3;
+      if (f === "alternative") return 2;
+      if (f === "backing") return 1;
+      return 0;
+    }
+    function onTrack(p) {
+      if (Array.isArray(p.tracks) && p.tracks.indexOf(partIndex) >= 0) return true;
+      if (hash && Array.isArray(p.trackHashes) && p.trackHashes.indexOf(hash) >= 0) return true;
+      return false;
+    }
+    let best = null, bestScore = -1;
+    (points || []).forEach((p) => {
+      if (!p || !p.videoId || !p.points || p.points.length < 4 || p.feature === "solo") return;
+      const sc = p.points.length + (onTrack(p) ? 100000 : 0) + featScore(p.feature) * 1000;
+      if (sc > bestScore) { bestScore = sc; best = p; }
+    });
+    if (best) return { id: best.videoId, points: best.points };
+    const vids = (videos || []).filter((v) => v && v.videoId && v.status !== "failed" && v.feature !== "solo");
+    vids.sort((a, b) => featScore(b.feature) - featScore(a.feature));
+    return vids.length ? { id: vids[0].videoId, points: null } : null;
+  }
+  async function youtubeSearch(q) {
+    const bases = [
+      "https://inv.nadeko.net/api/v1/search?type=video&q=",
+      "https://invidious.privacyredirect.com/api/v1/search?type=video&q="
+    ];
+    const query = encodeURIComponent(q + " official audio");
+    for (let i = 0; i < bases.length; i++) {
+      try {
+        const r = await fetch(bases[i] + query);
+        if (!r.ok) continue;
+        const arr = await r.json();
+        const hit = (arr || []).find((v) => v && /^[A-Za-z0-9_-]{11}$/.test(v.videoId || ""));
+        if (hit) return hit.videoId;
+      } catch (e) {}
+    }
+    return null;
+  }
+  function renderFind(records) {
+    const box = $("find-results");
+    box.replaceChildren();
+    if (!records.length) {
+      const p = document.createElement("p");
+      p.className = "empty";
+      p.textContent = t("noSongs");
+      box.appendChild(p);
+      return;
+    }
+    records.forEach((rec) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      const title = document.createElement("div");
+      title.textContent = rec.title || "";
+      const sub = document.createElement("small");
+      sub.textContent = rec.artist || "";
+      b.append(title, sub);
+      b.addEventListener("click", () => { prepareSong(rec); });
+      box.appendChild(b);
+    });
+  }
+  async function runSearch(q) {
+    const query = (q || "").trim();
+    if (!query) return;
+    setStatus(t("searching"));
+    $("find-results").replaceChildren();
+    try {
+      const data = await getJson("https://www.songsterr.com/api/search?size=8&pattern=" + encodeURIComponent(query));
+      const records = ((data && data.records) || []).filter((r) => r && r.songId && !r.isJunk).slice(0, 8);
+      renderFind(records);
+      setStatus(records.length ? "" : t("noSongs"), records.length ? "" : "warn");
+    } catch (e) {
+      setStatus(t("searchFail"), "warn");
+    }
+  }
+  async function officialVideo(videos, artist, title) {
+    const seen = {};
+    const cands = [];
+    (videos || []).forEach((v) => {
+      if (!v || !v.videoId || seen[v.videoId] || v.feature === "solo" || v.feature === "backing") return;
+      seen[v.videoId] = 1;
+      cands.push(v);
+    });
+    cands.sort((a, b) => ((a.feature || "") === "" || a.feature === "playthrough" ? 0 : 1) - ((b.feature || "") === "" || b.feature === "playthrough" ? 0 : 1));
+    const slice = cands.slice(0, 8);
+    const infos = await Promise.all(slice.map(async (v) => {
+      try {
+        const r = await fetch("https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + v.videoId));
+        if (!r.ok) return null;
+        const d = await r.json();
+        return { id: v.videoId, title: d.title || "", author: d.author_name || "" };
+      } catch (e) { return null; }
+    }));
+    const song = (title || "").toLowerCase();
+    const art = (artist || "").toLowerCase();
+    let best = null, bestSc = 0;
+    infos.forEach((info) => {
+      if (!info) return;
+      const tl = info.title.toLowerCase();
+      const al = info.author.toLowerCase();
+      if (song && tl.indexOf(song) < 0) return;
+      let sc = 20;
+      if (tl.indexOf("official audio") >= 0) sc += 80;
+      else if (tl.indexOf("official") >= 0) sc += 50;
+      if (art && al.indexOf(art) >= 0) sc += 25;
+      if (al.indexOf("topic") >= 0) sc += 30;
+      if (sc > bestSc) { bestSc = sc; best = info; }
+    });
+    return best && bestSc >= 70 ? best.id : null;
+  }
+  async function prepareSong(rec) {
+    setStatus(t("preparing"));
+    try {
+      const meta = await getJson("https://www.songsterr.com/api/meta/" + rec.songId);
+      const tracks = meta.tracks || [];
+      const bi = bassIndex(tracks);
+      const hash = bi >= 0 ? tracks[bi].hash : "";
+      let pointsList = [];
+      if (meta.revisionId) {
+        try { pointsList = await getJson("https://www.songsterr.com/api/video-points/" + meta.songId + "/" + meta.revisionId + "/list"); }
+        catch (e) { pointsList = []; }
+      }
+      let chosen = null;
+      const officialId = await officialVideo(meta.videos, rec.artist || meta.artist, rec.title || meta.title);
+      if (officialId) {
+        const synced = (pointsList || []).find((p) => p && p.videoId === officialId && p.points && p.points.length > 4);
+        chosen = { id: officialId, points: synced ? synced.points : null };
+      }
+      if (!chosen) chosen = pickVideo(meta.videos, pointsList, bi, hash);
+      if (!chosen) {
+        const id = await youtubeSearch((rec.artist || "") + " " + (rec.title || ""));
+        if (id) chosen = { id: id, points: null };
+      }
+      if (!chosen) { setStatus(t("noVideo"), "warn"); return; }
+      let notes = null;
+      if (bi >= 0 && meta.image && meta.revisionId) {
+        try {
+          const part = await getJson("https://dqsljvtekg760.cloudfront.net/" + meta.songId + "/" + meta.revisionId + "/" + meta.image + "/" + bi + ".json");
+          notes = tabToNotes(part, chosen.points);
+        } catch (e) { notes = null; }
+      }
+      const sounded = (notes || []).filter((n) => !n.rest);
+      if (sounded.length) {
+        window.XBass.setTrack(notes);
+        setStatus(t("ready") + " · Songsterr");
+      } else {
+        window.XBass.clearTrack();
+        setStatus(t("noTab"), "warn");
+      }
+      startYouTube(chosen.id, "https://youtu.be/" + chosen.id);
+    } catch (e) {
+      setStatus(t("searchFail"), "warn");
+    }
+  }
 
   function boot() {
     applyI18n();
@@ -864,7 +1164,12 @@
       const err = $("song-error");
       if (!id) { err.hidden = false; err.textContent = t("invalid"); return; }
       err.hidden = true;
+      state.track = null;
       startYouTube(id, $("song-url").value.trim());
+    });
+    $("find-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      runSearch($("find-q").value);
     });
     $("upload-btn").addEventListener("click", () => $("file-input").click());
     $("file-input").addEventListener("change", () => {

@@ -10,7 +10,7 @@
 <title>X-BASS</title>
 <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
-<link rel="stylesheet" href="css/app.css?v=1.1">
+<link rel="stylesheet" href="css/app.css?v=1.2">
 </head>
 <body>
 <main id="app">
@@ -25,7 +25,7 @@
     <button id="hit-saved" class="hit" type="button" data-aria="savedPlayers" aria-label="Saved players"></button>
     <button id="hit-go" class="hit" type="button" data-aria="continue" aria-label="Continue"></button>
     <button id="hit-gear" class="hit" type="button" data-aria="settings" aria-label="Settings"></button>
-    <div class="ver">v1.1</div>
+    <div class="ver">v1.2</div>
   </section>
 
   <section id="view-players" class="view">
@@ -45,10 +45,16 @@
       <button class="nav-btn" type="button" data-nav="home" data-aria="home" aria-label="Home">⌂</button>
       <h1 data-i="song">SONG</h1>
       <span id="song-who" class="who"></span>
+      <span id="status-song" class="status"></span>
       <span class="spacer"></span>
       <button class="text-btn" type="button" data-nav="tuner" data-i="tuner">TUNER</button>
     </header>
     <div class="sheet">
+      <form id="find-form" class="song-form">
+        <input id="find-q" type="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Song or artist" data-ph="searchPh">
+        <button class="play-go" type="submit" data-i="search">SEARCH</button>
+      </form>
+      <div id="find-results" class="find-results"></div>
       <form id="song-form" class="song-form">
         <input id="song-url" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://youtu.be/…" data-ph="paste">
         <button class="play-go" type="submit" data-i="play">PLAY</button>
@@ -66,6 +72,7 @@
       <button class="nav-btn" type="button" data-nav="back" data-aria="back" aria-label="Back">←</button>
       <button class="nav-btn" type="button" data-nav="home" data-aria="home" aria-label="Home">⌂</button>
       <h1 class="logo-type">X-BASS</h1>
+      <span id="status-play" class="status"></span>
       <span class="spacer"></span>
       <button class="text-btn" type="button" data-nav="tuner" data-i="tuner">TUNER</button>
     </header>
@@ -279,6 +286,6 @@
     </form>
   </div>
 </main>
-<script src="js/app.js?v=1.1"></script>
+<script src="js/app.js?v=1.2"></script>
 </body>
 </html>
