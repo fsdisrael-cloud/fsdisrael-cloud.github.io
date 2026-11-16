@@ -10,7 +10,7 @@
 <title>X-BASS</title>
 <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
-<link rel="stylesheet" href="css/app.css?v=1.2">
+<link rel="stylesheet" href="css/app.css?v=1.3">
 </head>
 <body>
 <main id="app">
@@ -25,7 +25,7 @@
     <button id="hit-saved" class="hit" type="button" data-aria="savedPlayers" aria-label="Saved players"></button>
     <button id="hit-go" class="hit" type="button" data-aria="continue" aria-label="Continue"></button>
     <button id="hit-gear" class="hit" type="button" data-aria="settings" aria-label="Settings"></button>
-    <div class="ver">v1.2</div>
+    <div class="ver">v1.3</div>
   </section>
 
   <section id="view-players" class="view">
@@ -69,12 +69,19 @@
 
   <section id="view-play" class="view">
     <header class="bar play-bar">
-      <button class="nav-btn" type="button" data-nav="back" data-aria="back" aria-label="Back">←</button>
-      <button class="nav-btn" type="button" data-nav="home" data-aria="home" aria-label="Home">⌂</button>
-      <h1 class="logo-type">X-BASS</h1>
-      <span id="status-play" class="status"></span>
-      <span class="spacer"></span>
-      <button class="text-btn" type="button" data-nav="tuner" data-i="tuner">TUNER</button>
+      <div class="play-top">
+        <button class="nav-btn" type="button" data-nav="back" data-aria="back" aria-label="Back">←</button>
+        <button class="nav-btn" type="button" data-nav="home" data-aria="home" aria-label="Home">⌂</button>
+        <h1 class="logo-type">X-BASS</h1>
+        <span id="status-play" class="status"></span>
+        <span class="spacer"></span>
+        <button class="text-btn" type="button" data-nav="tuner" data-i="tuner">TUNER</button>
+      </div>
+      <div class="karaoke">
+        <button id="btn-sync" type="button" data-i="sync">Sync</button>
+        <div id="note-strip" class="strip"></div>
+      </div>
+      <div id="lyric-strip" class="strip lyrics" hidden></div>
     </header>
     <div class="stage">
       <div id="media-slot" class="media-slot"></div>
@@ -185,7 +192,9 @@
         <input id="speed" type="range" min="0.5" max="1.5" step="0.05" value="1">
         <span id="speed-val">1.00×</span>
       </label>
+      <button id="btn-back" class="round jump" type="button" aria-label="Back 10 seconds">−10</button>
       <button id="btn-play" class="round" type="button" data-aria="play" aria-label="Play">▶</button>
+      <button id="btn-fwd" class="round jump" type="button" aria-label="Forward 10 seconds">+10</button>
       <button id="btn-loop" class="round ghost" type="button" data-aria="loop" aria-label="Loop" aria-pressed="false">∞</button>
     </footer>
   </section>
@@ -286,6 +295,6 @@
     </form>
   </div>
 </main>
-<script src="js/app.js?v=1.2"></script>
+<script src="js/app.js?v=1.3"></script>
 </body>
 </html>
