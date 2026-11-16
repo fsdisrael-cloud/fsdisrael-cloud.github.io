@@ -1,4 +1,4 @@
-/* X-BASS v1.3
+/* X-BASS v1.4
    Note source: default eighth-note groove at the BPM, locked to media currentTime.
    A real transcription plugs in as absolute media times:
      XBass.setTrack([{t: 0.0, string: 0, fret: 0}, {t: 0.5, string: 0, fret: 3}]);
@@ -22,7 +22,7 @@
     ["hit-go", 470, 564, 410, 80, "continue"],
     ["hit-gear", 1180, 14, 70, 90, "settings"]
   ];
-  const GEO = { nut: 1340, scale: 2200, boardY: 268, boardH: 250, boardL: 20, strings: [318, 372, 426, 480] };
+  const GEO = { nut: 1420, scale: 1853, boardY: 268, boardH: 250, boardL: 16, strings: [318, 372, 426, 480] };
   const TOP_Y = [108, 134, 160, 186];
   const TIP = { index: 183, middle: 200 };
   const PLUCK_X = 230;
@@ -158,7 +158,7 @@
       }
     }
     const pk = $("pickups");
-    [156, 360].forEach((x) => {
+    [148, 262].forEach((x) => {
       const g = svg("g", { transform: "translate(" + x + ",84)" });
       g.appendChild(svg("rect", { x: -2, y: -2, width: 42, height: 120, rx: 7, fill: "#3a3a3a" }));
       g.appendChild(svg("rect", { width: 38, height: 116, rx: 5, fill: "#141414" }));
@@ -181,7 +181,7 @@
     const y = GEO.boardY, h = GEO.boardH, left = GEO.boardL;
     board.appendChild(svg("rect", { x: left, y: y, width: GEO.nut - left + 6, height: h, rx: 16, fill: "url(#wood)" }));
     board.appendChild(svg("rect", { x: left + 7, y: y + 8, width: GEO.nut - left - 10, height: h - 16, rx: 10, fill: "none", stroke: "#f8efdf", "stroke-width": 4 }));
-    for (let n = 0; n <= 20; n++) {
+    for (let n = 0; n <= 24; n++) {
       const x = fretX(n);
       if (x < left + 8) break;
       board.appendChild(svg("line", {
@@ -189,7 +189,7 @@
         stroke: n === 0 ? "#f7f4ee" : "#c5c9d0", "stroke-width": n === 0 ? 8 : 2.5
       }));
     }
-    [3, 5, 7, 9, 15].forEach((n) => {
+    [3, 5, 7, 9, 15, 17, 19, 21].forEach((n) => {
       const x = (fretX(n) + fretX(n - 1)) / 2;
       if (x < left) return;
       board.appendChild(svg("circle", { cx: x, cy: y + h / 2, r: 8, fill: "#fffdf8" }));
@@ -366,9 +366,12 @@
       img.src = "https://i.ytimg.com/vi/" + r.id + "/hqdefault.jpg";
       img.alt = "";
       const span = document.createElement("span");
-      span.textContent = r.id;
+      span.textContent = r.title || r.id;
       b.append(img, span);
-      b.addEventListener("click", () => startYouTube(r.id, r.url || ("https://youtu.be/" + r.id)));
+      b.addEventListener("click", () => {
+        if (r.songId) prepareSong({ songId: r.songId, artist: r.artist || "", title: r.title || "" });
+        else startYouTube(r.id, r.url || ("https://youtu.be/" + r.id));
+      });
       box.appendChild(b);
     });
   }
@@ -391,8 +394,14 @@
     return m ? m[0] : null;
   }
 
-  function pushRecent(id, url) {
-    state.recent = [{ id: id, url: url }].concat(state.recent.filter((r) => r.id !== id)).slice(0, 12);
+  function pushRecent(id, url, meta) {
+    const item = { id: id, url: url };
+    if (meta && meta.songId) {
+      item.songId = meta.songId;
+      item.artist = meta.artist || "";
+      item.title = meta.title || "";
+    }
+    state.recent = [item].concat(state.recent.filter((r) => r.id !== id)).slice(0, 12);
     persist();
   }
 
@@ -494,7 +503,10 @@
   function startYouTube(id, url) {
     const slot = $("media-slot");
     if (slot) slot.dataset.video = id;
-    pushRecent(id, url);
+    const meta = state.lyricQuery && state.songKey && state.songKey.indexOf("ss:") === 0
+      ? { songId: +state.songKey.slice(3), artist: state.lyricQuery.artist, title: state.lyricQuery.title }
+      : null;
+    pushRecent(id, url, meta);
     state.source = { type: "yt", id: id };
     pendingPlay = true;
     go("play");
@@ -631,7 +643,7 @@
     for (let i = 0; i < 4; i++) {
       const fr = anchor + i;
       const tx = fretX(Math.max(0, fr));
-      const ty = GEO.strings[note.string] + (open ? 46 : 0);
+      const ty = GEO.strings[note.string] + (open || i !== fi ? 22 : 0);
       const f = vis.fingers[i];
       f.x += (tx - f.x) * k;
       f.y += (ty - f.y) * k;
@@ -645,7 +657,7 @@
     const palm = $("fret-palm");
     palm.setAttribute("cx", (palmX / 4 + 6).toFixed(1));
     palm.setAttribute("cy", (vis.fingers[1].y + 86).toFixed(1));
-    $("fret-thumb").setAttribute("transform", "translate(" + (vis.fingers[3].x + 26).toFixed(1) + "," + (vis.fingers[3].y + 18).toFixed(1) + ")");
+    $("fret-thumb").setAttribute("transform", "translate(" + (vis.fingers[0].x - 6).toFixed(1) + "," + (vis.fingers[0].y + 78).toFixed(1) + ") rotate(80)");
   }
 
   function startLoop() {
@@ -1208,6 +1220,97 @@
       nodes[k].classList.toggle("now", Math.abs(it.t - currentT) < 0.001);
     }
   }
+  const DIA = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
+  function staffPos(midi) {
+    const oct = Math.floor(midi / 12) - 1;
+    const dia = DIA[((midi % 12) + 12) % 12] + oct * 7;
+    return dia - 18;
+  }
+  function renderStaff(score, notes, curT) {
+    const el = $("note-strip");
+    if (!el) return;
+    el.dataset.score = score.toFixed(2);
+    const w = Math.max(80, el.clientWidth || 300);
+    const h = Math.max(40, el.clientHeight || 58);
+    let root = el.querySelector("svg");
+    if (!root) {
+      el.replaceChildren();
+      root = svg("svg", { class: "staff-svg" });
+      el.appendChild(root);
+    }
+    root.setAttribute("viewBox", "0 0 " + w + " " + h);
+    while (root.firstChild) root.removeChild(root.firstChild);
+    const step = 4.2;
+    const bottom = h * 0.70;
+    for (let i = 0; i < 5; i++) {
+      const y = bottom - i * step * 2;
+      root.appendChild(svg("line", { x1: 0, y1: y, x2: w, y2: y, stroke: "#8b93a0", "stroke-width": 1 }));
+    }
+    const clef = svg("g", { transform: "translate(4," + (bottom - 30) + ")" });
+    clef.appendChild(svg("path", {
+      d: "M10,4 C2,6 0,16 7,22 C14,28 18,20 15,13 C12,6 6,6 7,13",
+      fill: "none", stroke: "#111", "stroke-width": 2.2, "stroke-linecap": "round"
+    }));
+    clef.appendChild(svg("circle", { cx: 18, cy: 10, r: 1.7, fill: "#111" }));
+    clef.appendChild(svg("circle", { cx: 18, cy: 17, r: 1.7, fill: "#111" }));
+    root.appendChild(clef);
+    root.appendChild(svg("line", { x1: PLAYHEAD, y1: 2, x2: PLAYHEAD, y2: h - 2, stroke: "#e1061c", "stroke-width": 1.5 }));
+    const t0 = score - (PLAYHEAD + 20) / PPS;
+    const t1 = score + (w - PLAYHEAD) / PPS + 0.3;
+    const beat = 60 / (state.bpm || 96);
+    const acc = { 1: "#", 3: "b", 6: "#", 8: "b", 10: "b" };
+    for (let i = 0; i < notes.length; i++) {
+      const n = notes[i];
+      if (n.t < t0 || n.t > t1) continue;
+      const midi = [28, 33, 38, 43][n.string] + n.fret;
+      const pos = staffPos(midi);
+      const y = bottom - pos * step;
+      const x = PLAYHEAD + (n.t - score) * PPS;
+      const next = notes[i + 1] ? notes[i + 1].t : n.t + beat;
+      const dur = Math.max(0.05, next - n.t);
+      const color = Math.abs(n.t - curT) < 0.001 ? "#e1061c" : "#111";
+      const whole = dur >= beat * 3.5;
+      const half = !whole && dur >= beat * 1.6;
+      const eighth = dur < beat * 0.75;
+      if (pos <= -2) {
+        for (let p = -2; p >= pos - (pos % 2); p -= 2) {
+          const ly = bottom - p * step;
+          root.appendChild(svg("line", { x1: x - 9, y1: ly, x2: x + 9, y2: ly, stroke: "#8b93a0", "stroke-width": 1 }));
+        }
+      }
+      if (pos >= 10) {
+        for (let p = 10; p <= pos; p += 2) {
+          const ly = bottom - p * step;
+          root.appendChild(svg("line", { x1: x - 9, y1: ly, x2: x + 9, y2: ly, stroke: "#8b93a0", "stroke-width": 1 }));
+        }
+      }
+      const sign = acc[((midi % 12) + 12) % 12];
+      if (sign) {
+        const at = svg("text", { x: x - 14, y: y + 4, "font-size": 11, fill: color, "font-weight": 700 });
+        at.textContent = sign;
+        root.appendChild(at);
+      }
+      const g = svg("g", { transform: "translate(" + x.toFixed(1) + "," + y.toFixed(1) + ") rotate(-18)" });
+      g.appendChild(svg("ellipse", {
+        cx: 0, cy: 0, rx: 5.4, ry: 3.8,
+        fill: half || whole ? "none" : color,
+        stroke: color, "stroke-width": 1.5
+      }));
+      root.appendChild(g);
+      if (!whole) {
+        const up = pos < 4;
+        const sx = x + (up ? 4.6 : -4.6);
+        const sy = up ? y - 18 : y + 18;
+        root.appendChild(svg("line", { x1: sx, y1: y, x2: sx, y2: sy, stroke: color, "stroke-width": 1.3 }));
+        if (eighth) {
+          root.appendChild(svg("path", {
+            d: up ? "M" + sx + "," + sy + " q7,5 1,11" : "M" + sx + "," + sy + " q7,-5 1,-11",
+            fill: "none", stroke: color, "stroke-width": 1.3
+          }));
+        }
+      }
+    }
+  }
   function renderKaraoke(score) {
     const notes = soundedNotes();
     let cur = -1;
@@ -1215,10 +1318,7 @@
       if (notes[i].t <= score + 0.04) cur = i;
       else break;
     }
-    const labels = notes.map((n) => ({ t: n.t, label: pitchName(n.string, n.fret) }));
-    const strip = $("note-strip");
-    if (strip) strip.dataset.score = score.toFixed(2);
-    paintLane(strip, labels, score, cur >= 0 ? notes[cur].t : -1);
+    renderStaff(score, notes, cur >= 0 ? notes[cur].t : -1);
     const words = state.words || [];
     const lyric = $("lyric-strip");
     if (!words.length) {
