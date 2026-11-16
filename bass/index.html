@@ -10,7 +10,7 @@
 <title>X-BASS</title>
 <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
-<link rel="stylesheet" href="css/app.css?v=1.4">
+<link rel="stylesheet" href="css/app.css?v=1.5">
 </head>
 <body>
 <main id="app">
@@ -25,7 +25,7 @@
     <button id="hit-saved" class="hit" type="button" data-aria="savedPlayers" aria-label="Saved players"></button>
     <button id="hit-go" class="hit" type="button" data-aria="continue" aria-label="Continue"></button>
     <button id="hit-gear" class="hit" type="button" data-aria="settings" aria-label="Settings"></button>
-    <div class="ver">v1.4</div>
+    <div class="ver">v1.5</div>
   </section>
 
   <section id="view-players" class="view">
@@ -68,22 +68,24 @@
   </section>
 
   <section id="view-play" class="view">
-    <header class="bar play-bar">
-      <div class="play-top">
-        <button class="nav-btn" type="button" data-nav="back" data-aria="back" aria-label="Back">←</button>
-        <button class="nav-btn" type="button" data-nav="home" data-aria="home" aria-label="Home">⌂</button>
-        <h1 class="logo-type">X-BASS</h1>
-        <span id="status-play" class="status"></span>
-        <span class="spacer"></span>
-        <button class="tuner-btn" type="button" data-nav="tuner" data-i="tuner">TUNER</button>
+    <div class="staff-wrap">
+      <button id="btn-sync" type="button" data-i="sync">Sync</button>
+      <div id="note-strip" class="strip"></div>
+    </div>
+    <div id="lyric-strip" class="lyric-bar"><span class="lyric-ph">· · ·</span></div>
+    <div class="play-top">
+      <button class="nav-btn" type="button" data-nav="back" data-aria="back" aria-label="Back">←</button>
+      <button class="nav-btn" type="button" data-nav="home" data-aria="home" aria-label="Home">⌂</button>
+      <span id="status-play" class="status"></span>
+    </div>
+    <div class="stage-row">
+      <div class="side-logo" aria-hidden="true">
+        <svg viewBox="0 0 36 180">
+          <text x="0" y="0" fill="#222" font-family="Arial Black, Impact, sans-serif" font-size="20" font-weight="800" transform="translate(27,150) rotate(-90)">BASS</text>
+          <path fill="#c41220" stroke="#fff" stroke-width="1" d="M5 148 L18 161 L5 174 L10 174 L18 166 L26 174 L31 174 L18 161 L31 148 L26 148 L18 156 L10 148 Z"/>
+        </svg>
       </div>
-      <div class="karaoke">
-        <button id="btn-sync" type="button" data-i="sync">Sync</button>
-        <div id="note-strip" class="strip"></div>
-      </div>
-      <div id="lyric-strip" class="strip lyrics" hidden></div>
-    </header>
-    <div class="stage">
+      <div class="stage">
       <div id="media-slot" class="media-slot"></div>
       <svg id="stage-svg" viewBox="0 0 1600 540" preserveAspectRatio="xMidYMid meet">
         <defs>
@@ -173,6 +175,8 @@
         <g id="board"></g>
         <g id="fret-hand"></g>
       </svg>
+      </div>
+      <button class="tuner-vert" type="button" data-nav="tuner" data-i="tuner">TUNER</button>
     </div>
     <footer class="transport">
       <button id="btn-song" class="pill" type="button" data-nav="song" data-i="song">SONG</button>
@@ -295,6 +299,6 @@
     </form>
   </div>
 </main>
-<script src="js/app.js?v=1.4"></script>
+<script src="js/app.js?v=1.5"></script>
 </body>
 </html>

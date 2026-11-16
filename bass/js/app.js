@@ -1,4 +1,4 @@
-/* X-BASS v1.4
+/* X-BASS v1.5
    Note source: default eighth-note groove at the BPM, locked to media currentTime.
    A real transcription plugs in as absolute media times:
      XBass.setTrack([{t: 0.0, string: 0, fret: 0}, {t: 0.5, string: 0, fret: 3}]);
@@ -214,16 +214,12 @@
     for (let i = 0; i < 4; i++) {
       const g = svg("g", { id: "ff" + i });
       const lean = leans[i];
-      const len = lens[i];
-      const d = "M-13,18 C" + (-17 + lean * 0.08) + ",42 " + (-16 + lean * 0.28) + "," + (len * 0.62) + " " + (-7 + lean * 0.45) + "," + len +
-        " C" + (-1 + lean * 0.5) + "," + (len + 16) + " " + (12 + lean * 0.32) + "," + (len + 12) + " " + (15 + lean * 0.18) + "," + (len - 8) +
-        " C" + (18 + lean * 0.06) + "," + (len * 0.5) + " 15,40 11,18 C7,8 2,5 0,11 C-8,7 -12,10 -13,18 Z";
-      g.appendChild(svg("path", { d: d, fill: "url(#skin)", stroke: "#e2b198", "stroke-width": 1.5 }));
-      g.appendChild(svg("path", { d: "M-12,48 Q1,56 14,46", fill: "none", stroke: "#d9a48c", "stroke-width": 1.3, "stroke-linecap": "round" }));
-      g.appendChild(svg("path", { d: "M-10,74 Q2,82 13,72", fill: "none", stroke: "#d9a48c", "stroke-width": 1.1, "stroke-linecap": "round" }));
-      g.appendChild(svg("circle", { class: "glow", cx: 0, cy: 12, r: 15, fill: "#ff2a3a", opacity: 0, filter: "url(#glow)" }));
-      g.appendChild(svg("ellipse", { cx: 0, cy: 13, rx: 11, ry: 8.5, fill: "url(#nail)" }));
-      g.appendChild(svg("ellipse", { cx: -3, cy: 11, rx: 4.2, ry: 2.3, fill: "#ffe0e3", opacity: 0.85 }));
+      g.appendChild(svg("ellipse", { cx: lean * 0.15, cy: 78, rx: 13, ry: 26, fill: "url(#skin)", stroke: "#e0b09a", "stroke-width": 1.2 }));
+      g.appendChild(svg("ellipse", { cx: lean * 0.05, cy: 40, rx: 11, ry: 20, fill: "#f6c7ad", stroke: "#e0b09a", "stroke-width": 1.2 }));
+      g.appendChild(svg("ellipse", { cx: 0, cy: 58, rx: 12, ry: 5, fill: "#e7b396", opacity: 0.55 }));
+      g.appendChild(svg("circle", { class: "glow", cx: 0, cy: 12, r: 14, fill: "#ff2a3a", opacity: 0, filter: "url(#glow)" }));
+      g.appendChild(svg("ellipse", { cx: 0, cy: 14, rx: 10, ry: 7, fill: "url(#nail)" }));
+      g.appendChild(svg("ellipse", { cx: -2, cy: 12, rx: 4, ry: 2, fill: "#ffe0e3", opacity: 0.85 }));
       hand.appendChild(g);
     }
     hand.appendChild(svg("ellipse", { id: "fret-palm", cx: 0, cy: 0, rx: 86, ry: 36, fill: "url(#skin)", stroke: "#e2b198", "stroke-width": 1.5 }));
@@ -1240,8 +1236,8 @@
     }
     root.setAttribute("viewBox", "0 0 " + w + " " + h);
     while (root.firstChild) root.removeChild(root.firstChild);
-    const step = 4.2;
-    const bottom = h * 0.70;
+    const step = Math.max(2.4, Math.min(3.3, (h - 18) / 18));
+    const bottom = 8 + 9 * step;
     for (let i = 0; i < 5; i++) {
       const y = bottom - i * step * 2;
       root.appendChild(svg("line", { x1: 0, y1: y, x2: w, y2: y, stroke: "#8b93a0", "stroke-width": 1 }));
@@ -1321,17 +1317,35 @@
     renderStaff(score, notes, cur >= 0 ? notes[cur].t : -1);
     const words = state.words || [];
     const lyric = $("lyric-strip");
+    if (!lyric) return;
     if (!words.length) {
-      if (lyric && !lyric.hidden) lyric.hidden = true;
+      if (!lyric.querySelector(".lyric-ph")) {
+        lyric.replaceChildren();
+        const ph = document.createElement("span");
+        ph.className = "lyric-ph";
+        ph.textContent = "· · ·";
+        lyric.appendChild(ph);
+      }
       return;
     }
-    if (lyric) lyric.hidden = false;
-    let cw = -1;
-    for (let i = 0; i < words.length; i++) {
-      if (words[i].t <= score + 0.04) cw = i;
-      else break;
+    let cw = 0;
+    for (let i = 0; i < words.length; i++) if (words[i].t <= score + 0.05) cw = i;
+    const line = words[cw].line;
+    const row = words.filter((w) => w.line === line);
+    const key = "L" + line;
+    if (lyric.dataset.win !== key) {
+      lyric.dataset.win = key;
+      lyric.replaceChildren();
+      row.forEach((w) => {
+        const s = document.createElement("span");
+        s.textContent = w.label;
+        s.dataset.t = String(w.t);
+        lyric.appendChild(s);
+      });
     }
-    paintLane(lyric, words, score, cw >= 0 ? words[cw].t : -1);
+    Array.prototype.forEach.call(lyric.children, (s) => {
+      s.classList.toggle("now", Math.abs(+s.dataset.t - words[cw].t) < 0.001);
+    });
   }
   function parseLrc(text) {
     const rows = [];
@@ -1352,7 +1366,7 @@
       let acc = 0;
       parts.forEach((w) => {
         const dur = span * (Math.max(1, w.length) / weight);
-        out.push({ t: row.t + acc, label: w });
+        out.push({ t: row.t + acc, label: w, line: i });
         acc += dur;
       });
     });
