@@ -1,7 +1,7 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=50";
-import { createHud } from "./hud.js?v=50";
+import { createGame } from "./game.js?v=51";
+import { createHud } from "./hud.js?v=51";
 import { createControls } from "./controls.js?v=48";
 import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=48";
 import { createAudio, trackFor } from "./audio.js?v=48";

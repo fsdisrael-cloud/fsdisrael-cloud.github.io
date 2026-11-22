@@ -242,6 +242,17 @@ export function createHud() {
       if (pr.on) { circle(pr.x, pr.y, s.landingOpen ? 20 : 12, COL.pad, s.landingOpen ? 3.5 : 2); label(pr.x, pr.y - (s.landingOpen ? 30 : 20), s.landingOpen ? "LAND" : "CARRIER", COL.pad, 12); }
       else if (s.landingOpen) arrows.push({ t: { kind: "pad", pos: s.pad.pos }, d, pr });
     }
+    // gifts: bright marker so a glass pickup reads even before the model fills the view
+    const gifts = (s.gifts || []).map((g) => ({ g, d: Math.hypot(g.x - s.player.pos.x, g.y - s.player.pos.y, g.z - s.player.pos.z) })).sort((a, b) => a.d - b.d).slice(0, 8);
+    for (const { g, d } of gifts) {
+      if (d > 4500) continue;
+      const pr = project(v.set(g.x, g.y, g.z), cam);
+      if (!pr.on) { if (d < 2200) edgeArrow(v.set(g.x, g.y, g.z), cam, g.col || "#ffe14a", false, null, 1.15); continue; }
+      const r = Math.max(14, Math.min(28, 900 / Math.max(80, d) * 18));
+      circle(pr.x, pr.y, r, g.col || "#ffe14a", 3);
+      label(pr.x, pr.y + 5, g.mark || "+", "#ffffff", Math.max(14, r));
+      if (d < 1800) label(pr.x, pr.y + r + 14, g.kind === "cash" ? "$" + (g.worth || 500) : String(g.kind || "GIFT").toUpperCase(), g.col || "#ffe14a", 11);
+    }
     // rings
     if (s.rings.next) {
       const r = s.rings.next;

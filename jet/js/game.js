@@ -65,7 +65,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   let half = 10000, center = new THREE.Vector3();
   // full 6-DOF attitude (quaternion), loop autopilot, crash + respawn, gun heat
   let lives = 5; const LIVES_MAX = 5;
-  let tailAid = null, moabs = 1, shieldT = 0, laserT = 0, prizeT = 18;
+  let tailAid = null, moabs = 1, shieldT = 0, laserT = 0, prizeT = 18, shieldFx = null;
   const prizes = [];
   let maneuver = null, crashing = null, invulnUntil = 0, lowAlt = false, voiceT = 0;
   let heat = 0, overheated = false;
@@ -336,6 +336,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   // ---------- player ----------
   function makePlayer(colorKey) {
     if (plane) scene.remove(plane);
+    shieldFx = null;
     initEnv(renderer);
     plane = createPlayerJet(colorKey, JET_TYPES[colorKey] || null);
     plane.scale.setScalar(1.15);
@@ -1174,14 +1175,15 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     const uP = Math.min(1, Math.abs(st.pitch));
     const sm = (a, b, x) => { const t = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
     const maxPR = (1.85 - 0.2 * ez) * (1 + 0.12 * brkV) * (1 + 0.28 * sm(0.72, 1, uP));
-    let pitchRate = Math.sign(st.pitch) * Math.pow(uP, 1.08) * maxPR * 0.92;
+    const stickPitch = Math.sign(st.pitch) * Math.pow(uP, 0.9) * maxPR * 1.12;
+    let pitchRate = stickPitch;
     /* b36: no ground rescue - diving in crashes */
     if (pitchRate > 0 && player.inverted && assistDanger > 0.1) pitchRate *= Math.max(0, 1 - assistDanger * 1.6);
     loopT = Math.abs(st.pitch) > 0.97 ? loopT + dt : 0;
     // ---- roll: stick = roll RATE; full stick = fast barrel roll. Gentle input stops at ~80 deg bank (a clean banked turn); a firm push rolls on through
     const uR = Math.min(1, Math.abs(st.roll));
-    const maxRR = 3.6 - 0.2 * ez;
-    let rr = Math.sign(st.roll) * Math.pow(Math.max(uR, 0), 1.02) * maxRR;
+    const maxRR = 4.3 - 0.15 * ez;
+    let rr = Math.sign(st.roll) * Math.pow(Math.max(uR, 0), 1.12) * maxRR;
     if (tailAid && tailAid.alive && Math.abs(st.roll) > 0.62) {
       tB.subVectors(tailAid.pos, player.pos);
       const e = -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw);
@@ -1190,62 +1192,86 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     // ---- hold, then only a very slow drift (clearly weaker than build 23)
     // b25 ARCADE: full authority while the stick is held (nothing fights you); the instant you let go the jet rolls wings-level
     // and eases the nose back to the horizon (short grace so a quick re-grab keeps your attitude). Works from any bank incl. inverted.
-    holdT = sp < 0.07 ? holdT + dt : 0;
-    const dK = THREE.MathUtils.clamp((holdT - 0.1) / 0.25, 0, 1);   // b35: stick released = straight & level quickly
-    // b35 TURN-TO-TARGET: let go while banked toward an enemy and the jet keeps the turn until it faces it, then levels out
-    if (sp > 0.2) turnTgt = null;
-    if (dK > 0 && !turnTgt && Math.abs(player.bank) > 0.35 && Math.abs(player.bank) < 1.6 && holdT < 0.4) {
-      let bd = 1e9; for (const t of targets) { if (!t.alive || t.kind === "ally" || t.ally) continue; tB.subVectors(t.pos, player.pos); const d = tB.length(); if (d > 6000) continue;
-        const e = -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw); if (Math.sign(e) !== Math.sign(player.bank) || Math.abs(e) < 0.2) continue; const sc = d * (1 + Math.abs(e)); if (sc < bd) { bd = sc; turnTgt = t; } }
+    holdT = sp < 0.08 ? holdT + dt : 0;
+    const handsOff = sp < 0.1;
+    const chaseHandsOff = !!(lockTarget && lockTarget.alive && handsOff);
+    // Positive stick rolls the bank negative, so rolling out is a stick whose sign matches the current bank.
+    const oppose = Math.abs(player.bank) > 0.18 && Math.abs(st.roll) > 0.12 && Math.sign(st.roll) === Math.sign(player.bank);
+    // Released in a real bank: keep that bank and keep turning. A small bank settles onto the heading.
+    // Chase lock owns the nose while the stick is free. Pulling the stick always wins, including pull-up.
+    if (handsOff && !chaseHandsOff && assistDanger < 0.08 && Math.abs(player.bank) > 1.35) {
+      smRR *= Math.exp(-dt * 10);
+      if (Math.abs(st.pitch) < 0.12) smPR *= Math.exp(-dt * 8);
+      player.q.slerp(levelQuat(_qL), 1 - Math.exp(-dt * 2.6));
+      syncAngles();
+      rr = 0;
+      if (Math.abs(st.pitch) < 0.12) pitchRate = 0;
     }
-    let turning = false;
-    if (dK > 0 && turnTgt && turnTgt.alive && assistDanger < 0.05) {
-      tB.subVectors(turnTgt.pos, player.pos); const e = -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw);
-      if (Math.abs(e) > 0.12 && Math.sign(e) === Math.sign(player.bank || e)) { turning = true; const want = Math.sign(e) * Math.min(1.05, 0.35 + Math.abs(e)); rr -= THREE.MathUtils.clamp((player.bank - want) * 3, -2.5, 2.5); pitchRate -= THREE.MathUtils.clamp(player.pitch * 1.5, -0.8, 0.8); }
-      else turnTgt = null;
-    }
-    if (dK > 0 && !turning && assistDanger < 0.05 && !loopPull_ && Math.abs(player.bank) < 0.35 && Math.abs(player.pitch) < 0.35) {
-      rr -= player.bank * 0.45 * dK;
-      pitchRate -= player.pitch * 0.3 * dK;
-    }
-    // ground rescue: roll upright first if inverted, then pull
-    if (assistDanger > 0.02) {
-      const upr = Math.max(0, Math.cos(player.bank));
-      /* b36: no ground rescue - diving in crashes */   // b32: last-moment help only
-      /* b36: no ground rescue - diving in crashes */
-    }
-    // minimal tap-aim only (air taps); no passive steering of the nose
-    let best = null, bl = _vB;
-    if (tapT > 0 && tapTarget && tapTarget.alive && !nearPad) { _qI.copy(player.q).invert(); _vA.subVectors(tapTarget.pos, player.pos).applyQuaternion(_qI); best = tapTarget; bl.copy(_vA); }
-    if (best && sp < 0.25) {
-      const w = (1 - sp / 0.25) * (1 + 0.6 * ez) * (assistDanger > 0.1 ? 0 : 1);
-      const ey = Math.atan2(bl.y, Math.hypot(bl.x, bl.z)), ex = Math.atan2(bl.x, -bl.z);
-      if (!(ey < 0 && player.pitch < -0.45)) pitchRate += THREE.MathUtils.clamp(ey * 1.5, -0.5, 0.5) * w * 0.4;
-      rotBody(AY, -THREE.MathUtils.clamp(ex * 1.2, -0.5, 0.5) * w * dt);
-    }
-    // b26 SOFT AIM ASSIST: the locked target gently pulls the nose / bank toward it, but never takes the stick (full manual authority always wins)
-    if (sp < 0.06) { rr = 0; pitchRate = 0; }
-    if (lockTarget && lockTarget.alive && lockTarget.kind !== "ally" && !nearPad && assistDanger < 0.1 && !maneuver && !player.inverted && sp < 0.42) {
-      _qI.copy(player.q).invert(); _vA.subVectors(lockTarget.pos, player.pos); const dd = _vA.length(); _vA.applyQuaternion(_qI);
-      const air = lockTarget.kind === "jet" || lockTarget.heli;
-      if (dd > 40 && dd < 5200 && _vA.z < 40) {
-        const ex = Math.atan2(_vA.x, -_vA.z), ey = Math.atan2(_vA.y, Math.hypot(_vA.x, _vA.z));
-        const hold = air ? 1.15 : 0.5;
-        if (Math.abs(ex) < hold && Math.abs(ey) < hold) {
-          const w = Math.max(0, 1 - sp / 0.42);
-          pitchRate += THREE.MathUtils.clamp(ey * 2.4, -1.1, 1.1) * w;
-          rr += THREE.MathUtils.clamp(ex * 1.7, -1.5, 1.5) * w;
-          rotBody(AY, -THREE.MathUtils.clamp(ex * 1.5, -1.2, 1.2) * w * dt);
+    if (handsOff && !chaseHandsOff && assistDanger < 0.08) {
+      if (Math.abs(player.bank) > 0.4 && Math.abs(player.bank) <= 1.35) {
+        if (Math.abs(st.pitch) < 0.12) pitchRate -= THREE.MathUtils.clamp(player.pitch * 0.85, -0.5, 0.5);
+        if (!turnTgt) {
+          let bd = 1e9;
+          for (const t of targets) {
+            if (!t.alive || t.kind === "ally" || t.ally) continue;
+            tB.subVectors(t.pos, player.pos); const d = tB.length(); if (d > 5200 || d < 40) continue;
+            const e = -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw);
+            if (Math.sign(e) !== Math.sign(player.bank) || Math.abs(e) < 0.12) continue;
+            const ground = t.kind !== "jet" && !t.heli;
+            const sc = d * (1 + Math.abs(e)) * (ground ? 0.72 : 1);
+            if (sc < bd) { bd = sc; turnTgt = t; }
+          }
         }
+      } else if (Math.abs(player.bank) <= 0.4) {
+        let aim = null, ae = 0.62, ad = 1e9;
+        const prefer = selTgt && selTgt.alive && !selTgt.submerged && selTgt.kind !== "jet" && !selTgt.heli ? selTgt : null;
+        const pool = prefer ? [prefer] : targets;
+        for (const t of pool) {
+          if (!t.alive || t.submerged || t.kind === "ally" || t.kind === "jet" || t.heli || t.kind === "balloon") continue;
+          tB.subVectors(t.pos, player.pos); const d = tB.length(); if (d > 4800 || d < 50) continue;
+          const e = -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw);
+          if (Math.abs(e) < ae || (prefer && Math.abs(e) < 0.9)) { ae = Math.abs(e); ad = d; aim = t; }
+        }
+        if (aim && ae < 0.7) {
+          tB.subVectors(aim.pos, player.pos);
+          const e = -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw);
+          const want = THREE.MathUtils.clamp(e * 1.35, -0.5, 0.5);
+          rr += THREE.MathUtils.clamp((player.bank - want) * 2.6, -2.2, 2.2);
+          if (Math.abs(e) < 0.08 && Math.abs(st.pitch) < 0.12) pitchRate -= player.pitch * 1.1;
+        } else {
+          rr += player.bank * 2.4;
+          if (Math.abs(st.pitch) < 0.12) pitchRate -= player.pitch * 1.15;
+        }
+        turnTgt = null;
       }
+    } else if (chaseHandsOff && lockTarget && lockTarget.alive) {
+      tB.subVectors(lockTarget.pos, player.pos);
+      const e = -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw);
+      const want = THREE.MathUtils.clamp(e * 1.1, -0.65, 0.65);
+      rr += THREE.MathUtils.clamp((player.bank - want) * 2.4, -2.2, 2.2);
+      if (Math.abs(st.pitch) < 0.12) pitchRate -= THREE.MathUtils.clamp(player.pitch * 0.8, -0.45, 0.45);
+    } else if (sp > 0.2) turnTgt = null;
+    if (handsOff && turnTgt && turnTgt.alive && !chaseHandsOff && Math.abs(player.bank) > 0.28) {
+      tB.subVectors(turnTgt.pos, player.pos);
+      const e = -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw);
+      if (Math.abs(e) > 0.1 && Math.sign(e) === Math.sign(player.bank)) {
+        const want = Math.sign(e) * Math.min(1.05, 0.32 + Math.abs(e) * 0.7);
+        rr += THREE.MathUtils.clamp((player.bank - want) * 2.4, -2.2, 2.2);
+      } else turnTgt = null;
     }
-    const ease = 1 - Math.exp(-dt * (sp < 0.06 ? 22 : 16));
-    smPR += (pitchRate - smPR) * ease;
-    smRR += (rr - smRR) * ease;
+    // Stick pitch is never cancelled. A hard pull climbs even in a turn, a lock, or near the ground.
+    if (Math.abs(st.pitch) > 0.08) pitchRate = stickPitch + (pitchRate - stickPitch) * 0.25;
+    const pitEase = 1 - Math.exp(-dt * (Math.abs(st.pitch) > 0.35 ? 32 : 16));
+    const rollEase = 1 - Math.exp(-dt * (Math.abs(st.roll) > 0.45 ? 38 : handsOff ? 9 : 22));
+    smPR += (pitchRate - smPR) * pitEase;
+    smRR += (rr - smRR) * rollEase;
     rotBody(AX, smPR * dt);
     player.q.multiply(_qa.setFromAxisAngle(tD.set(0, 0, -1), smRR * dt));
     rotBody(AY, st.yaw * 0.6 * dt);
-    if (sp >= 0.06) rotWorld(AY, -Math.sin(player.bank) * 0.9 * Math.max(0, Math.cos(player.pitch)) * dt);
+    if (!chaseHandsOff && !oppose && Math.abs(player.bank) > 0.1 && Math.abs(player.bank) < 2.6) {
+      const steep = Math.abs(player.bank) > 0.38;
+      if (!handsOff || steep) rotWorld(AY, -Math.sin(player.bank) * 1.22 * Math.max(0.22, Math.cos(Math.min(1.15, Math.abs(player.pitch)))) * dt);
+    }
   }
   const loopPull_ = false;
 
@@ -1265,20 +1291,24 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       else if (!landing && !crashing && !ops) {
         aP = st.pitch; aR = st.roll;
         const hands = Math.max(Math.abs(st.pitch), Math.abs(st.roll));
-        const ease = 1 - Math.exp(-dt * (hands < 0.06 ? 22 : 16));
-        smPR += ((hands < 0.06 ? 0 : st.pitch * 2.2) - smPR) * ease;
-        smRR += ((hands < 0.06 ? 0 : st.roll * 3.4) - smRR) * ease;
+        const oppose = Math.abs(player.bank) > 0.18 && Math.abs(st.roll) > 0.12 && Math.sign(st.roll) === Math.sign(player.bank);
+        let rrT = st.roll * 4.8, prT = st.pitch * 2.5;
+        if (hands < 0.1 && Math.abs(player.bank) < 0.4) { rrT += player.bank * 2.3; prT -= player.pitch * 0.9; }
+        const pitEase = 1 - Math.exp(-dt * (Math.abs(st.pitch) > 0.35 ? 30 : 16));
+        const rollEase = 1 - Math.exp(-dt * (Math.abs(st.roll) > 0.45 ? 36 : 14));
+        smPR += (prT - smPR) * pitEase;
+        smRR += (rrT - smRR) * rollEase;
         rotBody(AX, smPR * dt);
         player.q.multiply(_qa.setFromAxisAngle(tD.set(0, 0, -1), smRR * dt));
         rotBody(AY, st.yaw * 0.6 * dt);
-        if (hands >= 0.06) rotWorld(AY, -Math.sin(player.bank) * 0.9 * Math.max(0, Math.cos(player.pitch)) * dt);
+        if (!oppose && Math.abs(player.bank) > 0.1) rotWorld(AY, -Math.sin(player.bank) * 1.15 * Math.max(0.22, Math.cos(player.pitch)) * dt);
       }
     }
     nearPad = pad && landingOpen && Math.hypot(player.pos.x - pad.pos.x, player.pos.z - pad.pos.z) < 520;
     // bounds: steer back toward the map centre around world-up
     const dx = player.pos.x - center.x, dz = player.pos.z - center.z;
     const reach = Math.max(Math.abs(dx), Math.abs(dz));
-    const stickOn = Math.max(Math.abs(controls.stick.pitch), Math.abs(controls.stick.roll)) > 0.16;
+    const stickOn = Math.max(Math.abs(controls.stick.pitch), Math.abs(controls.stick.roll)) > 0.08;
     if (!maneuver && !stickOn && reach > half * 0.62) {
       const want = Math.atan2(dx, dz);
       const err = wrapPi(want - player.yaw);
@@ -2191,29 +2221,84 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     return true;
   }
   let shields = 1, giftGot = 0, giftLine = false;
-  const GIFT_COL = { bomb: 0xff9a1f, bombs: 0xff6a1a, missile: 0xd8e6ff, shield: 0x4db4ff, health: 0xff4040, fuel: 0x3dff6a, moab: 0xffe14a };
-  const GIFT_KINDS = ["moab", "missile", "bomb", "fuel"];
-  const GIFT_BTN = { missile: ".w-msl", bomb: ".w-bomb", bombs: ".w-bomb", shield: "#btn-shield", health: ".hull-row", fuel: "#fuel-dial", moab: "#btn-moab" };
-  function giftMesh(kind) {
-    const col = GIFT_COL[kind] || 0xfff2c4;
-    const g = new THREE.Group();
-    const glass = new THREE.Mesh(new THREE.SphereGeometry(10, 28, 20), new THREE.MeshPhysicalMaterial({ color: col, metalness: 0.04, roughness: 0.06, transmission: 0.82, thickness: 2.2, transparent: true, opacity: 0.9, emissive: col, emissiveIntensity: kind === "moab" ? 0.7 : 0.28, clearcoat: 1, clearcoatRoughness: 0.04, fog: false }));
-    const core = new THREE.Mesh(new THREE.SphereGeometry(3.4, 16, 12), new THREE.MeshBasicMaterial({ color: kind === "moab" ? 0xfff6c8 : 0xffffff, transparent: true, opacity: 0.9, fog: false }));
-    g.add(glass, core);
+  const GIFT_COL = { bomb: 0xff7a18, bombs: 0xff6a1a, missile: 0xd8e8ff, shield: 0x3aa6ff, health: 0xff2a2a, fuel: 0x2dff62, moab: 0xff8a14, cash: 0xffd35a, life: 0xfff2c4 };
+  const GIFT_MARK = { health: "+", fuel: "+", shield: "◈", moab: "☢", missile: "M", bomb: "B", cash: "$", life: "✈" };
+  const GIFT_POOL = ["health", "health", "fuel", "fuel", "shield", "missile", "missile", "bomb", "bomb", "moab", "cash", "cash", "cash", "life"];
+  const GIFT_BTN = { missile: ".w-msl", bomb: ".w-bomb", bombs: ".w-bomb", shield: "#btn-shield", health: ".hull-row", fuel: "#fuel-dial", moab: "#btn-moab", cash: ".score-pill", life: "#hud-lives" };
+  const giftGeo = {};
+  const giftIcon = {};
+  function sharedGeo(name, build) { return giftGeo[name] || (giftGeo[name] = build()); }
+  function glassMat(col, opacity = 0.78) {
+    const m = new THREE.MeshPhysicalMaterial({ color: col, metalness: 0.08, roughness: 0.06, transparent: true, opacity, emissive: col, emissiveIntensity: 0.72, clearcoat: 1, clearcoatRoughness: 0.05, fog: false });
+    m.userData.own = 1;
+    return m;
+  }
+  function iconTex(kind, worth) {
+    const key = kind + (worth || "");
+    if (giftIcon[key]) return giftIcon[key];
+    const c = document.createElement("canvas"); c.width = c.height = 256; const x = c.getContext("2d");
+    x.clearRect(0, 0, 256, 256);
+    x.lineJoin = "round"; x.lineCap = "round"; x.strokeStyle = "#fff"; x.fillStyle = "#fff";
+    x.shadowColor = "rgba(0,0,0,.85)"; x.shadowBlur = 8;
+    if (kind === "health" || kind === "fuel") {
+      x.lineWidth = 36; x.beginPath(); x.moveTo(128, 46); x.lineTo(128, 210); x.moveTo(46, 128); x.lineTo(210, 128); x.stroke();
+    } else if (kind === "moab") {
+      x.font = "900 150px sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("☢", 128, 138);
+    } else if (kind === "missile") {
+      x.lineWidth = 16; x.beginPath(); x.moveTo(128, 36); x.lineTo(168, 150); x.lineTo(128, 132); x.lineTo(88, 150); x.closePath(); x.fill();
+      x.fillRect(112, 140, 32, 70);
+    } else if (kind === "bomb") {
+      x.beginPath(); x.ellipse(128, 148, 52, 64, 0, 0, 7); x.fill();
+      x.lineWidth = 14; x.beginPath(); x.moveTo(128, 84); x.lineTo(128, 48); x.moveTo(108, 56); x.lineTo(148, 56); x.stroke();
+    } else if (kind === "cash") {
+      x.font = "900 168px sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("$", 128, 142);
+    } else if (kind === "shield") {
+      x.lineWidth = 16; x.beginPath(); x.arc(128, 128, 70, 0, 7); x.stroke();
+    }
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.needsUpdate = true;
+    giftIcon[key] = tex;
+    return tex;
+  }
+  function haloSprite(col, size) {
     const c = document.createElement("canvas"); c.width = c.height = 128; const x = c.getContext("2d");
-    const grd = x.createRadialGradient(42, 36, 2, 64, 64, 62);
-    grd.addColorStop(0, "rgba(255,255,255,.95)"); grd.addColorStop(0.28, "rgba(255,255,255,.2)"); grd.addColorStop(1, "rgba(255,255,255,0)");
-    x.fillStyle = grd; x.beginPath(); x.arc(64, 64, 62, 0, Math.PI * 2); x.fill();
+    const g = x.createRadialGradient(64, 64, 4, 64, 64, 62);
+    g.addColorStop(0, "rgba(255,255,255,.95)"); g.addColorStop(0.25, "#" + col.toString(16).padStart(6, "0")); g.addColorStop(1, "rgba(255,255,255,0)");
+    x.fillStyle = g; x.beginPath(); x.arc(64, 64, 62, 0, 7); x.fill();
     const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
-    const shine = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
-    shine.scale.set(16, 16, 1); g.add(shine);
-    g.userData.shell = glass;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0.9 }));
+    sp.scale.set(size, size, 1); sp.userData.ownMat = 1; return sp;
+  }
+  function giftMesh(kind, worth) {
+    const col = kind === "cash" ? (worth >= 5000 ? 0xfff6c0 : worth >= 2000 ? 0xffc24a : worth >= 1000 ? 0xffd35a : 0xf0e0a0) : (GIFT_COL[kind] || 0xfff2c4);
+    const g = new THREE.Group(); g.frustumCulled = false;
+    let shell;
+    if (kind === "health") shell = new THREE.Mesh(sharedGeo("cube", () => new THREE.BoxGeometry(28, 28, 28)), glassMat(col, 0.82));
+    else if (kind === "fuel") shell = new THREE.Mesh(sharedGeo("geo", () => new THREE.IcosahedronGeometry(16, 1)), glassMat(col, 0.8));
+    else if (kind === "cash") {
+      shell = new THREE.Mesh(sharedGeo("bag", () => new THREE.SphereGeometry(13, 18, 14)), glassMat(col, 0.48));
+      shell.scale.set(1.05, 1.35, 0.78);
+      const neck = new THREE.Mesh(sharedGeo("neck", () => new THREE.CylinderGeometry(3.2, 5, 6, 10)), glassMat(col, 0.55));
+      neck.position.y = 16; g.add(neck);
+    } else if (kind === "life") {
+      let jet; try { jet = createAllyJet(); } catch { jet = new THREE.Mesh(sharedGeo("ball", () => new THREE.SphereGeometry(12, 20, 14)), glassMat(0xfff2c4)); }
+      jet.scale.setScalar(0.85); jet.rotation.y = 0.4; jet.traverse((o) => { o.frustumCulled = false; });
+      g.add(jet); shell = jet;
+    } else shell = new THREE.Mesh(sharedGeo("ball", () => new THREE.SphereGeometry(16, 28, 20)), glassMat(col, kind === "shield" ? 0.7 : 0.8));
+    if (kind !== "life") g.add(shell);
+    const icon = new THREE.Sprite(new THREE.SpriteMaterial({ map: iconTex(kind, 0), transparent: true, depthWrite: false, fog: false, sizeAttenuation: true }));
+    icon.scale.set(kind === "cash" ? 30 : 26, kind === "cash" ? 30 : 26, 1);
+    icon.position.z = kind === "health" ? 15 : 0;
+    if (kind !== "life") g.add(icon);
+    const halo = haloSprite(col, kind === "life" ? 46 : kind === "moab" ? 58 : 50);
+    g.add(halo);
+    g.userData.shell = shell; g.userData.halo = halo; g.userData.icon = icon; g.userData.col = col;
+    g.traverse((o) => { o.frustumCulled = false; });
     return g;
   }
-  function placeGift(kind, p) {
-    const mesh = giftMesh(kind);
+  function placeGift(kind, p, worth) {
+    const mesh = giftMesh(kind, worth);
     mesh.position.copy(p); scene.add(mesh);
-    prizes.push({ kind, p, mesh, t: 0 });
+    prizes.push({ kind, p, mesh, t: Math.random() * 4, worth: worth || 0, col: mesh.userData.col });
   }
   function giftPoint(dist, side) {
     const f = fwdFrom(player.yaw, 0, V());
@@ -2241,10 +2326,13 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     giftLine = false;
     prizeT = 1;
   }
+  function cashWorth() { const r = Math.random(); return r < 0.46 ? 500 : r < 0.76 ? 1000 : r < 0.93 ? 2000 : 5000; }
   function spawnPrize(dist) {
-    if (!player || prizes.length >= 8) return;
-    const kind = GIFT_KINDS[Math.floor(Math.random() * GIFT_KINDS.length)];
-    placeGift(kind, giftPoint(dist || 480 + Math.random() * 220, (Math.random() - 0.5) * 36));
+    if (!player || prizes.length >= 12) return;
+    let kind = GIFT_POOL[Math.floor(Math.random() * GIFT_POOL.length)];
+    if (kind === "life" && (lives >= LIVES_MAX || prizes.some((z) => z.kind === "life"))) kind = "cash";
+    const worth = kind === "cash" ? cashWorth() : 0;
+    placeGift(kind, giftPoint(dist || 420 + Math.random() * 900, (Math.random() - 0.5) * 220), worth);
   }
   function flashGift(kind) {
     const el = document.querySelector(GIFT_BTN[kind] || ".w-msl");
@@ -2256,31 +2344,41 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   function collectGift(z) {
     giftGot++;
     if (z.kind === "moab") { moabs = Math.min(3, moabs + 1); events.toast?.("MOAB +1", "good"); }
-    else if (z.kind === "shield") { shields = Math.min(2, shields + 1); events.toast?.("SHIELD +1", "good"); }
-    else if (z.kind === "missile") { player.rockets = Math.min(RACK, player.rockets + 4); events.toast?.("MISSILES", "good"); }
-    else if (z.kind === "bomb") { player.bombs = Math.min(RACK, player.bombs + 1); events.toast?.("BOMB", "good"); }
-    else if (z.kind === "bombs") { player.bombs = RACK; events.toast?.("BOMBS FULL", "good"); }
+    else if (z.kind === "shield") { shields = Math.min(3, shields + 1); if (shieldT <= 0) { shields = Math.max(0, shields - 1); shieldT = 7; } events.toast?.("SHIELD", "good"); }
+    else if (z.kind === "missile") { player.rockets = RACK; events.toast?.("MISSILES", "good"); }
+    else if (z.kind === "bomb" || z.kind === "bombs") { player.bombs = RACK; events.toast?.("BOMBS", "good"); }
     else if (z.kind === "fuel") { fuelV = 1; events.toast?.("FUEL", "good"); }
-    else if (z.kind === "health") { player.hp = Math.min(100, player.hp + 40); events.toast?.("REPAIR", "good"); }
+    else if (z.kind === "health") { player.hp = Math.min(100, player.hp + 50); events.toast?.("REPAIR", "good"); }
+    else if (z.kind === "life") { lives = Math.min(LIVES_MAX, lives + 1); events.toast?.("EXTRA LIFE", "good"); }
+    else if (z.kind === "cash") { const w = z.worth || 500; score += w; events.toast?.("+" + w, "good"); }
     else { score += 1000; events.toast?.("+1000", "good"); }
     audio.gift?.();
     flashGift(z.kind);
-    scene.remove(z.mesh);
+    retireGift(z);
+  }
+  function retireGift(z) {
+    const m = z.mesh; if (!m) return;
+    scene.remove(m);
+    m.traverse((o) => {
+      if (!o.material) return;
+      if (o.userData.ownMat) { o.material.map?.dispose(); o.material.dispose(); }
+      else if (o.material.userData && o.material.userData.own) o.material.dispose();
+    });
   }
   function tickSpecial(dt) {
     shieldT = Math.max(0, shieldT - dt); laserT = Math.max(0, laserT - dt);
     const hold = ops && ["load", "ready", "reload", "app", "final", "rollout", "turn"].includes(ops.mode);
     if (!hold && !crashing && !ended && player) {
       const agl = player.pos.y - groundAt(player.pos.x, player.pos.z);
-      if (agl > 50) {
+      if (agl > 40) {
         if (!giftLine) {
           giftLine = true;
-          placeGift("moab", giftPoint(780, 0));
-          placeGift("missile", giftPoint(1500, 24));
-          prizeT = 40;
+          const line = [["health", -80], ["fuel", 70], ["shield", -40], ["missile", 110], ["bomb", -120], ["moab", 0], ["cash", 90], ["life", -30]];
+          line.forEach((row, i) => placeGift(row[0], giftPoint(380 + i * 210, row[1]), row[0] === "cash" ? 1000 : 0));
+          prizeT = 8;
         } else {
           prizeT -= dt;
-          if (prizeT <= 0 && prizes.length < 3) { prizeT = 34 + Math.random() * 10; spawnPrize(); }
+          if (prizeT <= 0 && prizes.length < 10) { prizeT = 7 + Math.random() * 5; spawnPrize(); }
         }
       }
     }
@@ -2289,21 +2387,46 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       const z = prizes[i]; z.t += dt;
       if (player) {
         const d = z.p.distanceTo(player.pos);
-        if (d < 320 && d > 1) {
-          const step = Math.min(d - 8, (110 + (320 - d) * 1.5) * dt);
+        if (d < 240 && d > 1) {
+          const step = Math.min(d - 16, 55 * dt);
           if (step > 0) { tA.subVectors(player.pos, z.p).setLength(step); z.p.add(tA); }
         }
-        if (d < 48 || z.p.distanceTo(player.pos) < 48) { collectGift(z); prizes.splice(i, 1); continue; }
+        const floor = groundAt(z.p.x, z.p.z) + 70;
+        if (z.p.y < floor) z.p.y += Math.min(40, (floor - z.p.y) * 0.4);
+        if (d < 72) { collectGift(z); prizes.splice(i, 1); continue; }
         if (nose) {
           const along = (z.p.x - player.pos.x) * nose.x + (z.p.z - player.pos.z) * nose.z;
-          if ((along < -900 && d > 500) || z.t > 120) { scene.remove(z.mesh); prizes.splice(i, 1); continue; }
+          if ((along < -1400 && d > 700) || z.t > 150) { retireGift(z); prizes.splice(i, 1); continue; }
         }
       }
-      z.mesh.position.copy(z.p); z.mesh.position.y += Math.sin(z.t * 2.4) * 5;
-      z.mesh.rotation.y += dt * 1.7;
+      z.mesh.position.copy(z.p); z.mesh.position.y += Math.sin(z.t * 2.2) * 8;
+      z.mesh.rotation.y += dt * (z.kind === "life" ? 0.8 : 1.4);
       const shell = z.mesh.userData.shell, halo = z.mesh.userData.halo;
-      if (shell) shell.scale.setScalar(0.9 + 0.14 * Math.sin(z.t * 4));
-      if (halo) halo.material.opacity = 0.4 + 0.35 * (0.5 + 0.5 * Math.sin(z.t * 5));
+      if (shell && shell.scale && z.kind !== "life" && z.kind !== "cash") shell.scale.setScalar(1 + 0.08 * Math.sin(z.t * 3.2));
+      if (halo) { halo.material.opacity = 0.55 + 0.4 * (0.5 + 0.5 * Math.sin(z.t * 4)); const s = (z.kind === "moab" ? 62 : 52) * (1 + 0.12 * Math.sin(z.t * 3)); halo.scale.set(s, s, 1); }
+    }
+    tickShieldFx();
+  }
+  function tickShieldFx() {
+    if (!plane) return;
+    if (shieldFx && shieldFx.g.parent !== plane) shieldFx = null;
+    if (shieldT <= 0) { if (shieldFx) shieldFx.g.visible = false; return; }
+    if (!shieldFx) {
+      const g = new THREE.Group(); const lines = [];
+      for (let i = 0; i < 14; i++) {
+        const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(21), 3));
+        const mat = new THREE.LineBasicMaterial({ color: 0xf7fbff, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+        const line = new THREE.Line(geo, mat); line.frustumCulled = false; g.add(line); lines.push(line);
+      }
+      g.frustumCulled = false; plane.add(g); shieldFx = { g, lines };
+    }
+    shieldFx.g.visible = true;
+    for (const line of shieldFx.lines) {
+      const a = line.geometry.attributes.position.array;
+      let x = (Math.random() - 0.5) * 14, y = (Math.random() - 0.5) * 3.2, z = -2 + Math.random() * 12;
+      for (let i = 0; i < 7; i++) { a[i * 3] = x; a[i * 3 + 1] = y; a[i * 3 + 2] = z; x += (Math.random() - 0.5) * 3.4; y += (Math.random() - 0.5) * 1.8; z += (Math.random() - 0.5) * 2.6; }
+      line.geometry.attributes.position.needsUpdate = true;
+      line.material.opacity = 0.35 + Math.random() * 0.65;
     }
   }
   function landCombat(dt) {
@@ -2358,10 +2481,9 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (from === "jet") m.v.copy(site.vel).setLength(ezv() >= 0.6 ? 150 : Math.max(260, site.speed + 90));
     else m.v.set(0, ezv() >= 0.6 ? 90 : 140, 0);
     m.o.visible = true;
-    audio.warn(); audio.say?.("MISSILE");
-    for (let i = 0; i < 7; i++) puff(tA.copy(m.p), tB.set((Math.random() - 0.5) * 16, from === "jet" ? 0 : 3 + Math.random() * 9, (Math.random() - 0.5) * 16), from === "jet" ? 3 : 7, from === "jet" ? 10 : 22, 3.2, 0xe8e8ea);
+    if (elapsed - (launchSam.said || 0) > 5) { launchSam.said = elapsed; audio.warn(); setAlert("MISSILE", 1.0); }
+    for (let i = 0; i < 5; i++) puff(tA.copy(m.p), tB.set((Math.random() - 0.5) * 16, from === "jet" ? 0 : 3 + Math.random() * 9, (Math.random() - 0.5) * 16), from === "jet" ? 3 : 7, from === "jet" ? 10 : 22, 3.2, 0xe8e8ea);
     fx(m.p, null, from === "jet" ? 6 : 14, 1, 0.25, 0xffd890, 0, 0);
-    setAlert("MISSILE! Break hard!", 1.8);
   }
   // ---------- automatic defensive flares: bright magnesium flares fan out in an angel-wing pattern and decoy incoming missiles ----------
   let flareAt = -9, flareRegen = 0;
@@ -2425,7 +2547,15 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     rwrT -= dt;
     if (rwrT <= 0) { const k = THREE.MathUtils.clamp(dm / 2600, 0, 1); rwrT = 0.22 + k * 0.8; audio.rwr?.(0.03 + (1 - k) * 0.05, 760 + (1 - k) * 900); }
   }
-  const maxMsl = () => (ezv() >= 0.8 ? 1 : ezv() >= 0.6 ? 2 : 4);   // early levels: at most one enemy missile in flight
+  function threatAhead(pos) {
+    if (!player || !pos) return false;
+    const c = Math.cos(player.pitch);
+    const fx = -Math.sin(player.yaw) * c, fy = Math.sin(player.pitch), fz = -Math.cos(player.yaw) * c;
+    const dx = pos.x - player.pos.x, dy = pos.y - player.pos.y, dz = pos.z - player.pos.z;
+    const d = Math.hypot(dx, dy, dz) || 1;
+    return d > 260 && d < 2400 && (dx * fx + dy * fy + dz * fz) / d > 0.52;
+  }
+  const maxMsl = () => (((L && L.n) || 1) >= 16 ? 2 : 1);
   const airMissiles = () => missiles.reduce((n, m) => n + (m.active ? 1 : 0), 0);
   // flak: shells that burst near the player (fuse set from range)
   function flakShot(origin, spread, burstsAt) {
@@ -2736,7 +2866,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
           if (hostile > 0 && d < 4200) {
             t.cool -= dt * hostile;
             const lk = lockRamp(t, dt, gload < 1.3);   // b33: SAMs really launch; b21: SAM needs a slow lock, any hard turn breaks it
-            if (t.cool <= 0 && lk && airMissiles() < maxMsl()) { t.cool = (5.5 - L.difficulty * 2.2) * (1 + 0.9 * ezv()) * (ezv() >= 0.6 ? 1.3 : 1); launchSam(t); }
+            if (t.cool <= 0 && lk && threatAhead(t.pos) && airMissiles() < maxMsl()) { t.cool = (9 - L.difficulty * 1.4) * (1.4 + ezv()); launchSam(t); }
           }
           break;
         }
@@ -2941,7 +3071,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       if (p.cool > 0 || order[turn] !== role) continue;
       p.cool = 2.4 + Math.random();
       if (role === "gun" || role === "mine") enemyShot(p.pos, role === "mine" ? 0.16 : 0.08);
-      else if (role === "msl") launchSam(b, "jet");
+      else if (role === "msl" && threatAhead(b.pos) && airMissiles() < maxMsl()) launchSam(b, "jet");
       else if (role === "flare") enemyFlares(b, null);
     }
     const lp = b.laserPod && b.laserPod.alive, phase = b.clock % 14, laser = lp && phase > 12.2;
@@ -3007,7 +3137,8 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       if (dist < 1100 && ang < 0.16 && t.cool <= 0) { t.burst = assist ? 2 : 4; t.cool = (2.2 - hostile) * (assist ? 1.6 : 1) * fireK(); }
       const lkJ = lockRamp(t, dt, hostile > 0.1 && dist > 450 && dist < 3000 && ang < 0.7 && gload < 1.4);
       if (t.elk > 0.5 && tB.subVectors(t.pos, player.pos).dot(fwdFrom(player.yaw, player.pitch, tD)) < 0) sixT = 1.2;   // b33: bandit locking from behind
-      if (lkJ && (t.mcool = (t.mcool ?? 3) - dt) <= 0 && airMissiles() < maxMsl()) { t.mcool = 7 + Math.random() * 5; launchSam({ pos: t.pos, vel: t.vel, speed: t.speed }, "jet"); }
+      t.mcool = (t.mcool ?? 8) - dt;
+      if (lkJ && threatAhead(t.pos) && t.mcool <= 0 && airMissiles() < maxMsl()) { t.mcool = 16 + Math.random() * 10; launchSam({ pos: t.pos, vel: t.vel, speed: t.speed }, "jet"); }
       if (t.burst > 0 && (t.bc = (t.bc || 0) - dt) <= 0) { t.burst--; t.bc = 0.09; enemyShot(tD.copy(t.pos).addScaledVector(tC, 6), 0.05 * (1.7 - hostile) * (assist ? 1.6 : 1)); }
     }
   }
@@ -3488,7 +3619,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       throttle, combo, recover, gload, tier: tierOf(), player, targets, rings, progress, objectives: L?.objectives || [], timeLeft, score, viewMode,
       landingGuide: ops && ["app","final"].includes(ops.mode) ? {x:stripLocal(player.pos).x,dy:player.pos.y-ops.T.y-Math.max(0,(stripLocal(player.pos).z-stripLocal(ops.T).z)*ops.sgn)*.065,carrier:!!ops.carrier} : null,
       critical: criticalUntil ? Math.max(0, criticalUntil - elapsed) : 0,
-      six: sixT > 0, night: L?.run?.time === "night", lockTarget, lockCand, lockTime, track: trackOn, counts: countTargets(), lives, livesMax: LIVES_MAX, moabs, shields, shieldT, laserT, giftGot, gifts: prizes.map((z) => ({ x: z.p.x, y: z.p.y, z: z.p.z, kind: z.kind, col: "#" + (GIFT_COL[z.kind] || 0xfff2c4).toString(16).padStart(6, "0") })), ops: ops ? ops.mode : null, opsK: ops ? { kf: ops.kf || 0, ka: ops.ka || 0 } : null, hasStrip: !!(strip || pad), runways: [strip && { x: strip.pos.x, z: strip.pos.z, hd: strip.hd }, pad && { x: pad.pos.x, z: pad.pos.z, hd: pad.heading }].filter(Boolean), hull: player ? Math.max(0, player.hp) : 100, fuel: fuelV,  ccip, bombAim: aimPos, bombLocked: !!bombLock, bombKind: bombLock ? bombLock.kind : (selTgt ? selTgt.kind : ""), bombName: bombLock ? kindName(bombLock) : "", bombDist: bombLock ? bombLock.pos.distanceTo(player.pos) : 0, bombSel: !!selTgt, tgtFlash, alert: alertMsg, camera, missiles, half, center, elapsed,
+      six: sixT > 0, night: L?.run?.time === "night", lockTarget, lockCand, lockTime, track: trackOn, counts: countTargets(), lives, livesMax: LIVES_MAX, moabs, shields, shieldT, laserT, giftGot, gifts: prizes.map((z) => ({ x: z.p.x, y: z.p.y, z: z.p.z, kind: z.kind, worth: z.worth || 0, mark: GIFT_MARK[z.kind] || "+", col: "#" + ((z.col || GIFT_COL[z.kind] || 0xfff2c4).toString(16).padStart(6, "0")) })), ops: ops ? ops.mode : null, opsK: ops ? { kf: ops.kf || 0, ka: ops.ka || 0 } : null, hasStrip: !!(strip || pad), runways: [strip && { x: strip.pos.x, z: strip.pos.z, hd: strip.hd }, pad && { x: pad.pos.x, z: pad.pos.z, hd: pad.heading }].filter(Boolean), hull: player ? Math.max(0, player.hp) : 100, fuel: fuelV,  ccip, bombAim: aimPos, bombLocked: !!bombLock, bombKind: bombLock ? bombLock.kind : (selTgt ? selTgt.kind : ""), bombName: bombLock ? kindName(bombLock) : "", bombDist: bombLock ? bombLock.pos.distanceTo(player.pos) : 0, bombSel: !!selTgt, tgtFlash, alert: alertMsg, camera, missiles, half, center, elapsed,
       fwd: player ? fwdFrom(player.yaw, player.pitch, V()) : null,
       heat, overheated, crashing: !!crashing, pad, baseCenters, landingOpen, landing: !!landing, autoGun, rack: RACK, rockets: player ? player.rockets : 0, bombs: player ? player.bombs : 0,
       rocketRefill: player && player.rockets < RACK ? rocketRegen / ROCKET_REGEN : 0, bombRefill: player && player.bombs < RACK ? bombRegen / BOMB_REGEN : 0, rocketCd: Math.max(0, rocketCd), bombCd: Math.max(0, bombCd), endless, allies, lowAlt, maneuver: maneuver ? maneuver.dir : 0,
