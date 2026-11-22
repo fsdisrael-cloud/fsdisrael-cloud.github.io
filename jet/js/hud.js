@@ -521,7 +521,7 @@ export function createHud() {
       const cn = s.counts || { air: 0, gnd: 0, sea: 0 };
       const need = s.objectives.reduce((a, o) => a + (o.kind === "land" ? 0 : o.need), 0), got = s.objectives.reduce((a, o) => a + (o.kind === "land" ? 0 : Math.min(o.need, s.progress[o.kind] || 0)), 0);
       const frac = (alive, n) => `${Math.max(0, (n || 0) - (alive || 0))}/${n || 0}`;
-      const html = `<div class="tally"><span class="air${cn.air ? "" : " zero"}">AIR<b>${frac(cn.air, cn.airN)}</b></span><span class="gnd${cn.gnd ? "" : " zero"}">GND<b>${frac(cn.gnd, cn.gndN)}</b></span><span class="sea${cn.sea ? "" : " zero"}">SEA<b>${frac(cn.sea, cn.seaN)}</b></span></div><div class="tally"><span>MISSION<b>${got}/${need}</b></span></div>`;
+      const html = `<div class="tally"><span class="air${cn.air ? "" : " zero"}">AIR<b>${frac(cn.air, cn.airN)}</b></span><span class="gnd${cn.gnd ? "" : " zero"}">GND<b>${frac(cn.gnd, cn.gndN)}</b></span><span class="sea${cn.sea ? "" : " zero"}">SEA<b>${frac(cn.sea, cn.seaN)}</b></span></div><div class="tally"><span>MISSION<b>${got}</b></span></div>`;
       if (html !== dom._tally) { dom._tally = html; dom.obj.innerHTML = html; }
     }
     { const hp = Math.round(Math.max(0, Math.min(100, s.hull ?? 100))), bar = el("hud-hull"); if (bar) { bar.style.width = hp + "%"; bar.classList.toggle("critical", hp < 30); bar.parentElement.setAttribute("aria-valuenow", hp); el("hud-hull-value").textContent = hp + "%"; } }

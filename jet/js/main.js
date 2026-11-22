@@ -1,7 +1,7 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=52";
-import { createHud } from "./hud.js?v=52";
+import { createGame } from "./game.js?v=53";
+import { createHud } from "./hud.js?v=53";
 import { createControls } from "./controls.js?v=48";
 import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=48";
 import { createAudio, trackFor } from "./audio.js?v=48";
@@ -373,7 +373,17 @@ function onLevelEnd(r) {
 
 // ---------- arcade high scores: top 10, 5-letter name entry, saved in localStorage (jet-scores-v1) ----------
 const SCORE_KEY = "jet-scores-v1";
-function loadScores() { try { const v = JSON.parse(localStorage.getItem(SCORE_KEY)); if (v && Array.isArray(v.list)) return v; } catch { /* ignore */ } return { list: [], last: "ACE" }; }
+function loadScores() {
+  try {
+    const v = JSON.parse(localStorage.getItem(SCORE_KEY));
+    if (v && Array.isArray(v.list)) {
+      const seen = new Set();
+      v.list = v.list.filter((e) => { const k = `${e.n}|${e.s}|${e.lv || 1}`; if (seen.has(k)) return false; seen.add(k); return true; });
+      return v;
+    }
+  } catch { /* ignore */ }
+  return { list: [], last: "ACE" };
+}
 // Build 15: endless leaderboard (every score kept). Entry is prefilled with the last name; CLEAR NAME wipes it; OK saves,
 // then the list scrolls to your rank and highlights it. TOP jumps to #1, HOME returns to the starting page.
 function showHighScores(score, done, lv = 1) {
@@ -383,7 +393,7 @@ function showHighScores(score, done, lv = 1) {
   if (!entering && !data.list.length) { done(); return; }
   let mine = null;
   const CH = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .-";
-  let letters = (data.last || "ACE").toUpperCase().padEnd(5, " ").slice(0, 5).split("");
+  let letters = (data.last || "ACE").toUpperCase().padEnd(6, " ").slice(0, 6).split("");
   let cur = 0, finished = false;
   const esc = (t) => String(t).replace(/[<>&"]/g, "");
   const fmt = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -406,7 +416,9 @@ function showHighScores(score, done, lv = 1) {
     if (!entering || mine) return;
     const name = letters.join("").trim().toUpperCase() || "-----";
     mine = { n: name, s: score, d: Date.now(), lv };
-    data.list.push(mine); data.list.sort((a, b) => b.s - a.s); if (data.list.length > 20000) data.list.length = 20000;
+    if (!data.list.some((e) => e.n === name && e.s === score && (e.lv || 1) === lv)) data.list.push(mine);
+    else mine = data.list.find((e) => e.n === name && e.s === score && (e.lv || 1) === lv);
+    data.list.sort((a, b) => b.s - a.s); if (data.list.length > 20000) data.list.length = 20000;
     if (name !== "-----") data.last = name;
     try { localStorage.setItem(SCORE_KEY, JSON.stringify(data)); } catch { /* storage full or blocked: keep playing */ }
     toList();
@@ -420,9 +432,9 @@ function showHighScores(score, done, lv = 1) {
     if (k === "Enter") commit();
     else if (k === "Backspace") { letters[cur] = " "; cur = Math.max(0, cur - 1); renderEntry(); }
     else if (k === "ArrowLeft") { cur = Math.max(0, cur - 1); renderEntry(); }
-    else if (k === "ArrowRight") { cur = Math.min(4, cur + 1); renderEntry(); }
+    else if (k === "ArrowRight") { cur = Math.min(5, cur + 1); renderEntry(); }
     else if (k === "ArrowUp" || k === "ArrowDown") { const i = CH.indexOf(letters[cur]); letters[cur] = CH[(i + (k === "ArrowUp" ? 1 : -1) + CH.length) % CH.length]; renderEntry(); }
-    else if (k.length === 1 && /[a-zA-Z0-9]/.test(k)) { letters[cur] = k.toUpperCase(); cur = Math.min(4, cur + 1); renderEntry(); }
+    else if (k.length === 1 && /[a-zA-Z0-9]/.test(k)) { letters[cur] = k.toUpperCase(); cur = Math.min(5, cur + 1); renderEntry(); }
     else return;
     e.preventDefault(); e.stopPropagation();
   };
@@ -437,7 +449,7 @@ function showHighScores(score, done, lv = 1) {
     if (btn) { const i = CH.indexOf(letters[cur]); letters[cur] = CH[(i + +btn.dataset.d + CH.length) % CH.length]; }
     renderEntry();
   };
-  $("hs-clear").onclick = () => { letters = [" ", " ", " ", " ", " "]; cur = 0; renderEntry(); };
+  $("hs-clear").onclick = () => { letters = [" ", " ", " ", " ", " ", " "]; cur = 0; renderEntry(); };
   $("hs-ok").onclick = commit; $("hs-btn").onclick = finish; $("hs-top").onclick = jumpTop;
   $("hs-home").onclick = () => { leave(); location.href = location.pathname; };
   window.addEventListener("keydown", keyH, true);
@@ -531,7 +543,7 @@ requestAnimationFrame(frame);
 // start loading the first level right away; the opening screen shows only the logo until it is ready
 {
   const body = document.body;
-  body.classList.add("tp-a");
+  body.classList.add("title-ready");
   let sceneHist = [], sceneIdx = -1;
   const forced = /[?&](time|planet|place|weather|season)=/.test(location.search);
   const p0 = startPreload(levelNo, forced ? undefined : titleRun("f35"));
@@ -568,18 +580,17 @@ requestAnimationFrame(frame);
     T.addEventListener("pointerup", (e) => { if (!sw) return; const dx = e.clientX - sw.x, dy = e.clientY - sw.y; const ok = Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.5 && performance.now() - sw.t < 900; sw = null; if (ok) reroll(dx < 0 ? 1 : -1); }); }
   window.__ubuReroll = reroll;
   p0.promise.then(async (ok) => {
-    const wait = Math.max(0, 1400 - (performance.now() - t0)); // let the logo breathe
-    await new Promise((r) => setTimeout(r, wait));
     if (state !== "title") return;
     try { $("hud-timer").textContent = timeSec ? `${Math.floor(timeSec / 60)}:00` : "0:00"; } catch { /* ignore */ }
     setLabel(); previewOn = ok; body.classList.toggle("preview", !!ok);
     if (ok) { sceneHist = [preload.level.run]; sceneIdx = 0; saveScene(preload.level.run); }
-    body.classList.remove("tp-a"); body.classList.add("tp-b");
+    body.classList.remove("tp-a", "tp-b", "tp-c");
+    body.classList.add("title-ready");
   });
   // b26: TAP TO FLY (or a tap anywhere that is not a control) starts the sortie directly
   let tapGuard = 0;
   $("screen-title").addEventListener("click", (e) => {
-    if (state !== "title" || !(body.classList.contains("tp-b") || body.classList.contains("tp-c"))) return;
+    if (state !== "title" || !(body.classList.contains("tp-b") || body.classList.contains("tp-c") || body.classList.contains("title-ready"))) return;
     if (e.target.closest("button, #settings, #lang-btn, #lang-list, .slink, .plate, #panel, .menu-buttons, .sec-links")) return;
     if (performance.now() < tapGuard) return;
     clearSave(); play();

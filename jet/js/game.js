@@ -1286,7 +1286,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       runManeuver(dt);
       pull = maneuver && maneuver.kind === "loop" ? maneuver.dir : 0;
     } else {
-      if (!landing && !crashing && player.vel) { const agl2 = player.pos.y - groundAt(player.pos.x, player.pos.z), vy = player.vel.y; if (vy < -8 && agl2 < 320 && agl2 / -vy < 6) { setAlert("PULL UP! PULL UP!", 0.5); audio.pullUp(); if ((pullUpTimer -= dt) <= 0) { pullUpTimer = 3.5; audio.voicePullUp(); } } const stalled = !ops && agl2 > 80 && player.speed < 62 && player.pitch > 0.55 && vy < -8; if (stalled) { setAlert("STALL", 0.35); if (elapsed - (stallAt || 0) > 5) { stallAt = elapsed; audio.stall?.(); } } }
+      if (!landing && !crashing && player.vel) { const agl2 = player.pos.y - groundAt(player.pos.x, player.pos.z), vy = player.vel.y; if (vy < -18 && agl2 < 140 && agl2 / -vy < 3.2) { if ((pullUpTimer -= dt) <= 0) { pullUpTimer = 8; setAlert("PULL UP", 1.2); audio.pullUp(); } } }
       if (assist && !landing && !crashing) assistFlight(dt, st);
       else if (!landing && !crashing && !ops) {
         aP = st.pitch; aR = st.roll;
@@ -1383,7 +1383,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
         tA.set(0, 0.2, 6).applyMatrix4(plane.matrixWorld);
         fx(tA, tB.set((Math.random() - 0.5) * 4, 2, 4), 4, 0.6, 0.4, 0xff6a20, 0, 1);
         puff(tA, tC.set(0, 3, 2), 5, 16, 1.4, 0x2a2a2e);
-        if (Math.floor(fuelDead * 3) !== Math.floor((fuelDead - dt) * 3)) { audio.warn?.(); audio.say?.("eject"); setAlert("ENGINE FIRE - EJECT", 1.2); }
+        if (Math.floor(fuelDead) !== Math.floor(fuelDead - dt) && Math.floor(fuelDead) % 4 === 0) { audio.warn?.(); setAlert("ENGINE FIRE - EJECT", 1.2); }
         if (fuelDead > 7 && !crashing) crash(player.pos.clone(), "ground");
       }
       if (fuelV > 0.3) fuelWarn = 0;
@@ -1612,34 +1612,42 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
         ops = null; syncAngles(); player.speed = Math.max(o.v, 150); showThr(0.55); invulnUntil = elapsed + 1.5; opsHud(); audio.setBurner?.(false);
       }
     } else if (o.mode === "app" && o.legs && o.leg < o.legs.length) {
+      const fast = o.leg < o.legs.length - 1;
+      const dtL = dt * (fast ? 7 : 1);
       const lg = o.legs[o.leg];
       const dxL = lg.p.x - player.pos.x, dzL = lg.p.z - player.pos.z, distL = Math.hypot(dxL, dzL) || 1;
-      const stepL = Math.min(distL, lg.sp * dt);
-      player.pos.x += dxL / distL * stepL; player.pos.z += dzL / distL * stepL;
-      player.pos.y += (lg.p.y - player.pos.y) * Math.min(1, dt * 1.4);
-      const err = wrapPi(lg.hd - player.yaw);
-      player.yaw += THREE.MathUtils.clamp(err, -1.3 * dt, 1.3 * dt);
-      player.pitch = THREE.MathUtils.clamp((lg.p.y - player.pos.y) * 0.0015, -0.18, 0.12);
-      player.bank = THREE.MathUtils.clamp(-err, -0.5, 0.5);
+      const want = Math.atan2(-dxL, -dzL);
+      let err = wrapPi(want - player.yaw);
+      player.yaw += THREE.MathUtils.clamp(err, -1.8 * dtL, 1.8 * dtL);
+      err = wrapPi(want - player.yaw);
+      const align = Math.max(0, Math.cos(err));
+      const stepL = Math.min(distL, lg.sp * dtL * align);
+      const fx = -Math.sin(player.yaw), fz = -Math.cos(player.yaw);
+      player.pos.x += fx * stepL; player.pos.z += fz * stepL;
+      player.pos.y += THREE.MathUtils.clamp(lg.p.y - player.pos.y, -35 * dtL, 24 * dtL);
+      player.pitch = THREE.MathUtils.clamp((player.pos.y - lg.p.y) * -0.002, -0.16, 0.1);
+      player.bank = THREE.MathUtils.clamp(err * 0.7, -0.55, 0.55);
       player.q.setFromEuler(_eu.set(player.pitch, player.yaw, -player.bank, "YXZ"));
-      player.speed = lg.sp; player.vel.set(dxL / distL * lg.sp, 0, dzL / distL * lg.sp);
-      showThr(lg.sp > 120 ? 0.38 : 0.22); gearSet(o.leg >= 2 ? 1 : 0);
-      if (distL < 60) { o.leg++; if (o.leg >= o.legs.length) { o.mode = "final"; o.t = 0; gearSet(1); showThr(0.2); } }
+      player.speed = lg.sp * (0.75 + 0.25 * align); player.vel.set(fx * player.speed, 0, fz * player.speed);
+      showThr(fast ? 0.42 : 0.2); gearSet(o.leg >= o.legs.length - 1 ? 1 : 0);
+      if (distL < (fast ? 90 : 55) && Math.abs(err) < 0.45) { o.leg++; if (o.leg >= o.legs.length) { o.mode = "final"; o.t = 0; gearSet(1); showThr(0.16); } }
       u.burn(0.32, 0); audio.updateEngine?.(0.38, false, lg.sp, 0.08); updatePlaneTransform(); sanePlayer(); return;
     } else if (o.mode === "app" || o.mode === "final") {
       const T = o.T;
       if (T && Number.isFinite(T.x) && Number.isFinite(T.z)) {
         const dx = T.x - player.pos.x, dz = T.z - player.pos.z, dist = Math.hypot(dx, dz) || 1;
-        const spd = dist > 650 ? 96 : 68, step = Math.min(dist, spd * dt);
-        player.pos.x += dx / dist * step; player.pos.z += dz / dist * step;
-        const yDes = deck.y + GEAR_H + Math.min(dist, 700) * 0.038;
-        player.pos.y += (yDes - player.pos.y) * Math.min(1, dt * 1.5);
-        const want = dist > 15 ? Math.atan2(-dx, -dz) : o.ly;
-        player.yaw += THREE.MathUtils.clamp(wrapPi(want - player.yaw), -1.4 * dt, 1.4 * dt);
-        player.pitch = -0.05; player.bank = 0;
-        player.q.setFromEuler(_eu.set(player.pitch, player.yaw, 0, "YXZ"));
-        player.speed = spd; player.vel.set(dx / dist * spd, 0, dz / dist * spd);
-        showThr(0.2); gearSet(1);
+        const want = dist > 20 ? Math.atan2(-dx, -dz) : o.ly;
+        player.yaw += THREE.MathUtils.clamp(wrapPi(want - player.yaw), -1.2 * dt, 1.2 * dt);
+        const err = wrapPi(want - player.yaw), align = Math.max(0, Math.cos(err));
+        const spd = dist > 650 ? 90 : 62, step = Math.min(dist, spd * dt * align);
+        const fx = -Math.sin(player.yaw), fz = -Math.cos(player.yaw);
+        player.pos.x += fx * step; player.pos.z += fz * step;
+        const yDes = deck.y + GEAR_H + Math.min(dist, 700) * 0.034;
+        player.pos.y += THREE.MathUtils.clamp(yDes - player.pos.y, -18 * dt, 12 * dt);
+        player.pitch = -0.06; player.bank = THREE.MathUtils.clamp(err * 0.5, -0.25, 0.25);
+        player.q.setFromEuler(_eu.set(player.pitch, player.yaw, -player.bank, "YXZ"));
+        player.speed = spd * (0.7 + 0.3 * align); player.vel.set(fx * player.speed, 0, fz * player.speed);
+        showThr(dist > 800 ? 0.28 : 0.14); gearSet(1);
         u.burn(0.22, 0); audio.updateEngine?.(0.32, false, spd, 0.08); audio.setBurner?.(false);
         if (dist < 42) {
           player.pos.set(T.x, deck.y + GEAR_H, T.z); player.yaw = o.ly; player.pitch = 0; player.bank = 0;
@@ -2778,7 +2786,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (!ended) {
       chaseDirT = (chaseDirT || 0) + dt;   // b35: an escaping bandit appears right in front every ~18 s -> instant, effortless chase
       const chaseEvery = ((L && L.n) || 1) <= 3 ? 28 : ((L && L.n) || 1) <= 6 ? 18 : 12;
-      if (chaseDirT > chaseEvery && !chaseOn && !ops && !landing && player.pos.y - groundAt(player.pos.x, player.pos.z) > 150) { chaseDirT = 0; let cj = null, cd = 5000; for (const t of targets) { if (t.alive && t.kind === "jet" && !t.heli && !t.ally) { const d = t.pos.distanceTo(player.pos); if (d < cd) { cd = d; cj = t; } } } if (cj) { cj.mode = "flee"; cj.baseYaw = cj.yaw = player.yaw; cj.speed = THREE.MathUtils.clamp(player.speed * 0.8, 60, 140); cj.jink = 1; } else cj = spawnJetAhead(player.pos, true); const f0 = fwdFrom(player.yaw, 0, V()); f0.y = 0; f0.normalize(); cj.pos.set(player.pos.x + f0.x * 520, player.pos.y + 20, player.pos.z + f0.z * 520); cj.holdY = cj.pos.y; events.toast?.("BANDIT AHEAD - CHASE HIM!", "warn"); }
+      if (chaseDirT > chaseEvery && !chaseOn && !ops && !landing && player.pos.y - groundAt(player.pos.x, player.pos.z) > 150) { chaseDirT = 0; let cj = null, cd = 5000; for (const t of targets) { if (t.alive && t.kind === "jet" && !t.heli && !t.ally) { const d = t.pos.distanceTo(player.pos); if (d < cd) { cd = d; cj = t; } } } if (cj) { cj.mode = "flee"; cj.baseYaw = cj.yaw = player.yaw; cj.speed = THREE.MathUtils.clamp(player.speed * 0.8, 60, 140); cj.jink = 1; } else cj = spawnJetAhead(player.pos, true); const f0 = fwdFrom(player.yaw, 0, V()); f0.y = 0; f0.normalize(); cj.pos.set(player.pos.x + f0.x * 520, player.pos.y + 20, player.pos.z + f0.z * 520); cj.holdY = cj.pos.y; }
     }
     // endless reinforcement waves of enemy jets
     if (false && jetSpawner && !ended) {
@@ -3636,9 +3644,12 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     const c = { air: 0, gnd: 0, sea: 0, airN: 0, gndN: 0, seaN: 0 };
     for (const t of targets) {
       const k = (t.kind === "jet" || t.heli) ? "air" : t.kind === "ship" ? "sea" : (t.kind === "tank" || t.kind === "base" || t.kind === "flak" || t.kind === "sam") ? "gnd" : "";
-      if (!k) continue;
+      if (!k || k === "air") continue;
       c[k + "N"]++; if (t.alive) c[k]++;
     }
+    const airFixed = L?.objectives?.find((o) => o.kind === "jet")?.need || 0;
+    c.airN = airFixed;
+    c.air = Math.max(0, airFixed - (progress.jet || 0));
     return c;
   }
   // ---------- HUD data ----------
@@ -3915,13 +3926,22 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       if (!player || crashing) return null;
       const nj = targets.filter((t) => t.kind !== "jet");
       return { p: [player.pos.x, player.pos.y, player.pos.z], q: [player.q.x, player.q.y, player.q.z, player.q.w], sp: player.speed, hp: player.hp, rk: player.rockets, bb: player.bombs, thr: throttle,
-        dead: nj.map((t, i) => (t.alive ? -1 : i)).filter((i) => i >= 0), prog: { ...progress }, score, combo, lives, flares:player.flares, fuel:fuelV };
+        dead: nj.map((t, i) => (t.alive ? -1 : i)).filter((i) => i >= 0),
+        deadAt: targets.filter((t) => !t.alive && t.kind !== "jet").map((t) => [t.kind, Math.round(t.pos.x), Math.round(t.pos.z)]),
+        prog: { ...progress }, score, combo, lives, flares:player.flares, fuel:fuelV, moabs, shields };
     },
     restoreSnap(sn) {
       if (!sn || !player) return;
       const nj = targets.filter((t) => t.kind !== "jet");
       for (const i of sn.dead || []) { const t = nj[i]; if (t && t.alive) { t.alive = false; t.hp = 0; scene.remove(t.obj); } }
+      for (const rec of sn.deadAt || []) {
+        const kind = rec[0], x = rec[1], z = rec[2];
+        const t = targets.find((o) => o.alive && o.kind === kind && Math.abs(o.pos.x - x) < 40 && Math.abs(o.pos.z - z) < 40);
+        if (t) { t.alive = false; t.hp = 0; if (!t.sink) scene.remove(t.obj); }
+      }
       Object.assign(progress, sn.prog || {});
+      if (sn.moabs != null) moabs = sn.moabs;
+      if (sn.shields != null) shields = sn.shields;
       lives = Math.max(1, Math.min(5, sn.lives ?? lives)); player.flares = sn.flares ?? 12; fuelV = sn.fuel ?? 1;
       if (jetSpawner) { const quota = L.objectives.find(o => o.kind === "jet")?.need || 0; jetSpawner.remaining = Math.max(0, quota - (progress.jet || 0)); }
       ops = null; camCut = null; gearAnim = gearWant = 0; plane.userData.setGear?.(0);

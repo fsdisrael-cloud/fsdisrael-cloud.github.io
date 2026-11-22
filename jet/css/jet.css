@@ -1065,6 +1065,57 @@ body.in-game .thr-knob { width: 44px; height: 22px; margin-left: -22px; }
   body.in-game #eject-handles.ej-h { left: calc(env(safe-area-inset-left) + 8px) !important; right: auto !important; transform: none !important; bottom: calc(env(safe-area-inset-bottom) + 188px) !important; z-index: 40; }
   body.in-game .specials { left: auto !important; right: calc(var(--safe-r) + 6px) !important; top: calc(var(--safe-t) + 248px) !important; bottom: auto !important; flex-direction: column !important; }
 }
+/* HUD lanes: MOAB and shield stay off the target list. Eject sits bottom center, clear of the gun. */
+body.in-game .specials {
+  position: fixed !important;
+  left: calc(env(safe-area-inset-left) + 8px) !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: calc(env(safe-area-inset-bottom) + 168px) !important;
+  transform: none !important;
+  flex-direction: row !important;
+  z-index: 18;
+}
+body.in-game #eject-handles.ej-h {
+  left: 50% !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: calc(env(safe-area-inset-bottom) + 6px) !important;
+  transform: translateX(-50%) !important;
+  z-index: 28;
+  width: 72px !important;
+}
+@media (orientation: portrait) {
+  body.in-game .specials {
+    top: 42% !important;
+    bottom: auto !important;
+  }
+  body.in-game #eject-handles.ej-h {
+    bottom: calc(env(safe-area-inset-bottom) + 96px) !important;
+  }
+}
+@media (orientation: landscape) {
+  body.in-game .specials {
+    left: calc(env(safe-area-inset-left) + 118px) !important;
+    top: calc(env(safe-area-inset-top) + 86px) !important;
+    bottom: auto !important;
+  }
+  body.in-game #eject-handles.ej-h {
+    bottom: calc(env(safe-area-inset-bottom) + 6px) !important;
+  }
+}
+body.on-title.title-ready .menu-buttons,
+body.on-title.title-ready #tap-fly,
+body.on-title.title-ready .t26-lang,
+body.on-title.title-ready .t26-bottom,
+body.on-title.title-ready .sec-links,
+body.on-title.title-ready .t26-plate,
+body.on-title.title-ready #btn-reroll,
+body.on-title.title-ready #scene-label {
+  visibility: visible !important;
+  opacity: 1 !important;
+  animation: none !important;
+}
 .gift-flash { animation: giftflash .7s ease; }
 @keyframes giftflash {
   0% { filter: brightness(1); }
