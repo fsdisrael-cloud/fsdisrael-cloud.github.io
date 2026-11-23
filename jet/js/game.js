@@ -1033,7 +1033,9 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   const maneuverSafe = () => !!(maneuver && maneuver.kind === "roll" && player.pos.y - groundAt(player.pos.x, player.pos.z) > 120);
   function startRoll(dir) {
     if (maneuver || crashing) return;
-    maneuver = { kind: "roll", dir, phase: "level", t: 0, ang: 0 }; controls.resetLook?.();
+    // Evasion roll starts immediately and finishes upright. No settle-first delay.
+    maneuver = { kind: "roll", dir, phase: "loop", t: 0, ang: 0 }; controls.resetLook?.();
+    smYawR = 0;
     audio.whoosh();
     events.toast?.(dir > 0 ? "Barrel roll right!" : "Barrel roll left!");
   }
@@ -1055,9 +1057,9 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       if (player.q.angleTo(_qL) < 0.03 || m.t > 1.1) { player.q.copy(_qL); m.phase = "loop"; m.t = 0; }
     } else if (m.phase === "loop") {
       const TWO = Math.PI * 2, edge = 0.5;
-      const env = Math.max(0.3, Math.min(1, m.ang / edge, (TWO - m.ang) / edge));
       const roll = m.kind === "roll";
-      let d = (roll ? 3.4 : 1.55) * env * dt;
+      const env = Math.max(roll ? 0.78 : 0.3, Math.min(1, m.ang / edge, (TWO - m.ang) / edge));
+      let d = (roll ? 8.4 : 1.55) * env * dt;
       if (m.ang + d >= TWO) { d = TWO - m.ang; m.phase = "exit"; m.t = 0; stats.loops++; score += roll ? 10 : 25; events.toast?.(roll ? "Roll done! +10" : "Loop done! +25"); }
       m.ang += d;
       if (roll) { player.q.multiply(_qa.setFromAxisAngle(tD.set(0, 0, -1), m.dir * d)); rotBody(AX, 0.12 * d); }
@@ -1140,17 +1142,38 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     _trkSt.yaw = raw.yaw;
     return _trkSt;
   }
-  let relT = 0, loopT = 0, holdT = 0, brkV = 0, smPR = 0, smRR = 0;
-  // ---------- build 24: FULL-FREEDOM flight. Stick = proportional body rates (360 rolls, loops, steep dives), jet HOLDS attitude on release,
-  // only a very slow drift toward level after ~2.4 s of a released stick, never while the stick is touched, never on a hard push.
-  function assistFlight(dt, st) {
-    const rawSt = st; trackOn = false; recover = 0;
-    const ez = ezv(), ak = akv();
+  let relT = 0, loopT = 0, holdT = 0, brkV = 0, smPR = 0, smRR = 0, smYawR = 0;
+  // ---------- build 54: arcade flight. Heading rate comes from the stick, not from leftover bank.
+  // Hands off = straight and wings-level. A released turn eases out. Upside-down always rolls upright.
+  // A ground or sea target near the nose gets a gentle aim nudge. Evasion rolls are the flick maneuver.
+  const ARC_YAW = 1.55;   // rad/s at full stick
+  const ARC_PITCH = 1.25;
+  function expoStick(v, p) {
+    const a = Math.min(1, Math.abs(v));
+    return a < 0.02 ? 0 : Math.sign(v) * Math.pow(a, p);
+  }
+  function headingErr(t) {
+    tB.subVectors(t.pos, player.pos);
+    return -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw); // > 0: target is to the right
+  }
+  function surfaceAim() {
+    const prefer = selTgt && selTgt.alive && !selTgt.submerged && !GROUND_NO[selTgt.kind] ? selTgt : null;
+    let best = null, be = prefer ? 0.8 : 0.62;
+    const pool = prefer ? [prefer] : targets;
+    for (const t of pool) {
+      if (!t.alive || t.submerged || GROUND_NO[t.kind]) continue;
+      const dist = Math.hypot(t.pos.x - player.pos.x, t.pos.z - player.pos.z);
+      if (dist < 70 || dist > 4800) continue;
+      const e = Math.abs(headingErr(t));
+      if (e < be) { be = e; best = t; }
+    }
+    return best;
+  }
+  function arcadeFlight(dt, st) {
+    trackOn = false; recover = 0; turnTgt = null;
     const brk = (controls.brake && controls.brake()) ? 1 : 0;
     brkV += (brk - brkV) * (1 - Math.exp(-dt * 5));
-    const sp = Math.max(Math.abs(st.pitch), Math.abs(st.roll));
     aP = st.pitch; aR = st.roll;
-    // terrain / ground avoidance: look 1 .. 4.7 s ahead, pull up smoothly and fade any nose-down input
     let danger = 0;
     if (!nearPad) {
       for (let k = 1; k <= 5; k++) {
@@ -1159,119 +1182,64 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
         danger = Math.max(danger, THREE.MathUtils.clamp((70 - clear) / 70, 0, 1) * (1 - (k - 1) * 0.1));
       }
       const agl0 = player.pos.y - groundAt(player.pos.x, player.pos.z);
-      if (agl0 < 30) danger = Math.max(danger, 1);   // b29: only a real near-ground rescue; full dive allowed
-      for (const t of targets) {
-        if (!t.alive || !SOLID[t.kind] || t.kind === "jet") continue;
-        _vA.subVectors(t.pos, player.pos); const dd = _vA.length(); if (dd > 900 || dd < 1) continue;
-        const ah = _vA.dot(player.vel) / (dd * Math.max(1, player.speed)); if (ah < 0.55) continue;
-        if (player.pos.y - t.pos.y > t.radius + 110) continue;
-        const miss = dd * Math.sqrt(Math.max(0, 1 - ah * ah));
-        if (miss < t.radius * 1.3 + 70) danger = Math.max(danger, (1 - dd / 900) * 1.3);
-      }
+      if (agl0 < 30) danger = Math.max(danger, 1);
     }
     assistDanger += (danger - assistDanger) * (1 - Math.exp(-dt * 8));
     if (assistDanger > 0.85) { setAlert("PULL UP", 0.3); if (elapsed - rescueAt > 2.5) { rescueAt = elapsed; audio.pullUp(); } }
-    // ---- pitch: stick = nose RATE (expo). Hard pull = extra-fast break; airbrake tightens it further
-    const uP = Math.min(1, Math.abs(st.pitch));
-    const sm = (a, b, x) => { const t = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-    const maxPR = (1.85 - 0.2 * ez) * (1 + 0.12 * brkV) * (1 + 0.28 * sm(0.72, 1, uP));
-    const stickPitch = Math.sign(st.pitch) * Math.pow(uP, 0.9) * maxPR * 1.12;
-    let pitchRate = stickPitch;
-    /* b36: no ground rescue - diving in crashes */
-    if (pitchRate > 0 && player.inverted && assistDanger > 0.1) pitchRate *= Math.max(0, 1 - assistDanger * 1.6);
-    loopT = Math.abs(st.pitch) > 0.97 ? loopT + dt : 0;
-    // ---- roll: stick = roll RATE; full stick = fast barrel roll. Gentle input stops at ~80 deg bank (a clean banked turn); a firm push rolls on through
-    const uR = Math.min(1, Math.abs(st.roll));
-    const maxRR = 4.3 - 0.15 * ez;
-    let rr = Math.sign(st.roll) * Math.pow(Math.max(uR, 0), 1.12) * maxRR;
-    if (tailAid && tailAid.alive && Math.abs(st.roll) > 0.62) {
-      tB.subVectors(tailAid.pos, player.pos);
-      const e = -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw);
-      if (Math.sign(e) === Math.sign(st.roll) || Math.abs(e) < 0.35) rr += THREE.MathUtils.clamp(e * 0.45, -0.4, 0.4);
-    } else if (tailAid && (!tailAid.alive || tailAid.pos.distanceTo(player.pos) > 2200)) tailAid = null;
-    // ---- hold, then only a very slow drift (clearly weaker than build 23)
-    // b25 ARCADE: full authority while the stick is held (nothing fights you); the instant you let go the jet rolls wings-level
-    // and eases the nose back to the horizon (short grace so a quick re-grab keeps your attitude). Works from any bank incl. inverted.
-    holdT = sp < 0.08 ? holdT + dt : 0;
-    const handsOff = sp < 0.1;
-    const chaseHandsOff = !!(lockTarget && lockTarget.alive && handsOff);
-    // Positive stick rolls the bank negative, so rolling out is a stick whose sign matches the current bank.
-    const oppose = Math.abs(player.bank) > 0.18 && Math.abs(st.roll) > 0.12 && Math.sign(st.roll) === Math.sign(player.bank);
-    // Released in a real bank: keep that bank and keep turning. A small bank settles onto the heading.
-    // Chase lock owns the nose while the stick is free. Pulling the stick always wins, including pull-up.
-    if (handsOff && !chaseHandsOff && assistDanger < 0.08 && Math.abs(player.bank) > 1.35) {
-      smRR *= Math.exp(-dt * 10);
-      if (Math.abs(st.pitch) < 0.12) smPR *= Math.exp(-dt * 8);
-      player.q.slerp(levelQuat(_qL), 1 - Math.exp(-dt * 2.6));
+
+    syncAngles();
+    const upY = tB.set(0, 1, 0).applyQuaternion(player.q).y;
+    // Pure slerp back to wings-level. Reading bank through ±180 and rolling the other way was the flicker.
+    if (upY < 0.2 || Math.abs(player.bank) > 1.35) {
+      smYawR *= Math.exp(-dt * 8);
+      smPR *= Math.exp(-dt * 6);
+      _qL.setFromEuler(_eu.set(player.pitch * 0.85, player.yaw, 0, "YXZ"));
+      player.q.slerp(_qL, 1 - Math.exp(-dt * 3.8));
       syncAngles();
-      rr = 0;
-      if (Math.abs(st.pitch) < 0.12) pitchRate = 0;
+      return;
     }
-    if (handsOff && !chaseHandsOff && assistDanger < 0.08) {
-      if (Math.abs(player.bank) > 0.4 && Math.abs(player.bank) <= 1.35) {
-        if (Math.abs(st.pitch) < 0.12) pitchRate -= THREE.MathUtils.clamp(player.pitch * 0.85, -0.5, 0.5);
-        if (!turnTgt) {
-          let bd = 1e9;
-          for (const t of targets) {
-            if (!t.alive || t.kind === "ally" || t.ally) continue;
-            tB.subVectors(t.pos, player.pos); const d = tB.length(); if (d > 5200 || d < 40) continue;
-            const e = -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw);
-            if (Math.sign(e) !== Math.sign(player.bank) || Math.abs(e) < 0.12) continue;
-            const ground = t.kind !== "jet" && !t.heli;
-            const sc = d * (1 + Math.abs(e)) * (ground ? 0.72 : 1);
-            if (sc < bd) { bd = sc; turnTgt = t; }
+
+    const yawCmd = -expoStick(st.roll, 1.28) * ARC_YAW;
+    const yawK = 1 - Math.exp(-dt * (Math.abs(st.roll) > 0.04 ? 8 : 4.4));
+    smYawR += (yawCmd - smYawR) * yawK;
+    const pitCmd = expoStick(st.pitch, 1.15) * ARC_PITCH * (1 + 0.18 * brkV);
+    const pitK = 1 - Math.exp(-dt * (Math.abs(st.pitch) > 0.08 ? 11 : 3.4));
+    smPR += (pitCmd - smPR) * pitK;
+
+    let aimYaw = 0, aimPitch = 0;
+    if (assist) {
+      const aim = surfaceAim();
+      if (aim) {
+        const e = headingErr(aim);
+        const dist = Math.hypot(aim.pos.x - player.pos.x, aim.pos.z - player.pos.z);
+        const cone = selTgt === aim ? 0.8 : 0.62;
+        const fight = st.roll * e < -0.05;
+        if (Math.abs(e) < cone && !fight) {
+          // Proportional, a bit firmer inside a kilometre, so a near target is lined up before you pass it.
+          const gain = 1.25 + 1.1 * THREE.MathUtils.clamp((1500 - dist) / 1100, 0, 1);
+          aimYaw = -THREE.MathUtils.clamp(e * gain, -0.65, 0.65);
+          if (Math.abs(st.pitch) < 0.18 && dist > 140) {
+            const elev = Math.atan2(aim.pos.y - player.pos.y, Math.max(90, dist));
+            const want = THREE.MathUtils.clamp(elev, -0.38, 0.02);
+            aimPitch = THREE.MathUtils.clamp(want - player.pitch, -0.4, 0.22) * 0.9;
           }
         }
-      } else if (Math.abs(player.bank) <= 0.4) {
-        let aim = null, ae = 0.62, ad = 1e9;
-        const prefer = selTgt && selTgt.alive && !selTgt.submerged && selTgt.kind !== "jet" && !selTgt.heli ? selTgt : null;
-        const pool = prefer ? [prefer] : targets;
-        for (const t of pool) {
-          if (!t.alive || t.submerged || t.kind === "ally" || t.kind === "jet" || t.heli || t.kind === "balloon") continue;
-          tB.subVectors(t.pos, player.pos); const d = tB.length(); if (d > 4800 || d < 50) continue;
-          const e = -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw);
-          if (Math.abs(e) < ae || (prefer && Math.abs(e) < 0.9)) { ae = Math.abs(e); ad = d; aim = t; }
-        }
-        if (aim && ae < 0.7) {
-          tB.subVectors(aim.pos, player.pos);
-          const e = -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw);
-          const want = THREE.MathUtils.clamp(e * 1.35, -0.5, 0.5);
-          rr += THREE.MathUtils.clamp((player.bank - want) * 2.6, -2.2, 2.2);
-          if (Math.abs(e) < 0.08 && Math.abs(st.pitch) < 0.12) pitchRate -= player.pitch * 1.1;
-        } else {
-          rr += player.bank * 2.4;
-          if (Math.abs(st.pitch) < 0.12) pitchRate -= player.pitch * 1.15;
-        }
-        turnTgt = null;
       }
-    } else if (chaseHandsOff && lockTarget && lockTarget.alive) {
-      tB.subVectors(lockTarget.pos, player.pos);
-      const e = -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw);
-      const want = THREE.MathUtils.clamp(e * 1.1, -0.65, 0.65);
-      rr += THREE.MathUtils.clamp((player.bank - want) * 2.4, -2.2, 2.2);
-      if (Math.abs(st.pitch) < 0.12) pitchRate -= THREE.MathUtils.clamp(player.pitch * 0.8, -0.45, 0.45);
-    } else if (sp > 0.2) turnTgt = null;
-    if (handsOff && turnTgt && turnTgt.alive && !chaseHandsOff && Math.abs(player.bank) > 0.28) {
-      tB.subVectors(turnTgt.pos, player.pos);
-      const e = -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw);
-      if (Math.abs(e) > 0.1 && Math.sign(e) === Math.sign(player.bank)) {
-        const want = Math.sign(e) * Math.min(1.05, 0.32 + Math.abs(e) * 0.7);
-        rr += THREE.MathUtils.clamp((player.bank - want) * 2.4, -2.2, 2.2);
-      } else turnTgt = null;
     }
-    // Stick pitch is never cancelled. A hard pull climbs even in a turn, a lock, or near the ground.
-    if (Math.abs(st.pitch) > 0.08) pitchRate = stickPitch + (pitchRate - stickPitch) * 0.25;
-    const pitEase = 1 - Math.exp(-dt * (Math.abs(st.pitch) > 0.35 ? 32 : 16));
-    const rollEase = 1 - Math.exp(-dt * (Math.abs(st.roll) > 0.45 ? 38 : handsOff ? 9 : 22));
-    smPR += (pitchRate - smPR) * pitEase;
-    smRR += (rr - smRR) * rollEase;
-    rotBody(AX, smPR * dt);
-    player.q.multiply(_qa.setFromAxisAngle(tD.set(0, 0, -1), smRR * dt));
-    rotBody(AY, st.yaw * 0.6 * dt);
-    if (!chaseHandsOff && !oppose && Math.abs(player.bank) > 0.1 && Math.abs(player.bank) < 2.6) {
-      const steep = Math.abs(player.bank) > 0.38;
-      if (!handsOff || steep) rotWorld(AY, -Math.sin(player.bank) * 1.22 * Math.max(0.22, Math.cos(Math.min(1.15, Math.abs(player.pitch)))) * dt);
-    }
+
+    let yaw = player.yaw + (smYawR + aimYaw) * dt;
+    let pitch = player.pitch + (smPR + aimPitch) * dt;
+    if (Math.abs(st.pitch) < 0.08 && Math.abs(aimPitch) < 0.02) pitch += (0 - pitch) * (1 - Math.exp(-dt * 1.2));
+    pitch = THREE.MathUtils.clamp(pitch, -1.15, 1.05);
+
+    const bankTarget = THREE.MathUtils.clamp(st.roll, -1, 1) * 1.0;
+    const bankK = 1 - Math.exp(-dt * (Math.abs(st.roll) > 0.2 ? 7 : 4.2));
+    let bank = player.bank + (bankTarget - player.bank) * bankK;
+    bank = THREE.MathUtils.clamp(bank, -1.12, 1.12);
+
+    player.q.setFromEuler(_eu.set(pitch, yaw, -bank, "YXZ"));
+    if (Math.abs(st.yaw) > 0.01) rotBody(AY, st.yaw * 0.35 * dt);
+    syncAngles();
   }
   const loopPull_ = false;
 
@@ -1287,22 +1255,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       pull = maneuver && maneuver.kind === "loop" ? maneuver.dir : 0;
     } else {
       if (!landing && !crashing && player.vel) { const agl2 = player.pos.y - groundAt(player.pos.x, player.pos.z), vy = player.vel.y; if (vy < -18 && agl2 < 140 && agl2 / -vy < 3.2) { if ((pullUpTimer -= dt) <= 0) { pullUpTimer = 8; setAlert("PULL UP", 1.2); audio.pullUp(); } } }
-      if (assist && !landing && !crashing) assistFlight(dt, st);
-      else if (!landing && !crashing && !ops) {
-        aP = st.pitch; aR = st.roll;
-        const hands = Math.max(Math.abs(st.pitch), Math.abs(st.roll));
-        const oppose = Math.abs(player.bank) > 0.18 && Math.abs(st.roll) > 0.12 && Math.sign(st.roll) === Math.sign(player.bank);
-        let rrT = st.roll * 4.8, prT = st.pitch * 2.5;
-        if (hands < 0.1 && Math.abs(player.bank) < 0.4) { rrT += player.bank * 2.3; prT -= player.pitch * 0.9; }
-        const pitEase = 1 - Math.exp(-dt * (Math.abs(st.pitch) > 0.35 ? 30 : 16));
-        const rollEase = 1 - Math.exp(-dt * (Math.abs(st.roll) > 0.45 ? 36 : 14));
-        smPR += (prT - smPR) * pitEase;
-        smRR += (rrT - smRR) * rollEase;
-        rotBody(AX, smPR * dt);
-        player.q.multiply(_qa.setFromAxisAngle(tD.set(0, 0, -1), smRR * dt));
-        rotBody(AY, st.yaw * 0.6 * dt);
-        if (!oppose && Math.abs(player.bank) > 0.1) rotWorld(AY, -Math.sin(player.bank) * 1.15 * Math.max(0.22, Math.cos(player.pitch)) * dt);
-      }
+      if (!landing && !crashing) arcadeFlight(dt, st);
     }
     nearPad = pad && landingOpen && Math.hypot(player.pos.x - pad.pos.x, player.pos.z - pad.pos.z) < 520;
     // bounds: steer back toward the map centre around world-up
@@ -1320,7 +1273,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     const boost = controls.boost() ? 1 : 0;
     let target = (52 + throttle * 190) * (assist ? 1 - 0.2 * ezv() : 1) + boost * 55 - Math.sin(player.pitch) * 55;   // throttle lever: 120 (slow) .. 320 (fast)
     // b32 ARCADE CHASE: an enemy close ahead -> auto match its speed (sit ~250 m behind) and softly slide in behind it (height + line)
-    { const ct = (lockTarget && lockTarget.alive) ? lockTarget : null; if (ct && !boost && !stickOn) { const d = ct.pos.distanceTo(player.pos), want = ct.speed + THREE.MathUtils.clamp((d - 280) * 0.1, -20, 30); target += (want - target) * 0.35;
+    { const ct = (lockTarget && lockTarget.alive && (lockTarget.kind === "jet" || lockTarget.heli)) ? lockTarget : null; if (ct && !boost && !stickOn) { const d = ct.pos.distanceTo(player.pos), want = ct.speed + THREE.MathUtils.clamp((d - 280) * 0.1, -20, 30); target += (want - target) * 0.35;
       player.pos.y += THREE.MathUtils.clamp(ct.pos.y - player.pos.y, -40, 40) * 0.35 * dt;
       tB.subVectors(ct.pos, player.pos); const ex = -wrapPi(Math.atan2(-tB.x, -tB.z) - player.yaw); rotWorld(AY, -THREE.MathUtils.clamp(ex, -0.25, 0.25) * 0.45 * dt); chaseOn = true; } else chaseOn = false; }
     target *= 1 - 0.5 * brkV; target -= 16 * Math.min(1, Math.max(Math.abs(aP), Math.abs(aR) * 0.5)) * (1 - boost);

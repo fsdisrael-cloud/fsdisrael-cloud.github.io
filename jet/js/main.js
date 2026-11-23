@@ -1,7 +1,7 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=53";
-import { createHud } from "./hud.js?v=53";
+import { createGame } from "./game.js?v=54";
+import { createHud } from "./hud.js?v=54";
 import { createControls } from "./controls.js?v=48";
 import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=48";
 import { createAudio, trackFor } from "./audio.js?v=48";
@@ -29,7 +29,7 @@ try {
   for (let i = 0; i < 500; i++) { w.fillStyle = `rgba(${rn() < 0.5 ? "255,255,255" : "0,0,0"},${0.03 + rn() * 0.08})`; w.fillRect(rn() * 256, rn() * 256, 1 + rn() * 2, 1 + rn() * 2); }
   document.documentElement.style.setProperty("--worn", `url(${wc.toDataURL("image/png")})`);
 } catch (e) { /* plain gradients if canvas is unavailable */ }
-const BUILD = 39;
+const BUILD = 54;
 { const t = $("build-tag"); if (t) t.textContent = "X-JET b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;
