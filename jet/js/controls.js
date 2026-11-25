@@ -160,7 +160,7 @@ export function createControls() {
       down(e, id, x, y) {
         if (!enabled || joy.active) return;
         // b29: the stick box overlaps the weapon buttons on small phones -> a touch on a weapon button is never a stick tap
-        for (const wb of document.querySelectorAll(".wbtn, .abtn, .tgt-b")) { const r = wb.getBoundingClientRect(); if (r.width && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) { wb.dispatchEvent(new CustomEvent("jet-fwd")); return; } }
+        for (const wb of document.querySelectorAll(".wbtn, .abtn, .tgt-b, .orb, #btn-moab, #btn-shield, #eject-handles")) { const r = wb.getBoundingClientRect(); if (r.width && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) { if (wb.classList.contains("wbtn")) wb.dispatchEvent(new CustomEvent("jet-fwd")); return; } }
         joy.active = true; joy.id = id; joy.sx = x; joy.sy = y; joy.t0 = e.timeStamp || performance.now(); joy.maxd = 0; joy.side = 0;
         say("stick");
       },

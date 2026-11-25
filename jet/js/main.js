@@ -1,17 +1,17 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=54";
-import { createHud } from "./hud.js?v=54";
-import { createControls } from "./controls.js?v=48";
+import { createGame } from "./game.js?v=55";
+import { createHud } from "./hud.js?v=55";
+import { createControls } from "./controls.js?v=55";
 import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=48";
-import { createAudio, trackFor } from "./audio.js?v=48";
+import { createAudio, trackFor } from "./audio.js?v=55";
 import { createHaptics } from "./haptics.js?v=48";
 import { createRain2D } from "./rain2d.js?v=48";
 import { createLoading } from "./loading.js?v=48";
-import { logo3dHTML, initLogo3d } from "./logo3d.js?v=48";
+import { logo3dHTML, initLogo3d } from "./logo3d.js?v=55";
 import { setSurreal, tickStyle } from "./surreal.js?v=48";
 import { LANGS, getLang, langInfo, setLang, initLang, applyDom, watchDom, tr } from "./i18n.js?v=48";
-import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=48";
+import { LEVELS, BIOMES, buildLevel, levelCount, loadLevelNo, saveLevelNo } from "./levels.js?v=55";
 
 const $ = (id) => document.getElementById(id);
 
@@ -29,7 +29,7 @@ try {
   for (let i = 0; i < 500; i++) { w.fillStyle = `rgba(${rn() < 0.5 ? "255,255,255" : "0,0,0"},${0.03 + rn() * 0.08})`; w.fillRect(rn() * 256, rn() * 256, 1 + rn() * 2, 1 + rn() * 2); }
   document.documentElement.style.setProperty("--worn", `url(${wc.toDataURL("image/png")})`);
 } catch (e) { /* plain gradients if canvas is unavailable */ }
-const BUILD = 54;
+const BUILD = 55;
 { const t = $("build-tag"); if (t) t.textContent = "X-JET b" + BUILD; }
 function hardReload(b) {
   const k = "jet-reload-" + b;
@@ -551,7 +551,15 @@ requestAnimationFrame(frame);
   const t0 = performance.now();
   function setArtFor(jet) { const A = TITLE_ART[jet] || TITLE_ART.viper, s = document.documentElement.style, u = `url("${new URL("img/art/" + A.img, location.href).href}")`; s.setProperty("--title-p", u, "important"); s.setProperty("--title-l", `url("${new URL("img/art/" + A.img.replace(".jpg", "_l.jpg"), location.href).href}")`, "important"); }   // b33/b35
   setArtFor("f35"); setTimeout(() => { for (const k of TITLE_JETS) { const im = new Image(); im.src = "img/art/" + TITLE_ART[k].img.replace(".jpg", innerWidth > innerHeight ? "_l.jpg" : ".jpg"); } }, 2500);
-  $("scene-label")?.addEventListener("click", (e) => { e.stopPropagation(); reroll(1); });
+  const pickScene = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const n = performance.now();
+    if (n - (pickScene.at || 0) < 450) return;
+    pickScene.at = n;
+    reroll(1);
+  };
+  $("scene-label")?.addEventListener("pointerup", pickScene);
+  $("scene-label")?.addEventListener("click", pickScene);
   const setLabel = () => { const r = preload?.level?.run; if (r) setArtFor(r.jet); const jn = JET_TYPES[r?.jet]?.name || "", j0 = jn.split(" ")[0]; $("scene-label").textContent = r ? `${r.place?.name || runLabel(r)} · ${/\d/.test(j0) ? j0 : jn}`.toUpperCase() : "";   /* b36: scene + jet only */ };
   // dir 0 / 1: a new random scene; -1: step back to the previous scene; swiping left/right on the menu calls this
   async function reroll(dir = 0) {
@@ -560,7 +568,9 @@ requestAnimationFrame(frame);
     if (dir < 0) { if (sceneIdx <= 0) return; sceneIdx--; run0 = sceneHist[sceneIdx]; }
     else if (sceneIdx < sceneHist.length - 1) { sceneIdx++; run0 = sceneHist[sceneIdx]; }
     body.classList.add("rolling"); previewOn = false; preloadReady = false;
-    game.quit(); const cj = preload?.level?.run?.jet, nj = TITLE_JETS[(TITLE_JETS.indexOf(cj) + 1) % TITLE_JETS.length]; const p = startPreload(levelNo, run0 || titleRun(nj));   // b33: each tap = next jet + its scene + its art
+    try { game.titleOff(); } catch { /* ignore */ }
+    game.quit(); const cj = preload?.level?.run?.jet, nj = TITLE_JETS[(Math.max(0, TITLE_JETS.indexOf(cj)) + 1) % TITLE_JETS.length]; const p = startPreload(levelNo, run0 || titleRun(nj));
+    setLabel();
     const ok0 = await Promise.all([p.promise, new Promise((r) => setTimeout(r, 700))]);
     if (state !== "title") return;
     preloadReady = !!ok0[0];
@@ -573,7 +583,8 @@ requestAnimationFrame(frame);
 
   $("tap-fly").addEventListener("click", (e) => { e.stopPropagation(); if (preloadReady && state === "title") { clearSave(); play(); } });
   $("btn-reroll").addEventListener("pointerdown", (e) => e.stopPropagation());
-  $("btn-reroll").addEventListener("click", (e) => { e.stopPropagation(); reroll(1); });
+  $("btn-reroll").addEventListener("pointerup", pickScene);
+  $("btn-reroll").addEventListener("click", pickScene);
   // swipe left = next scene, swipe right = previous scene (title menu only, never starting a swipe on a button)
   { let sw = null; const T = $("screen-title");
     T.addEventListener("pointerdown", (e) => { sw = body.classList.contains("tp-c") && !e.target.closest("button") ? { x: e.clientX, y: e.clientY, t: performance.now() } : null; });
@@ -613,8 +624,21 @@ $("btn-eject")?.addEventListener("click", () => game.ejectNow?.() || game.eject(
     h.addEventListener("touchstart", down, { passive: false }); h.addEventListener("touchmove", move, { passive: false }); h.addEventListener("touchend", fire);
   }
 }
-$("btn-moab")?.addEventListener("click", (e) => { e.stopPropagation(); game.dropMoab?.(); });
-$("btn-shield")?.addEventListener("click", (e) => { e.stopPropagation(); game.armShield?.(); });
+function bindTap(id, fn) {
+  const b = $(id); if (!b) return;
+  let last = 0;
+  const fire = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const n = performance.now();
+    if (n - last < 320) return;
+    last = n;
+    fn();
+  };
+  b.addEventListener("pointerdown", fire);
+  b.addEventListener("touchstart", fire, { passive: false });
+}
+bindTap("btn-moab", () => game.dropMoab?.());
+bindTap("btn-shield", () => game.armShield?.());
 $("btn-exit")?.addEventListener("click", (e) => { e.stopPropagation(); $("exit-ask").classList.remove("hidden"); });
 $("exit-no")?.addEventListener("click", () => $("exit-ask").classList.add("hidden"));
 $("exit-yes")?.addEventListener("click", () => location.reload());

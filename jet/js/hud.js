@@ -242,16 +242,12 @@ export function createHud() {
       if (pr.on) { circle(pr.x, pr.y, s.landingOpen ? 20 : 12, COL.pad, s.landingOpen ? 3.5 : 2); label(pr.x, pr.y - (s.landingOpen ? 30 : 20), s.landingOpen ? "LAND" : "CARRIER", COL.pad, 12); }
       else if (s.landingOpen) arrows.push({ t: { kind: "pad", pos: s.pad.pos }, d, pr });
     }
-    // gifts: bright marker so a glass pickup reads even before the model fills the view
-    const gifts = (s.gifts || []).map((g) => ({ g, d: Math.hypot(g.x - s.player.pos.x, g.y - s.player.pos.y, g.z - s.player.pos.z) })).sort((a, b) => a.d - b.d).slice(0, 8);
+    // gifts are the glass objects themselves: no circle, no letters. Off-screen ones get a plain arrow.
+    const gifts = (s.gifts || []).map((g) => ({ g, d: Math.hypot(g.x - s.player.pos.x, g.y - s.player.pos.y, g.z - s.player.pos.z) })).sort((a, b) => a.d - b.d).slice(0, 6);
     for (const { g, d } of gifts) {
-      if (d > 4500) continue;
+      if (d > 4500 || d < 80) continue;
       const pr = project(v.set(g.x, g.y, g.z), cam);
-      if (!pr.on) { if (d < 2200) edgeArrow(v.set(g.x, g.y, g.z), cam, g.col || "#ffe14a", false, null, 1.15); continue; }
-      const r = Math.max(14, Math.min(28, 900 / Math.max(80, d) * 18));
-      circle(pr.x, pr.y, r, g.col || "#ffe14a", 3);
-      label(pr.x, pr.y + 5, g.mark || "+", "#ffffff", Math.max(14, r));
-      if (d < 1800) label(pr.x, pr.y + r + 14, g.kind === "cash" ? "$" + (g.worth || 500) : String(g.kind || "GIFT").toUpperCase(), g.col || "#ffe14a", 11);
+      if (!pr.on && d < 2400) edgeArrow(v.set(g.x, g.y, g.z), cam, g.col || "#ffe14a", false, null, 1);
     }
     // rings
     if (s.rings.next) {
@@ -470,10 +466,10 @@ export function createHud() {
       rctx.beginPath(); rctx.arc(0, 0, z * (1.3 + 0.35 * Math.sin(s.elapsed * 6)), 0, 7); rctx.strokeStyle = "rgba(255,60,60,0.55)"; rctx.stroke(); rctx.restore();
     }
     for (const gft of s.gifts || []) {
-      const q = toScope(gft), pulse = 0.6 + 0.4 * Math.sin((s.elapsed || 0) * 7);
-      rctx.beginPath(); rctx.arc(q.x, q.y, (5 + 2.4 * pulse) * u, 0, 7);
-      rctx.fillStyle = gft.col || "#ffe14a"; rctx.fill();
-      rctx.lineWidth = 1.6 * u; rctx.strokeStyle = "#fff"; rctx.stroke();
+      const q = toScope(gft);
+      const z = 3.2 * u;
+      rctx.fillStyle = gft.col || "#ffe14a";
+      rctx.fillRect(q.x - z, q.y - z, z * 2, z * 2);
     }
     // FRIENDLY forces (green): jets = triangles pointing along their heading, ground forces = squares, ships = diamonds
     for (const a of s.allies || []) {

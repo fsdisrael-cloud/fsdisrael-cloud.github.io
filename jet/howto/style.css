@@ -64,9 +64,13 @@ html.lab3d .lab33 #lab-jet{display:none!important}
 .lab33 .lab-row{flex-wrap:wrap;justify-content:center}.lab33 .lab-row>.sky{flex:1 1 100%;min-width:0;max-width:100%}
 .lab33 .lab-row>.sky{flex:1 1 100%!important;height:190px!important}
 .gifts{margin:8px 0 36px}.gifts>p{color:#b9cbd8;margin-top:-8px}
+.gift-sky{position:relative;height:240px;margin:0 0 14px;border-radius:12px;overflow:hidden;background:
+  linear-gradient(180deg,rgba(6,14,24,.05) 0%,rgba(6,14,24,0) 42%,rgba(8,12,10,.25) 70%,rgba(8,12,10,.45) 100%),
+  url("assets/bg_sky.jpg") center 20%/cover no-repeat,
+  url("assets/bg_ground.jpg") center bottom/cover no-repeat}
+.gift-sky canvas{width:100%;height:100%;display:block}
 .gift-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.gf{margin:0;border:1px solid #4a657b80;border-radius:12px;background:linear-gradient(180deg,#1c3044,#101c2a);padding:12px;min-height:148px}
-.gf i{display:block;width:64px;height:64px;margin:0 auto 8px;position:relative;box-shadow:0 0 18px currentColor,inset 0 8px 12px #fff8}
+.gf{margin:0;border:1px solid #4a657b80;border-radius:12px;background:linear-gradient(180deg,#1c304488,#101c2acc);padding:12px;min-height:0}
 .gf figcaption{font-size:13px;color:#c5d5e2;line-height:1.35}
 .gf b{display:block;color:#fff;letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px}
 .gf.health{color:#ff3a3a}.gf.health i{background:linear-gradient(145deg,#ff8a8a,#c01010);border-radius:8px}

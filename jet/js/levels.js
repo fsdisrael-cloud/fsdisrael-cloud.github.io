@@ -51,22 +51,33 @@ export function buildLevel(n, run0) {
   const d0 = LEVELS[(n - 1) % LEVELS.length];
   let run = run0 || rollRun();
   // Exactly one mission in five is night. The other four stay daytime even if the scene roll was night.
+  // A scene picked on the title screen (run0) keeps its place, jet, time and weather.
   const nightOps = n % 5 === 0;
-  let timeLock = "";
-  try { timeLock = new URLSearchParams(location.search).get("time") || ""; } catch { /* ignore */ }
-  if (!timeLock) {
-    if (nightOps) run = { ...run, time: "night" };
-    else if (run.time === "night") run = { ...run, time: "day" };
+  if (!run0) {
+    let timeLock = "";
+    try { timeLock = new URLSearchParams(location.search).get("time") || ""; } catch { /* ignore */ }
+    if (!timeLock) {
+      if (nightOps) run = { ...run, time: "night" };
+      else if (run.time === "night") run = { ...run, time: "day" };
+    }
+    try {
+      const q = new URLSearchParams(location.search);
+      const seasons = ["spring", "summer", "autumn", "winter"];
+      const times = ["dawn", "day", "dusk", "day"];
+      const weathers = ["clear", "cloudy", "clear", "snow", "rain"];
+      run = { ...run, season: q.get("season") || seasons[n % 4], time: q.get("time") || (nightOps ? "night" : times[n % 4]), weather: q.get("weather") || weathers[n % 5], place: q.get("place") != null && EARTH_PLACES[+q.get("place")] ? EARTH_PLACES[+q.get("place")] : EARTH_PLACES[n % EARTH_PLACES.length], jet: q.get("jet") || "f35" };
+    } catch { run = { ...run, jet: "f35" }; }
+  } else {
+    try {
+      const q = new URLSearchParams(location.search);
+      const patch = {};
+      for (const k of ["time", "season", "weather", "jet"]) if (q.get(k)) patch[k] = q.get(k);
+      if (q.get("place") != null && EARTH_PLACES[+q.get("place")]) patch.place = EARTH_PLACES[+q.get("place")];
+      if (Object.keys(patch).length) run = { ...run, ...patch };
+    } catch { /* keep the picked scene and jet */ }
   }
-  try {
-    const q = new URLSearchParams(location.search);
-    const seasons = ["spring", "summer", "autumn", "winter"];
-    const times = ["dawn", "day", "dusk", "day"];
-    const weathers = ["clear", "cloudy", "clear", "snow", "rain"];
-    run = { ...run, season: q.get("season") || seasons[n % 4], time: q.get("time") || (nightOps ? "night" : times[n % 4]), weather: q.get("weather") || weathers[n % 5], place: q.get("place") != null && EARTH_PLACES[+q.get("place")] ? EARTH_PLACES[+q.get("place")] : EARTH_PLACES[n % EARTH_PLACES.length], jet: q.get("jet") || "f35" };
-  } catch { run = { ...run, jet: "f35" }; }
   const carrierOnly = n % 5 === 4;
-  if (carrierOnly) {
+  if (carrierOnly && !run0) {
     const coasts = EARTH_PLACES.filter((p) => p.sea);
     run = { ...run, place: coasts[(n * 3) % coasts.length] };
   }
