@@ -10,7 +10,7 @@
 <title>X-BASS</title>
 <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
-<link rel="stylesheet" href="css/app.css?v=1.6">
+<link rel="stylesheet" href="css/app.css?v=1.7">
 </head>
 <body>
 <main id="app">
@@ -25,7 +25,7 @@
     <button id="hit-saved" class="hit" type="button" data-aria="savedPlayers" aria-label="Saved players"></button>
     <button id="hit-go" class="hit" type="button" data-aria="continue" aria-label="Continue"></button>
     <button id="hit-gear" class="hit" type="button" data-aria="settings" aria-label="Settings"></button>
-    <div class="ver">v1.6</div>
+    <div class="ver">v1.7</div>
   </section>
 
   <section id="view-players" class="view">
@@ -74,11 +74,19 @@
         <button class="nav-btn" type="button" data-nav="back" data-aria="back" aria-label="Back">←</button>
       </div>
       <div class="staff-col">
-        <div class="staff-wrap">
-          <button id="btn-sync" type="button" data-i="sync">Sync</button>
-          <div id="note-strip" class="strip"></div>
+        <div class="lane">
+          <button id="btn-sync-notes" class="sync-btn" type="button" data-i="sync" data-aria="syncNotes">Sync</button>
+          <div class="strip-box" id="strip-box">
+            <div id="note-strip" class="strip"></div>
+            <div id="loop-span" class="loop-span"></div>
+            <button id="loop-a" class="loop-mark" type="button" data-which="a" data-aria="loopStart" aria-label="Loop start"></button>
+            <button id="loop-b" class="loop-mark" type="button" data-which="b" data-aria="loopEnd" aria-label="Loop end"></button>
+          </div>
         </div>
-        <div id="lyric-strip" class="lyric-bar"><span class="lyric-ph">· · ·</span></div>
+        <div class="lane lyric-lane">
+          <button id="btn-sync-lyrics" class="sync-btn" type="button" data-i="sync" data-aria="syncLyrics">Sync</button>
+          <div id="lyric-strip" class="lyric-bar"><span class="lyric-ph">· · ·</span></div>
+        </div>
       </div>
     </div>
     <div class="stage-row">
@@ -323,6 +331,6 @@
     </form>
   </div>
 </main>
-<script src="js/app.js?v=1.6"></script>
+<script src="js/app.js?v=1.7"></script>
 </body>
 </html>

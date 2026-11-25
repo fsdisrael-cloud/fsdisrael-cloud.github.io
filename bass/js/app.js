@@ -1,8 +1,9 @@
-/* X-BASS v1.6
+/* X-BASS v1.7
    Note source: default eighth-note groove at the BPM, locked to media currentTime.
    A real transcription plugs in as absolute media times:
      XBass.setTrack([{t: 0.0, string: 0, fret: 0}, {t: 0.5, string: 0, fret: 3}]);
    string 0..3 = E A D G (low to high), fret 0 = open. Pass null to restore the groove.
+   Per song (localStorage xbass.sync): note start offset, lyric start offset, loop markers.
 */
 (function () {
   "use strict";
@@ -35,7 +36,8 @@
       search: "SEARCH", searchPh: "Song or artist", searching: "Searching…",
       preparing: "Preparing…", ready: "Ready to play", noTab: "No bass tab found",
       noVideo: "No video found", noSongs: "No songs found", searchFail: "Search failed",
-      sync: "Sync", synced: "Synced",
+      sync: "Sync", synced: "Synced", syncNotes: "Sync notes", syncLyrics: "Sync lyrics",
+      loopStart: "Loop start", loopEnd: "Loop end",
       guitar: "GUITAR", piano: "PIANO", vocals: "VOCALS", drums: "DRUMS",
       tuner: "TUNER", flat: "FLAT", inTune: "IN TUNE", sharp: "SHARP",
       tuneUp: "TUNE UP", tuneDown: "TUNE DOWN", back: "Back", home: "Home",
@@ -52,7 +54,8 @@
       search: "חיפוש", searchPh: "שיר או אמן", searching: "מחפש…",
       preparing: "מכין…", ready: "מוכן לנגן", noTab: "לא נמצא טאב לבס",
       noVideo: "לא נמצא סרטון", noSongs: "לא נמצאו שירים", searchFail: "החיפוש נכשל",
-      sync: "סנכרון", synced: "סונכרן",
+      sync: "סנכרון", synced: "סונכרן", syncNotes: "סנכרון תווים", syncLyrics: "סנכרון מילים",
+      loopStart: "התחלת לולאה", loopEnd: "סוף לולאה",
       guitar: "גיטרה", piano: "פסנתר", vocals: "שירה", drums: "תופים",
       tuner: "טיונר", flat: "נמוך", inTune: "מכוון", sharp: "גבוה",
       tuneUp: "מתח למעלה", tuneDown: "שחרר למטה", back: "חזרה", home: "בית",
@@ -64,7 +67,14 @@
   };
 
   const state = load();
-  state.syncOffset = 0;
+  state.noteOffset = 0;
+  state.lyricOffset = 0;
+  state.noteSynced = false;
+  state.lyricSynced = false;
+  state.lyricAnchor = null;
+  state.loopA = null;
+  state.loopB = null;
+  state.loopLock = false;
   state.songKey = "";
   state.words = [];
   state.lyricQuery = null;
@@ -85,6 +95,8 @@
   };
   const mutes = { guitar: false, piano: false, vocals: false, drums: false };
   let taps = [];
+  let mediaPlaying = false;
+  let markDrag = null;
 
   let audioCtx = null;
   let analyser = null;
@@ -511,13 +523,12 @@
   }
   function startFile(file) {
     state.track = null;
-    state.songKey = "";
-    state.syncOffset = 0;
+    loadSongTiming("");
     state.lyricQuery = null;
     state.words = [];
     lyricFor = "";
     const lyrics = $("lyric-strip");
-    if (lyrics) { lyrics.hidden = true; lyrics.replaceChildren(); }
+    if (lyrics) lyrics.dataset.win = "";
     state.source = { type: "file", name: file.name };
     go("play");
     mountFile(file);
@@ -539,7 +550,8 @@
     }
     return real;
   }
-  function scoreTime() { return mediaTime() - (state.syncOffset || 0); }
+  function noteScore() { return mediaTime() - (state.noteOffset || 0); }
+  function lyricScore() { return mediaTime() - (state.lyricOffset || 0); }
   function seekTo(sec, soft) {
     const dest = Math.max(0, sec);
     seekHold = { t: dest, at: performance.now() };
@@ -564,6 +576,7 @@
     if (ytPlayer && ytPlayer.setPlaybackRate) { try { ytPlayer.setPlaybackRate(r); } catch (e) {} }
   }
   function setPlayingFlag(on) {
+    mediaPlaying = !!on;
     $("btn-play").textContent = on ? "❚❚" : "▶";
     $("btn-play").setAttribute("aria-label", on ? t("pause") : t("play"));
   }
@@ -602,8 +615,10 @@
   }
 
   function tick(dt, now) {
-    const note = noteAt(scoreTime());
-    renderKaraoke(scoreTime());
+    holdLoop();
+    const noteT = noteScore();
+    const note = noteAt(noteT);
+    renderKaraoke(noteT, lyricScore());
     const k = 1 - Math.exp(-7 * dt);
     if (note.key !== vis.key) {
       vis.key = note.key;
@@ -1147,10 +1162,12 @@
         } catch (e) { notes = null; }
       }
       const sounded = (notes || []).filter((n) => !n.rest);
-      state.songKey = "ss:" + rec.songId;
-      state.syncOffset = recallSync(state.songKey);
+      loadSongTiming("ss:" + rec.songId);
       state.lyricQuery = { artist: rec.artist || meta.artist || "", title: rec.title || meta.title || "" };
+      state.words = [];
       lyricFor = "";
+      const lyricEl = $("lyric-strip");
+      if (lyricEl) lyricEl.dataset.win = "";
       if (sounded.length) {
         window.XBass.setTrack(notes);
         setStatus(t("ready") + " · Songsterr");
@@ -1175,16 +1192,88 @@
   function syncMap() {
     try { return JSON.parse(localStorage.getItem("xbass.sync") || "{}") || {}; } catch (e) { return {}; }
   }
-  function recallSync(key) {
-    if (!key) return 0;
+  function readSync(key) {
+    const out = { n: 0, l: 0, ns: false, ls: false, a: null, b: null, lock: false, lAt: null };
+    if (!key) return out;
     const v = syncMap()[key];
-    return typeof v === "number" && isFinite(v) ? v : 0;
+    if (typeof v === "number" && isFinite(v)) { out.n = v; out.ns = true; return out; }
+    if (!v || typeof v !== "object") return out;
+    if (typeof v.n === "number" && isFinite(v.n)) out.n = v.n;
+    if (typeof v.l === "number" && isFinite(v.l)) out.l = v.l;
+    out.ns = !!v.ns;
+    out.ls = !!v.ls;
+    if (typeof v.a === "number" && isFinite(v.a)) out.a = v.a;
+    if (typeof v.b === "number" && isFinite(v.b)) out.b = v.b;
+    out.lock = !!v.lock;
+    if (typeof v.lAt === "number" && isFinite(v.lAt)) out.lAt = v.lAt;
+    return out;
   }
-  function rememberSync(key, off) {
+  function loadSongTiming(key) {
+    const s = readSync(key);
+    state.songKey = key || "";
+    state.noteOffset = s.n || 0;
+    state.lyricOffset = s.l || 0;
+    state.noteSynced = s.ns;
+    state.lyricSynced = s.ls;
+    state.lyricAnchor = s.lAt;
+    state.loopA = s.a;
+    state.loopB = s.b;
+    state.loopLock = s.lock;
+    paintSyncButtons();
+  }
+  function saveSongSync() {
+    const key = state.songKey;
     if (!key) return;
     const m = syncMap();
-    m[key] = Math.round(off * 1000) / 1000;
+    const rec = {
+      n: Math.round((state.noteOffset || 0) * 1000) / 1000,
+      l: Math.round((state.lyricOffset || 0) * 1000) / 1000
+    };
+    if (state.noteSynced) rec.ns = 1;
+    if (state.lyricSynced) rec.ls = 1;
+    if (state.loopA != null && state.loopB != null && isFinite(state.loopA) && isFinite(state.loopB)) {
+      rec.a = Math.round(state.loopA * 1000) / 1000;
+      rec.b = Math.round(state.loopB * 1000) / 1000;
+    }
+    if (state.loopLock) rec.lock = 1;
+    if (state.lyricAnchor != null && isFinite(state.lyricAnchor)) rec.lAt = Math.round(state.lyricAnchor * 1000) / 1000;
+    m[key] = rec;
     try { localStorage.setItem("xbass.sync", JSON.stringify(m)); } catch (e) {}
+  }
+  function paintSyncButtons() {
+    const notesBtn = $("btn-sync-notes");
+    const lyricBtn = $("btn-sync-lyrics");
+    if (notesBtn) notesBtn.classList.toggle("set", !!state.noteSynced);
+    if (lyricBtn) lyricBtn.classList.toggle("set", !!state.lyricSynced);
+  }
+  function flashSync(btn) {
+    if (!btn) return;
+    btn.classList.add("set", "did");
+    clearTimeout(btn._flash);
+    btn._flash = setTimeout(() => { btn.classList.remove("did"); }, 700);
+  }
+  function firstNoteTime() {
+    const notes = soundedNotes();
+    return notes.length ? notes[0].t : 0;
+  }
+  function syncNotes() {
+    state.noteOffset = mediaTime() - firstNoteTime();
+    state.noteSynced = true;
+    saveSongSync();
+    flashSync($("btn-sync-notes"));
+  }
+  function syncLyrics() {
+    const words = state.words || [];
+    if (words.length) {
+      state.lyricOffset = mediaTime() - words[0].t;
+      state.lyricAnchor = null;
+    } else {
+      state.lyricAnchor = mediaTime();
+      state.lyricOffset = mediaTime();
+    }
+    state.lyricSynced = true;
+    saveSongSync();
+    flashSync($("btn-sync-lyrics"));
   }
   function soundedNotes() {
     return (state.track || []).filter((n) => n && !n.rest);
@@ -1226,42 +1315,50 @@
   function renderStaff(score, notes, curT) {
     const el = $("note-strip");
     if (!el) return;
-    el.dataset.score = score.toFixed(2);
     const w = Math.max(80, el.clientWidth || 300);
-    const h = Math.max(40, el.clientHeight || 58);
+    const h = Math.max(48, el.clientHeight || 92);
     let root = el.querySelector("svg");
     if (!root) {
-      el.replaceChildren();
       root = svg("svg", { class: "staff-svg" });
       el.appendChild(root);
     }
     root.setAttribute("viewBox", "0 0 " + w + " " + h);
     while (root.firstChild) root.removeChild(root.firstChild);
-    const step = Math.max(2.4, Math.min(3.3, (h - 18) / 18));
-    const bottom = 8 + 9 * step;
+    const gutter = 12;
+    const pad = 3;
+    const lo = -10;
+    const hi = 12;
+    const step = Math.max(2, (h - gutter - pad) / (hi - lo));
+    const yFor = (pos) => (h - pad) - (pos - lo) * step;
     for (let i = 0; i < 5; i++) {
-      const y = bottom - i * step * 2;
-      root.appendChild(svg("line", { x1: 0, y1: y, x2: w, y2: y, stroke: "#8b93a0", "stroke-width": 1 }));
+      const y = yFor(i * 2);
+      root.appendChild(svg("line", { x1: 34, y1: y, x2: w, y2: y, stroke: "#8b93a0", "stroke-width": 1 }));
     }
-    const clef = svg("g", { transform: "translate(4," + (bottom - 30) + ")" });
+    const mid = yFor(4);
+    const clefScale = clamp(step / 3.4, 0.72, 1.05);
+    const clef = svg("g", { transform: "translate(4," + (mid - 18 * clefScale).toFixed(1) + ") scale(" + clefScale.toFixed(2) + ")" });
     clef.appendChild(svg("path", {
-      d: "M10,4 C2,6 0,16 7,22 C14,28 18,20 15,13 C12,6 6,6 7,13",
-      fill: "none", stroke: "#111", "stroke-width": 2.2, "stroke-linecap": "round"
+      d: "M16,1 C7,4 3,14 7,24 C11,34 20,34 22,24 C24,16 16,12 12,18 C8,26 12,36 20,38",
+      fill: "none", stroke: "#111", "stroke-width": 2.5, "stroke-linecap": "round"
     }));
-    clef.appendChild(svg("circle", { cx: 18, cy: 10, r: 1.7, fill: "#111" }));
-    clef.appendChild(svg("circle", { cx: 18, cy: 17, r: 1.7, fill: "#111" }));
+    clef.appendChild(svg("circle", { cx: 26, cy: 14, r: 2.2, fill: "#111" }));
+    clef.appendChild(svg("circle", { cx: 26, cy: 23, r: 2.2, fill: "#111" }));
     root.appendChild(clef);
-    root.appendChild(svg("line", { x1: PLAYHEAD, y1: 2, x2: PLAYHEAD, y2: h - 2, stroke: "#e1061c", "stroke-width": 1.5 }));
-    const t0 = score - (PLAYHEAD + 20) / PPS;
-    const t1 = score + (w - PLAYHEAD) / PPS + 0.3;
+    root.appendChild(svg("line", { x1: PLAYHEAD, y1: gutter, x2: PLAYHEAD, y2: h - 2, stroke: "#e1061c", "stroke-width": 1.5 }));
+    const t0 = score - (PLAYHEAD + 24) / PPS;
+    const t1 = score + (w - PLAYHEAD) / PPS + 0.35;
     const beat = 60 / (state.bpm || 96);
     const acc = { 1: "#", 3: "b", 6: "#", 8: "b", 10: "b" };
+    const rx = clamp(step * 1.15, 3.1, 5.6);
+    const ry = clamp(step * 0.78, 2.15, 3.9);
+    const stemLen = clamp(step * 2.7, 8, 16);
     for (let i = 0; i < notes.length; i++) {
       const n = notes[i];
       if (n.t < t0 || n.t > t1) continue;
-      const midi = [28, 33, 38, 43][n.string] + n.fret;
+      const midi = [28, 33, 38, 43][clamp(n.string | 0, 0, 3)] + (n.fret | 0);
       const pos = staffPos(midi);
-      const y = bottom - pos * step;
+      const y = yFor(pos);
+      if (y < -6 || y > h + 6) continue;
       const x = PLAYHEAD + (n.t - score) * PPS;
       const next = notes[i + 1] ? notes[i + 1].t : n.t + beat;
       const dur = Math.max(0.05, next - n.t);
@@ -1270,86 +1367,110 @@
       const half = !whole && dur >= beat * 1.6;
       const eighth = dur < beat * 0.75;
       if (pos <= -2) {
-        for (let p = -2; p >= pos - (pos % 2); p -= 2) {
-          const ly = bottom - p * step;
-          root.appendChild(svg("line", { x1: x - 9, y1: ly, x2: x + 9, y2: ly, stroke: "#8b93a0", "stroke-width": 1 }));
+        const end = pos - (pos % 2);
+        for (let p = -2; p >= end; p -= 2) {
+          const ly = yFor(p);
+          if (ly < gutter - 2 || ly > h - 1) continue;
+          root.appendChild(svg("line", { x1: x - rx - 3, y1: ly, x2: x + rx + 3, y2: ly, stroke: "#8b93a0", "stroke-width": 1 }));
         }
       }
       if (pos >= 10) {
         for (let p = 10; p <= pos; p += 2) {
-          const ly = bottom - p * step;
-          root.appendChild(svg("line", { x1: x - 9, y1: ly, x2: x + 9, y2: ly, stroke: "#8b93a0", "stroke-width": 1 }));
+          const ly = yFor(p);
+          if (ly < gutter - 2 || ly > h - 1) continue;
+          root.appendChild(svg("line", { x1: x - rx - 3, y1: ly, x2: x + rx + 3, y2: ly, stroke: "#8b93a0", "stroke-width": 1 }));
         }
       }
       const sign = acc[((midi % 12) + 12) % 12];
       if (sign) {
-        const at = svg("text", { x: x - 14, y: y + 4, "font-size": 11, fill: color, "font-weight": 700 });
+        const at = svg("text", {
+          x: x - rx - 8, y: y + ry,
+          "font-size": clamp(step * 2.5, 10, 14),
+          fill: color, "font-weight": 700, "font-family": "Georgia, serif"
+        });
         at.textContent = sign;
         root.appendChild(at);
       }
       const g = svg("g", { transform: "translate(" + x.toFixed(1) + "," + y.toFixed(1) + ") rotate(-18)" });
       g.appendChild(svg("ellipse", {
-        cx: 0, cy: 0, rx: 5.4, ry: 3.8,
+        cx: 0, cy: 0, rx: rx.toFixed(2), ry: ry.toFixed(2),
         fill: half || whole ? "none" : color,
-        stroke: color, "stroke-width": 1.5
+        stroke: color, "stroke-width": 1.35
       }));
       root.appendChild(g);
       if (!whole) {
         const up = pos < 4;
-        const sx = x + (up ? 4.6 : -4.6);
-        const sy = up ? y - 18 : y + 18;
+        const dir = up ? -1 : 1;
+        const sx = x + (up ? rx * 0.78 : -rx * 0.78);
+        const sy = y + dir * stemLen;
         root.appendChild(svg("line", { x1: sx, y1: y, x2: sx, y2: sy, stroke: color, "stroke-width": 1.3 }));
         if (eighth) {
-          root.appendChild(svg("path", {
-            d: up ? "M" + sx + "," + sy + " q7,5 1,11" : "M" + sx + "," + sy + " q7,-5 1,-11",
-            fill: "none", stroke: color, "stroke-width": 1.3
-          }));
+          const flag = up
+            ? "M" + sx.toFixed(1) + "," + sy.toFixed(1) + " c5,3 8,7 4,11"
+            : "M" + sx.toFixed(1) + "," + sy.toFixed(1) + " c5,-3 8,-7 4,-11";
+          root.appendChild(svg("path", { d: flag, fill: "none", stroke: color, "stroke-width": 1.3 }));
         }
       }
     }
   }
-  function renderKaraoke(score) {
-    const notes = soundedNotes();
-    let cur = -1;
-    for (let i = 0; i < notes.length; i++) {
-      if (notes[i].t <= score + 0.04) cur = i;
-      else break;
-    }
-    renderStaff(score, notes, cur >= 0 ? notes[cur].t : -1);
+  function renderLyricStrip(score) {
+    const el = $("lyric-strip");
+    if (!el) return;
     const words = state.words || [];
-    const lyric = $("lyric-strip");
-    if (!lyric) return;
     if (!words.length) {
-      if (!lyric.querySelector(".lyric-ph")) {
-        lyric.replaceChildren();
+      if (el.dataset.win !== "ph") {
+        el.dataset.win = "ph";
+        el.replaceChildren();
         const ph = document.createElement("span");
         ph.className = "lyric-ph";
         ph.textContent = "· · ·";
-        lyric.appendChild(ph);
+        el.appendChild(ph);
       }
       return;
     }
+    const w = el.clientWidth || 280;
+    const t0 = score - (PLAYHEAD + 90) / PPS;
+    const t1 = score + (w - PLAYHEAD) / PPS + 0.8;
     let cw = -1;
     for (let i = 0; i < words.length; i++) {
-      if (words[i].t <= score + 0.04) cw = i;
+      if (words[i].t <= score + 0.05) cw = i;
       else break;
     }
-    const line = words[cw < 0 ? 0 : cw].line;
-    const row = words.filter((w) => w.line === line);
-    const key = "L" + line;
-    if (lyric.dataset.win !== key) {
-      lyric.dataset.win = key;
-      lyric.replaceChildren();
-      row.forEach((w) => {
+    let i0 = 0;
+    while (i0 < words.length && words[i0].t < t0) i0++;
+    if (cw >= 0 && cw < i0 && words[cw].t > score - 4) i0 = cw;
+    let i1 = i0;
+    while (i1 < words.length && words[i1].t <= t1) i1++;
+    const key = i0 + ":" + i1;
+    if (el.dataset.win !== key) {
+      el.dataset.win = key;
+      el.replaceChildren();
+      for (let i = i0; i < i1; i++) {
         const s = document.createElement("span");
-        s.textContent = w.label;
-        s.dataset.t = String(w.t);
-        lyric.appendChild(s);
-      });
+        s.className = "lyric-word";
+        s.textContent = words[i].label;
+        el.appendChild(s);
+      }
     }
-    Array.prototype.forEach.call(lyric.children, (s) => {
-      s.classList.toggle("now", cw >= 0 && Math.abs(+s.dataset.t - words[cw].t) < 0.001);
-    });
+    const nodes = el.children;
+    for (let k = 0; k < nodes.length; k++) {
+      const it = words[i0 + k];
+      if (!it) continue;
+      const x = PLAYHEAD + (it.t - score) * PPS;
+      nodes[k].style.transform = "translate3d(" + x.toFixed(1) + "px,0,0)";
+      nodes[k].classList.toggle("now", cw === i0 + k);
+    }
+  }
+  function renderKaraoke(noteT, lyricT) {
+    const notes = soundedNotes();
+    let cur = -1;
+    for (let i = 0; i < notes.length; i++) {
+      if (notes[i].t <= noteT + 0.04) cur = i;
+      else break;
+    }
+    renderStaff(noteT, notes, cur >= 0 ? notes[cur].t : -1);
+    placeMarkers(noteT);
+    renderLyricStrip(lyricT);
   }
   function parseLrc(text) {
     const rows = [];
@@ -1398,7 +1519,12 @@
       if (!best || token !== loadLyrics.token) return;
       if (duration && bestD > 45) return;
       state.words = parseLrc(best.syncedLyrics);
-      if (lyric) { lyric.hidden = !state.words.length; lyric.dataset.win = ""; }
+      if (state.lyricAnchor != null && state.words.length) {
+        state.lyricOffset = state.lyricAnchor - state.words[0].t;
+        state.lyricAnchor = null;
+        saveSongSync();
+      }
+      if (lyric) lyric.dataset.win = "";
     } catch (e) {}
   }
   loadLyrics.token = 0;
@@ -1413,18 +1539,113 @@
     lyricFor = key;
     loadLyrics(q.artist, q.title, dur);
   }
-  function doSync() {
-    const score = scoreTime();
-    const notes = soundedNotes();
-    if (!notes.length) return;
-    let best = notes[0], bestD = Math.abs(notes[0].t - score);
-    for (let i = 1; i < notes.length; i++) {
-      const d = Math.abs(notes[i].t - score);
-      if (d < bestD) { bestD = d; best = notes[i]; }
+  function loopBounds() {
+    let a = state.loopA;
+    let b = state.loopB;
+    if (a == null || b == null || !isFinite(a) || !isFinite(b)) {
+      const t0 = firstNoteTime();
+      a = t0;
+      b = t0 + 8;
     }
-    state.syncOffset = mediaTime() - best.t;
-    rememberSync(state.songKey, state.syncOffset);
-    setStatus(t("synced"));
+    if (b < a) { const swap = a; a = b; b = swap; }
+    if (b - a < 0.35) b = a + 0.35;
+    return { a: a, b: b };
+  }
+  function holdLoop() {
+    if (!state.loopLock || !mediaPlaying || !state.source) return;
+    const bounds = loopBounds();
+    const start = Math.max(0, bounds.a + (state.noteOffset || 0));
+    const end = Math.max(start + 0.35, bounds.b + (state.noteOffset || 0));
+    const mt = mediaTime();
+    if (mt >= end - 0.04 || mt < start - 0.15) {
+      if (!seekHold || Math.abs(seekHold.t - start) > 0.25) seekTo(start, false);
+    }
+  }
+  function timeFromX(clientX) {
+    const strip = $("note-strip");
+    if (!strip) return noteScore();
+    const rect = strip.getBoundingClientRect();
+    return noteScore() + ((clientX - rect.left) - PLAYHEAD) / PPS;
+  }
+  function placeMarkers(score) {
+    const strip = $("note-strip");
+    if (!strip) return;
+    const w = strip.clientWidth || 280;
+    const bounds = loopBounds();
+    const x1 = PLAYHEAD + (bounds.a - score) * PPS;
+    const x2 = PLAYHEAD + (bounds.b - score) * PPS;
+    [["loop-a", x1], ["loop-b", x2]].forEach(([id, x]) => {
+      const el = $(id);
+      if (!el) return;
+      const shown = Math.max(0, Math.min(w - 32, x - 16));
+      el.style.transform = "translate3d(" + shown.toFixed(1) + "px,0,0)";
+      el.classList.toggle("locked", !!state.loopLock);
+    });
+    const span = $("loop-span");
+    if (!span) return;
+    const left = Math.max(0, Math.min(x1, x2));
+    const right = Math.min(w, Math.max(x1, x2));
+    span.classList.toggle("locked", !!state.loopLock);
+    if (right - left < 1) {
+      span.style.opacity = "0";
+    } else {
+      span.style.opacity = "1";
+      span.style.transform = "translate3d(" + left.toFixed(1) + "px,0,0)";
+      span.style.width = (right - left).toFixed(1) + "px";
+    }
+  }
+  function toggleLoopLock() {
+    const bounds = loopBounds();
+    state.loopA = bounds.a;
+    state.loopB = bounds.b;
+    state.loopLock = !state.loopLock;
+    saveSongSync();
+    if (state.loopLock) seekTo(Math.max(0, bounds.a + (state.noteOffset || 0)), false);
+  }
+  function bindMarkers() {
+    ["loop-a", "loop-b"].forEach((id) => {
+      const el = $(id);
+      if (!el) return;
+      el.addEventListener("pointerdown", (e) => {
+        if (e.button != null && e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const bounds = loopBounds();
+        state.loopA = bounds.a;
+        state.loopB = bounds.b;
+        const which = el.dataset.which === "b" ? "b" : "a";
+        const cur = which === "a" ? state.loopA : state.loopB;
+        markDrag = { which: which, moved: false, x: e.clientX, y: e.clientY, grab: timeFromX(e.clientX) - cur };
+        try { el.setPointerCapture(e.pointerId); } catch (err) {}
+      });
+    });
+    window.addEventListener("pointermove", (e) => {
+      if (!markDrag) return;
+      const dx = e.clientX - markDrag.x;
+      const dy = e.clientY - markDrag.y;
+      if (!markDrag.moved && dx * dx + dy * dy < 36) return;
+      markDrag.moved = true;
+      if (state.loopLock) return;
+      const t = timeFromX(e.clientX) - markDrag.grab;
+      const gap = 0.35;
+      if (markDrag.which === "a") state.loopA = Math.min(t, state.loopB - gap);
+      else state.loopB = Math.max(t, state.loopA + gap);
+    });
+    const endDrag = (canToggle) => {
+      if (!markDrag) return;
+      const moved = markDrag.moved && !state.loopLock;
+      const tapped = !markDrag.moved;
+      markDrag = null;
+      if (tapped && canToggle) toggleLoopLock();
+      else if (moved) {
+        const bounds = loopBounds();
+        state.loopA = bounds.a;
+        state.loopB = bounds.b;
+        saveSongSync();
+      }
+    };
+    window.addEventListener("pointerup", () => endDrag(true));
+    window.addEventListener("pointercancel", () => endDrag(false));
   }
   function bindStrip() {
     const strip = $("note-strip");
@@ -1502,13 +1723,12 @@
       if (!id) { err.hidden = false; err.textContent = t("invalid"); return; }
       err.hidden = true;
       state.track = null;
-      state.songKey = "yt:" + id;
-      state.syncOffset = recallSync(state.songKey);
+      loadSongTiming("yt:" + id);
       state.lyricQuery = null;
       state.words = [];
       lyricFor = "";
       const lyrics = $("lyric-strip");
-      if (lyrics) { lyrics.hidden = true; lyrics.replaceChildren(); }
+      if (lyrics) lyrics.dataset.win = "";
       startYouTube(id, $("song-url").value.trim());
     });
     $("find-form").addEventListener("submit", (e) => {
@@ -1524,8 +1744,11 @@
     $("btn-play").addEventListener("click", togglePlay);
     $("btn-back").addEventListener("click", () => seekBy(-10));
     $("btn-fwd").addEventListener("click", () => seekBy(10));
-    $("btn-sync").addEventListener("click", doSync);
+    document.documentElement.style.setProperty("--ph", PLAYHEAD + "px");
+    $("btn-sync-notes").addEventListener("click", (e) => { e.stopPropagation(); syncNotes(); });
+    $("btn-sync-lyrics").addEventListener("click", (e) => { e.stopPropagation(); syncLyrics(); });
     bindStrip();
+    bindMarkers();
     $("btn-loop").addEventListener("click", () => {
       state.loop = !state.loop;
       $("btn-loop").classList.toggle("on", state.loop);

@@ -165,29 +165,70 @@ h2 { font-size: 12px; letter-spacing: .14em; margin: 18px 0 8px; }
 }
 .nav-col { display: flex; flex-direction: column; flex: none; }
 .nav-col .nav-btn { width: 36px; height: 34px; flex: 1; }
-.staff-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.staff-wrap {
+.staff-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0; }
+.lane {
   display: flex; align-items: stretch; gap: 4px; direction: ltr;
-  background: #d7f3fc; padding: 2px 4px 0 2px; flex: 1;
+  background: #d7f3fc; padding: 0 4px 0 2px; min-width: 0;
 }
-#btn-sync {
-  flex: none; align-self: center; height: 36px; padding: 0 8px; border: 0; border-radius: 8px;
-  background: #111; color: #fff; font-weight: 800; font-size: 12px;
+.sync-btn {
+  flex: none; align-self: center; height: 32px; min-width: 46px; padding: 0 7px;
+  border: 0; border-radius: 8px; background: #111; color: #fff;
+  font-weight: 800; font-size: 11px; letter-spacing: .01em; white-space: nowrap;
+}
+.lyric-lane .sync-btn { height: 26px; }
+.sync-btn.set { box-shadow: inset 0 0 0 2px #1f9d3a; }
+.sync-btn.did { background: #1f9d3a; }
+.strip-box {
+  position: relative; flex: 1; min-width: 0; height: 92px; overflow: hidden; touch-action: none;
 }
 .strip {
-  position: relative; flex: 1; height: 78px; overflow: hidden;
-  background: transparent; border-radius: 8px; touch-action: none;
+  position: absolute; inset: 0; overflow: hidden;
+  background: transparent; touch-action: none;
 }
 .staff-svg { display: block; width: 100%; height: 100%; }
-.lyric-bar {
-  direction: ltr; height: 26px; overflow: hidden; flex: none;
-  display: flex; align-items: center; gap: 8px;
-  padding: 0 max(12px, env(safe-area-inset-right, 0px)) 0 max(36px, calc(env(safe-area-inset-left, 0px) + 16px));
-  background: #fff; color: #111; white-space: nowrap;
+.loop-span {
+  position: absolute; left: 0; top: 13px; height: 2px; width: 0;
+  background: #148a32; pointer-events: none; z-index: 3;
 }
-.lyric-bar span { font-weight: 800; font-size: 15px; color: #111; }
-.lyric-bar span.now { color: #e1061c; }
-.lyric-ph { color: #b7bec8; letter-spacing: .4em; font-weight: 600; }
+.loop-span.locked { background: #e1061c; }
+.loop-mark {
+  position: absolute; left: 0; top: 0; z-index: 4;
+  width: 32px; height: 28px; margin: 0; padding: 0; border: 0;
+  background: transparent; touch-action: none;
+}
+.loop-mark::before {
+  content: "";
+  position: absolute; left: 6px; top: 1px;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 12px solid #148a32;
+  filter: drop-shadow(0 1px 0 rgba(0,0,0,.45));
+}
+.loop-mark.locked::before { border-top-color: #e1061c; }
+.lyric-bar {
+  position: relative; direction: ltr; height: 30px; overflow: hidden; flex: 1; min-width: 0;
+  background: #fff; color: #111;
+}
+.lyric-bar::before {
+  content: "";
+  position: absolute; left: var(--ph, 64px); top: 0; bottom: 0; width: 2px;
+  background: #e1061c; z-index: 3; pointer-events: none;
+}
+.lyric-word {
+  position: absolute; left: 0; top: 5px; z-index: 1;
+  font-weight: 800; font-size: 15px; color: #111; white-space: nowrap;
+  line-height: 1.2;
+}
+.lyric-word.now { color: #e1061c; }
+.lyric-ph {
+  position: absolute; left: var(--ph, 64px); top: 6px;
+  color: #b7bec8; letter-spacing: .4em; font-weight: 600; font-size: 15px;
+}
+@media (max-height: 430px) {
+  .strip-box { height: 74px; }
+  .lyric-bar { height: 26px; }
+  .lyric-word, .lyric-ph { font-size: 13px; top: 4px; }
+}
 .stage-row { flex: 1; min-height: 0; display: flex; align-items: stretch; direction: ltr; }
 .side-logo {
   flex: none; width: 42px; display: flex; align-items: center; justify-content: center; overflow: hidden;
