@@ -10,13 +10,23 @@
 <title>X-BASS</title>
 <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
-<link rel="stylesheet" href="css/app.css?v=1.7">
+<link rel="stylesheet" href="css/app.css?v=1.8">
+<script>
+(function () {
+  function fit() {
+    document.documentElement.classList.toggle("portrait", window.innerHeight > window.innerWidth + 8);
+  }
+  fit();
+  window.addEventListener("resize", fit);
+  window.addEventListener("orientationchange", fit);
+})();
+</script>
 </head>
 <body>
 <main id="app">
 
   <section id="view-home" class="view on">
-    <img class="home-bg" src="img/home.jpg" alt="">
+    <img class="home-bg" src="img/home.jpg" alt="" decoding="async">
     <div class="home-chrome">
       <button class="nav-btn" type="button" data-nav="back" data-aria="back" aria-label="Back">←</button>
       <button class="nav-btn" type="button" data-nav="home" data-aria="home" aria-label="Home">⌂</button>
@@ -25,7 +35,7 @@
     <button id="hit-saved" class="hit" type="button" data-aria="savedPlayers" aria-label="Saved players"></button>
     <button id="hit-go" class="hit" type="button" data-aria="continue" aria-label="Continue"></button>
     <button id="hit-gear" class="hit" type="button" data-aria="settings" aria-label="Settings"></button>
-    <div class="ver">v1.7</div>
+    <div class="ver">v1.8</div>
   </section>
 
   <section id="view-players" class="view">
@@ -230,7 +240,7 @@
       <button id="btn-back" class="round jump" type="button" aria-label="Back 10 seconds">−10</button>
       <button id="btn-play" class="round" type="button" data-aria="play" aria-label="Play">▶</button>
       <button id="btn-fwd" class="round jump" type="button" aria-label="Forward 10 seconds">+10</button>
-      <button class="round" type="button" data-nav="tuner" data-aria="tuner" aria-label="Tuner"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="#fff" d="M12 2C8 2 5 5.2 5 9.2V12c0 .8.4 1.6 1 2-1.2 1.6-1.6 3.4-1 5.2h3.2c-.4-1.4 0-2.6.8-3.6.4.3.9.5 1.5.5h.2V9.2a1.3 1.3 0 0 1 2.6 0v4.2h1.6c.7 0 1.3-.6 1.3-1.3V9.2C16.2 5.2 13.8 2 12 2z"/></svg></button>
+      <button class="round tuner-ear" type="button" data-nav="tuner" data-aria="tuner" aria-label="Tuner"><svg viewBox="3.6 1.2 13 18.4" aria-hidden="true"><path fill="#fff" d="M12 2C8 2 5 5.2 5 9.2V12c0 .8.4 1.6 1 2-1.2 1.6-1.6 3.4-1 5.2h3.2c-.4-1.4 0-2.6.8-3.6.4.3.9.5 1.5.5h.2V9.2a1.3 1.3 0 0 1 2.6 0v4.2h1.6c.7 0 1.3-.6 1.3-1.3V9.2C16.2 5.2 13.8 2 12 2z"/></svg></button>
       <button id="btn-loop" class="round ghost" type="button" data-aria="loop" aria-label="Loop" aria-pressed="false">∞</button>
     </footer>
   </section>
@@ -285,10 +295,10 @@
               <path d="M0 0 L8 4 L0 8 Z" fill="#fff"/>
             </marker>
           </defs>
-          <rect x="0" y="100" width="270" height="130" fill="url(#hwood)" stroke="#1b1b1b" stroke-width="3"/>
+          <rect x="0" y="96" width="268" height="148" rx="2" fill="url(#hwood)" stroke="#1b1b1b" stroke-width="3"/>
           <g id="hs-frets"></g>
-          <path d="M250 92 L500 40 L608 72 L596 236 L486 258 L250 222 Z" fill="#f3d7b2" stroke="#1b1b1b" stroke-width="3"/>
-          <rect x="244" y="96" width="14" height="136" rx="2" fill="#f6f3ec" stroke="#222"/>
+          <path d="M280 88 L460 64 L608 86 L624 170 L600 248 L450 266 L280 242 Z" fill="#f3d7b2" stroke="#1b1b1b" stroke-width="3"/>
+          <rect x="264" y="90" width="18" height="160" rx="2" fill="#f7f4ee" stroke="#222" stroke-width="2"/>
           <g id="hs-strings"></g>
           <g id="hs-pegs"></g>
           <g id="hs-hand"></g>
@@ -330,7 +340,12 @@
       </div>
     </form>
   </div>
+  <div id="rotate-gate">
+    <div class="rotate-phone" aria-hidden="true"></div>
+    <p data-i="rotate">Rotate your phone</p>
+  </div>
 </main>
-<script src="js/app.js?v=1.7"></script>
+<script src="js/score.js?v=1.8"></script>
+<script src="js/app.js?v=1.8"></script>
 </body>
 </html>
