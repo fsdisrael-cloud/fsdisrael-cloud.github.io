@@ -198,6 +198,8 @@ export function createGiftObject(kind, opt = {}) {
   g.userData.shell = shell;
   g.userData.col = col;
   g.traverse((o) => { o.frustumCulled = false; });
+  // ~80% of the jet's length (airframe is about 16 units; the raw glass is ~26).
+  if (kind !== "life") g.scale.setScalar(0.5);
   return g;
 }
 

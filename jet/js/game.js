@@ -10,7 +10,8 @@ import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUnifor
 import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=48";
 import { setQuality, FX as FXQ } from "./tex.js?v=48";
 import { style, patchTerrain, waveAt, createDreamShapes, onStyle, setLake } from "./surreal.js?v=48";
-import { createGiftObject } from "./giftslook.js?v=55";
+import { createGiftObject } from "./giftslook.js?v=56";
+import { giftPoints } from "./giftspawn.js?v=56";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V(), tE = V();
@@ -1189,25 +1190,6 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (assistDanger > 0.85) { setAlert("PULL UP", 0.3); if (elapsed - rescueAt > 2.5) { rescueAt = elapsed; audio.pullUp(); } }
 
     syncAngles();
-    const upY = tB.set(0, 1, 0).applyQuaternion(player.q).y;
-    // Pure slerp back to wings-level. Reading bank through ±180 and rolling the other way was the flicker.
-    if (upY < 0.2 || Math.abs(player.bank) > 1.35) {
-      smYawR *= Math.exp(-dt * 8);
-      smPR *= Math.exp(-dt * 6);
-      if (brkV > 0.4) {
-        // Euler blend stays wings-level. A quaternion slerp from a steep brake was the flip.
-        const hold = THREE.MathUtils.clamp(player.pitch, -0.35, 0.28);
-        const bank = player.bank * Math.exp(-dt * 7);
-        player.q.setFromEuler(_eu.set(hold, player.yaw, -bank, "YXZ"));
-        syncAngles();
-        return;
-      }
-      _qL.setFromEuler(_eu.set(player.pitch * 0.85, player.yaw, 0, "YXZ"));
-      player.q.slerp(_qL, 1 - Math.exp(-dt * 3.8));
-      syncAngles();
-      return;
-    }
-
     const yawCmd = -expoStick(st.roll, 1.28) * ARC_YAW;
     const yawK = 1 - Math.exp(-dt * (Math.abs(st.roll) > 0.04 ? 8 : 4.4));
     smYawR += (yawCmd - smYawR) * yawK;
@@ -1242,10 +1224,10 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (Math.abs(st.pitch) < 0.08 && Math.abs(aimPitch) < 0.02) pitch += (0 - pitch) * (1 - Math.exp(-dt * 1.2));
     pitch = THREE.MathUtils.clamp(pitch, -1.15, 1.05);
 
-    const bankTarget = THREE.MathUtils.clamp(st.roll, -1, 1) * (1 - 0.28 * brkV);
-    const bankK = 1 - Math.exp(-dt * (Math.abs(st.roll) > 0.2 ? 7 : 4.2));
-    let bank = player.bank + (bankTarget - player.bank) * bankK;
-    bank = THREE.MathUtils.clamp(bank, -1.12, 1.12);
+    // Roll rate follows the sideways stick. Full deflection keeps turning through 360. No angle cap, no auto-level.
+    const ROLL_FULL = 2.8;
+    const rollRate = expoStick(st.roll, 1.05) * ROLL_FULL * (1 - 0.25 * brkV);
+    let bank = Math.atan2(Math.sin(player.bank + rollRate * dt), Math.cos(player.bank + rollRate * dt));
 
     player.q.setFromEuler(_eu.set(pitch, yaw, -bank, "YXZ"));
     if (Math.abs(st.yaw) > 0.01) rotBody(AY, st.yaw * 0.35 * dt);
@@ -1469,10 +1451,13 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     audio.updateEngine?.(0.8, false, 160, 0.2);
   }
   function startLanding(auto) {
+    if (!player || ended || crashing) return false;
     if (fuelV <= 0) { setAlert("FUEL EMPTY - EJECT", 2); return false; }
     if (ops && ["app", "final"].includes(ops.mode)) { goAround("GO AROUND - CLIMB"); return true; }
-    if ((!strip && !pad) && player) { try { spawnStrip(player.pos); } catch { /* ignore */ } }
-    if ((!strip && !pad) || ops || crashing || landing || ended) return false;
+    if (landing) landing = null;
+    if (ops) { ops = null; camCut = null; opsHud(); }
+    if (!strip && !pad) { try { spawnStrip(player.pos); } catch { /* ignore */ } }
+    if (!strip && !pad) { setAlert("NO RUNWAY", 2); return false; }
     const carrier = !!pad && (!strip || pad.pos.distanceTo(player.pos) < strip.pos.distanceTo(player.pos));
     ops = { carrier }; const deck = flightStrip(), len = flightLen();
     const f = fwdFrom(player.yaw, 0, V()), dx = -Math.sin(deck.hd), dz = -Math.cos(deck.hd);
@@ -2037,17 +2022,22 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (lockTarget === t) lockTarget = null;
     checkDone();
   }
-  function checkDone() {
-    if (ended) return;
-    if (!L.objectives.every((o) => (progress[o.kind] || 0) >= o.need || o.kind === "land")) return;
-    if (L.n % 5 === 0 && !bossSpawned) { bossSpawned = true; spawnBoss(); return; }
-    score += 300;
-    const lo = L.objectives.find((o) => o.kind === "land");
-    if (lo && !(progress.land >= 1)) {
-      if (!landingOpen) { landingOpen = true; setAlert("All clear! Land on the carrier", 4); events.toast?.("All clear - land on the carrier"); }
-      return;
+  function enemiesAlive() {
+    let n = 0;
+    for (const t of targets) {
+      if (!t.alive) continue;
+      const k = t.kind;
+      if (k === "jet" || k === "tank" || k === "flak" || k === "sam" || k === "ship" || k === "base" || k === "boss" || k === "bossweapon") n++;
     }
-    finish("complete");
+    return n;
+  }
+  function checkDone() {
+    if (ended || !L) return;
+    const more = !!(jetSpawner && jetSpawner.remaining > 0);
+    if (!more && enemiesAlive() === 0 && elapsed > 2.5) {
+      if ((L.n || 0) % 5 === 0 && !bossSpawned) { bossSpawned = true; spawnBoss(); events.toast?.("BOSS INBOUND", "warn"); return; }
+      finish("complete");
+    }
   }
   function finish(reason) {
     if (ended) return;
@@ -2219,37 +2209,36 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     mesh.position.copy(p); scene.add(mesh);
     prizes.push({ kind, p, mesh, t: Math.random() * 4, worth: worth || 0, col: mesh.userData.col });
   }
-  function mapGiftPoint() {
-    const span = Math.max(1800, half * 0.86);
-    for (let i = 0; i < 16; i++) {
-      const x = center.x + (Math.random() - 0.5) * span * 2;
-      const z = center.z + (Math.random() - 0.5) * span * 2;
-      if (strip) {
-        const dx = x - strip.pos.x, dz = z - strip.pos.z;
-        if (dx * dx + dz * dz < 650 * 650) continue;
-      }
-      const y = groundAt(x, z) + 220 + Math.random() * 260;
-      return new THREE.Vector3(x, y, z);
-    }
-    return new THREE.Vector3(center.x + span * 0.4, groundAt(center.x, center.z) + 340, center.z - span * 0.35);
+  function giftAhead(i) {
+    const o = player ? player.pos : center;
+    const yaw = player ? player.yaw : 0;
+    const slots = giftPoints({ x: o.x, y: o.y, z: o.z }, yaw, 10);
+    const p = slots[i % slots.length];
+    const y = Math.max(p.y, groundAt(p.x, p.z) + 170);
+    return new THREE.Vector3(p.x, y, p.z);
   }
   function scatterGifts() {
     for (const z of prizes) scene.remove(z.mesh);
     prizes.length = 0;
     giftLine = true;
-    for (let i = 0; i < 16; i++) {
+    let placed = 0;
+    for (let i = 0; i < 10; i++) {
       let kind = GIFT_POOL[i % GIFT_POOL.length];
       if (kind === "life" && prizes.some((z) => z.kind === "life")) kind = "cash";
-      placeGift(kind, mapGiftPoint(), kind === "cash" ? cashWorth() : 0);
+      try {
+        placeGift(kind, giftAhead(i), kind === "cash" ? cashWorth() : 0);
+        placed++;
+      } catch (e) { console.warn("gift", e); }
     }
-    prizeT = 10;
+    if (!placed) console.warn("gifts: none spawned");
+    prizeT = 12;
   }
   function cashWorth() { const r = Math.random(); return r < 0.46 ? 500 : r < 0.76 ? 1000 : r < 0.93 ? 2000 : 5000; }
   function spawnPrize() {
-    if (!player || prizes.length >= 16) return;
+    if (!player || prizes.length >= 10) return;
     let kind = GIFT_POOL[Math.floor(Math.random() * GIFT_POOL.length)];
     if (kind === "life" && (lives >= LIVES_MAX || prizes.some((z) => z.kind === "life"))) kind = "cash";
-    placeGift(kind, mapGiftPoint(), kind === "cash" ? cashWorth() : 0);
+    try { placeGift(kind, giftAhead(prizes.length), kind === "cash" ? cashWorth() : 0); } catch (e) { console.warn("gift", e); }
   }
   function flashGift(kind) {
     const el = document.querySelector(GIFT_BTN[kind] || ".w-msl");
@@ -2307,8 +2296,8 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       }
       if (player) {
         const d = z.p.distanceTo(player.pos);
-        if (d < 165 && d > 18) {
-          const step = Math.min(d - 16, (1 - d / 165) * 24 * dt);
+        if (d < 280 && d > 18) {
+          const step = Math.min(d - 16, (1 - d / 280) * 150 * dt);
           if (step > 0) { tA.subVectors(player.pos, z.p).setLength(step); z.p.add(tA); }
         }
         const floor = groundAt(z.p.x, z.p.z) + 90;
@@ -2703,7 +2692,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (!ended) {
       chaseDirT = (chaseDirT || 0) + dt;   // b35: an escaping bandit appears right in front every ~18 s -> instant, effortless chase
       const chaseEvery = ((L && L.n) || 1) <= 3 ? 28 : ((L && L.n) || 1) <= 6 ? 18 : 12;
-      if (chaseDirT > chaseEvery && !chaseOn && !ops && !landing && player.pos.y - groundAt(player.pos.x, player.pos.z) > 150) { chaseDirT = 0; let cj = null, cd = 5000; for (const t of targets) { if (t.alive && t.kind === "jet" && !t.heli && !t.ally) { const d = t.pos.distanceTo(player.pos); if (d < cd) { cd = d; cj = t; } } } if (cj) { cj.mode = "flee"; cj.baseYaw = cj.yaw = player.yaw; cj.speed = THREE.MathUtils.clamp(player.speed * 0.8, 60, 140); cj.jink = 1; } else cj = spawnJetAhead(player.pos, true); const f0 = fwdFrom(player.yaw, 0, V()); f0.y = 0; f0.normalize(); cj.pos.set(player.pos.x + f0.x * 520, player.pos.y + 20, player.pos.z + f0.z * 520); cj.holdY = cj.pos.y; }
+      if (chaseDirT > chaseEvery && !chaseOn && !ops && !landing && player.pos.y - groundAt(player.pos.x, player.pos.z) > 150) { chaseDirT = 0; let cj = null, cd = 5000; for (const t of targets) { if (t.alive && t.kind === "jet" && !t.heli && !t.ally) { const d = t.pos.distanceTo(player.pos); if (d < cd) { cd = d; cj = t; } } } if (cj) { cj.mode = "flee"; cj.baseYaw = cj.yaw = player.yaw; cj.speed = THREE.MathUtils.clamp(player.speed * 0.8, 60, 140); cj.jink = 1; } else if (jetSpawner && jetSpawner.remaining > 0) cj = spawnJetAhead(player.pos, true); if (cj) { const f0 = fwdFrom(player.yaw, 0, V()); f0.y = 0; f0.normalize(); cj.pos.set(player.pos.x + f0.x * 520, player.pos.y + 20, player.pos.z + f0.z * 520); cj.holdY = cj.pos.y; } }
     }
     // endless reinforcement waves of enemy jets
     if (false && jetSpawner && !ended) {

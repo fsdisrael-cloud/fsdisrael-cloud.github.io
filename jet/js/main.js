@@ -1,6 +1,6 @@
 // Jet - app shell. One opening screen, then straight into play. No settings, no options.
 import * as THREE from "three";
-import { createGame } from "./game.js?v=55";
+import { createGame } from "./game.js?v=56";
 import { createHud } from "./hud.js?v=55";
 import { createControls } from "./controls.js?v=55";
 import { runLabel, PLANETS, JET_TYPES, saveScene, loadScene, titleRun, TITLE_ART, TITLE_JETS } from "./variety.js?v=48";
@@ -643,7 +643,7 @@ $("btn-exit")?.addEventListener("click", (e) => { e.stopPropagation(); $("exit-a
 $("exit-no")?.addEventListener("click", () => $("exit-ask").classList.add("hidden"));
 $("exit-yes")?.addEventListener("click", () => location.reload());
 $("btn-takeoff")?.addEventListener("click", () => { controls.calibrate(); game.takeoff(); });   // b31: tilt neutral = how you hold the phone at takeoff
-$("btn-autoland")?.addEventListener("click", () => game.autoLand());
+bindTap("btn-autoland", () => game.autoLand());
 window.addEventListener("keydown", (e) => { if (e.code === "Enter" && !e.repeat) game.takeoff(); if (e.code === "KeyL" && !e.repeat) game.autoLand(); });
 window.__ubu = { goBackground, readSave, writeSave, game, controls, audio, hud, loading, state: () => state, play, launch, levelNo: () => levelNo };
 // b32: version on title (V 1.<build>)

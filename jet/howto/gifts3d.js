@@ -1,6 +1,6 @@
 // Same glass gifts as the game, floating over the manual's sky and landscape.
 import * as THREE from "three";
-import { createGiftObject, GIFT_PREVIEW } from "../js/giftslook.js?v=55";
+import { createGiftObject, GIFT_PREVIEW } from "../js/giftslook.js?v=56";
 import { createAllyJet, initEnv } from "../js/models.js?v=55";
 
 const host = document.getElementById("gift-sky");
@@ -24,12 +24,13 @@ if (host) {
       try { o = createAllyJet(); o.scale.setScalar(0.42); }
       catch { o = createGiftObject("life"); }
     } else o = createGiftObject(kind);
-    const x = (i - (GIFT_PREVIEW.length - 1) / 2) * 3.15;
+    const x = (i - (GIFT_PREVIEW.length - 1) / 2) * 2.4;
     o.position.set(x, kind === "cash" ? -0.15 : 0.15, 0);
+    if (kind !== "life") o.scale.multiplyScalar(0.09);
     scene.add(o);
     objs.push(o);
   });
-  cam.position.set(0, 2.1, 18.5);
+  cam.position.set(0, 1.4, 22);
   cam.lookAt(0, 0.1, 0);
   let t = 0;
   const fit = () => {
