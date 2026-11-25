@@ -12,6 +12,7 @@ import { setQuality, FX as FXQ } from "./tex.js?v=48";
 import { style, patchTerrain, waveAt, createDreamShapes, onStyle, setLake } from "./surreal.js?v=48";
 import { createGiftObject } from "./giftslook.js?v=56";
 import { giftPoints } from "./giftspawn.js?v=56";
+import { stepBody, expoStick as expoStickBody, PITCH_RATE, ROLL_RATE } from "./flightstep.js?v=57";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V(), tE = V();
@@ -74,6 +75,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   const camQ = new THREE.Quaternion();
   const _qa = new THREE.Quaternion(), _qL = new THREE.Quaternion(), _eu = new THREE.Euler(0, 0, 0, "YXZ");
   const AX = new THREE.Vector3(1, 0, 0), AY = new THREE.Vector3(0, 1, 0);
+  const _flightQ = [0, 0, 0, 1];
   const SOLID = { tank: 1, ship: 1, sam: 1, jet: 1, target: 1, drone: 1, flak: 1, base: 1 };
   const groundAt = (x, z) => terrain.heightAt(x, z) + waveAt(x, z);
   const dream = createDreamShapes(scene);
@@ -1189,48 +1191,16 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     assistDanger += (danger - assistDanger) * (1 - Math.exp(-dt * 8));
     if (assistDanger > 0.85) { setAlert("PULL UP", 0.3); if (elapsed - rescueAt > 2.5) { rescueAt = elapsed; audio.pullUp(); } }
 
-    syncAngles();
-    const yawCmd = -expoStick(st.roll, 1.28) * ARC_YAW;
-    const yawK = 1 - Math.exp(-dt * (Math.abs(st.roll) > 0.04 ? 8 : 4.4));
-    smYawR += (yawCmd - smYawR) * yawK;
-    // Hard brake slows the jet. Extra pitch here was pitching a banked jet until the recovery rolled it over.
-    const pitCmd = expoStick(st.pitch, 1.15) * ARC_PITCH * (1 - 0.62 * brkV);
-    const pitK = 1 - Math.exp(-dt * (Math.abs(st.pitch) > 0.08 ? 11 : 3.4));
-    smPR += (pitCmd - smPR) * pitK;
-
-    let aimYaw = 0, aimPitch = 0;
-    if (assist) {
-      const aim = surfaceAim();
-      if (aim) {
-        const e = headingErr(aim);
-        const dist = Math.hypot(aim.pos.x - player.pos.x, aim.pos.z - player.pos.z);
-        const cone = selTgt === aim ? 0.8 : 0.62;
-        const fight = st.roll * e < -0.05;
-        if (Math.abs(e) < cone && !fight) {
-          // Proportional, a bit firmer inside a kilometre, so a near target is lined up before you pass it.
-          const gain = 1.25 + 1.1 * THREE.MathUtils.clamp((1500 - dist) / 1100, 0, 1);
-          aimYaw = -THREE.MathUtils.clamp(e * gain, -0.65, 0.65);
-          if (Math.abs(st.pitch) < 0.18 && dist > 140) {
-            const elev = Math.atan2(aim.pos.y - player.pos.y, Math.max(90, dist));
-            const want = THREE.MathUtils.clamp(elev, -0.38, 0.02);
-            aimPitch = THREE.MathUtils.clamp(want - player.pitch, -0.4, 0.22) * 0.9;
-          }
-        }
-      }
-    }
-
-    let yaw = player.yaw + (smYawR + aimYaw) * dt;
-    let pitch = player.pitch + (smPR + aimPitch) * dt;
-    if (Math.abs(st.pitch) < 0.08 && Math.abs(aimPitch) < 0.02) pitch += (0 - pitch) * (1 - Math.exp(-dt * 1.2));
-    pitch = THREE.MathUtils.clamp(pitch, -1.15, 1.05);
-
-    // Roll rate follows the sideways stick. Full deflection keeps turning through 360. No angle cap, no auto-level.
-    const ROLL_FULL = 2.8;
-    const rollRate = expoStick(st.roll, 1.05) * ROLL_FULL * (1 - 0.25 * brkV);
-    let bank = Math.atan2(Math.sin(player.bank + rollRate * dt), Math.cos(player.bank + rollRate * dt));
-
-    player.q.setFromEuler(_eu.set(pitch, yaw, -bank, "YXZ"));
-    if (Math.abs(st.yaw) > 0.01) rotBody(AY, st.yaw * 0.35 * dt);
+    // Body axes only. Pull rotates about the jet's own right wing, so a 90° bank
+    // becomes a flat break turn. Roll rate follows the stick with no angle cap.
+    const pitCmd = expoStickBody(st.pitch, 1.15) * PITCH_RATE * (1 - 0.55 * brkV);
+    const rollCmd = expoStickBody(st.roll, 1.05) * ROLL_RATE * (1 - 0.2 * brkV);
+    smPR += (pitCmd - smPR) * (1 - Math.exp(-dt * 12));
+    smRR += (rollCmd - smRR) * (1 - Math.exp(-dt * 14));
+    const q = player.q;
+    _flightQ[0] = q.x; _flightQ[1] = q.y; _flightQ[2] = q.z; _flightQ[3] = q.w;
+    stepBody(_flightQ, dt, smPR, smRR);
+    q.set(_flightQ[0], _flightQ[1], _flightQ[2], _flightQ[3]);
     syncAngles();
   }
   const loopPull_ = false;
@@ -1895,7 +1865,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       camera.fov = portrait ? 88 : 66;
       tA.copy(plane.userData.eye).applyMatrix4(plane.matrixWorld);
       camera.position.copy(tA);
-      { const ek = cpre ? Math.min(1, crashing.t / (crashing.cp - 0.1)) : 0; _q.setFromEuler(new THREE.Euler(look.pitch - 0.5 * ek * ek * (3 - 2 * ek), look.yaw - THREE.MathUtils.clamp(player.bank, -1.2, 1.2) * 0.16, 0, "YXZ")); /* b35: head leans into the turn */ }
+      { const ek = cpre ? Math.min(1, crashing.t / (crashing.cp - 0.1)) : 0; _eu.set(look.pitch - 0.5 * ek * ek * (3 - 2 * ek), look.yaw, 0, "YXZ"); _q.setFromEuler(_eu); }
       camera.quaternion.copy(plane.quaternion).multiply(_q);
       camQ.copy(player.q);
       plane.userData.hands?.update(dt, controls.stick, throttle, controls.gunHeld() ? 1 : 0, cpre ? Math.min(1, crashing.t / (crashing.cp - 0.1)) : 0);
@@ -1906,7 +1876,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
       const dist = (portrait ? 27 : 19) + (camSurge - 0.35) * 9;   // b26: arcade chase cam, closer; full throttle the jet surges ahead in frame, low throttle it drifts back
       // chase camera lives in the jet's own (smoothed) frame -> follows loops, rolls and inverted flight
       camQ.slerp(player.q, snap ? 1 : 1 - Math.exp(-dt * ((maneuver && maneuver.kind === "roll") || Math.abs(controls.stick.roll) > 0.35 ? 16 : (assist ? 3.6 : 4.5))));   // b29: rolls - chase cam stays locked behind the jet, no swing
-      const el = 0.17 - look.pitch, az = look.yaw - THREE.MathUtils.clamp(player.bank, -1.2, 1.2) * 0.1, ce = Math.cos(el); // look: +yaw = view turns left, +pitch = view tilts up
+      const el = 0.17 - look.pitch, az = look.yaw, ce = Math.cos(el);
       tA.set(Math.sin(az) * ce, Math.sin(el), Math.cos(az) * ce).multiplyScalar(dist).applyQuaternion(camQ);
       camera.position.copy(player.pos).add(tA);
       const gy = groundAt(camera.position.x, camera.position.z) + 4;
