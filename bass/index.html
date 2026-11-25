@@ -10,7 +10,7 @@
 <title>X-BASS</title>
 <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
-<link rel="stylesheet" href="css/app.css?v=1.9">
+<link rel="stylesheet" href="css/app.css?v=2.0">
 <script>
 (function () {
   function fit() {
@@ -35,7 +35,7 @@
     <button id="hit-saved" class="hit" type="button" data-aria="savedPlayers" aria-label="Saved players"></button>
     <button id="hit-go" class="hit" type="button" data-aria="continue" aria-label="Continue"></button>
     <button id="hit-gear" class="hit" type="button" data-aria="settings" aria-label="Settings"></button>
-    <div class="ver">v1.9</div>
+    <div class="ver">v2.0</div>
   </section>
 
   <section id="view-players" class="view">
@@ -132,10 +132,11 @@
             <stop offset="0" stop-color="#f8e6c8"/>
             <stop offset="1" stop-color="#e4c094"/>
           </linearGradient>
-          <linearGradient id="skin" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#ffe7d8"/>
-            <stop offset=".42" stop-color="#f6cbb6"/>
-            <stop offset="1" stop-color="#e4aa96"/>
+          <linearGradient id="skin" gradientUnits="userSpaceOnUse" x1="80" y1="-40" x2="220" y2="560">
+            <stop offset="0" stop-color="#fff4ec"/>
+            <stop offset=".35" stop-color="#f8d0bc"/>
+            <stop offset=".7" stop-color="#f3c3ae"/>
+            <stop offset="1" stop-color="#eab5a2"/>
           </linearGradient>
           <radialGradient id="nail" cx="32%" cy="28%" r="80%">
             <stop offset="0" stop-color="#ffe4e8"/>
@@ -315,12 +316,8 @@
       </div>
     </form>
   </div>
-  <div id="rotate-gate">
-    <div class="rotate-phone" aria-hidden="true"></div>
-    <p data-i="rotate">Rotate your phone</p>
-  </div>
 </main>
-<script src="js/score.js?v=1.9"></script>
-<script src="js/app.js?v=1.9"></script>
+<script src="js/score.js?v=2.0"></script>
+<script src="js/app.js?v=2.0"></script>
 </body>
 </html>

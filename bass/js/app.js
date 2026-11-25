@@ -1,4 +1,4 @@
-/* X-BASS v1.9
+/* X-BASS v2.0
    Note source: default eighth-note groove at the BPM, locked to media currentTime.
    A real transcription plugs in as absolute media times:
      XBass.setTrack([{t: 0.0, string: 0, fret: 0}, {t: 0.5, string: 0, fret: 3}]);
@@ -346,15 +346,18 @@
     }
     return d + "Z";
   }
-  function widthProfile(t, w0, w1) {
-    const base = w0 + (w1 - w0) * Math.pow(t, 0.82);
-    const mcp = Math.exp(-Math.pow((t - 0.06) / 0.08, 2));
-    const pip = Math.exp(-Math.pow((t - 0.42) / 0.05, 2));
-    const dip = Math.exp(-Math.pow((t - 0.72) / 0.045, 2));
-    const waist = Math.exp(-Math.pow((t - 0.24) / 0.08, 2));
-    const tip = t > 0.88 ? 1 - (t - 0.88) * 0.7 : 1;
-    return Math.max(w1 * 0.72, base * (1 + 0.12 * mcp + 0.22 * pip + 0.12 * dip - 0.06 * waist) * Math.max(0.78, tip));
-  }
+  // Hands: one filled silhouette. Each finger is 3 bones, the thumb is 2.
+  // Poses ease by joint angle. The only stroke is the outer silhouette.
+  const LH_BONE = [[58, 40, 28], [63, 43, 30], [57, 39, 27], [50, 35, 24]];
+  const RH_BONE = [[46, 32, 22], [50, 35, 24], [44, 31, 21], [36, 26, 18]];
+  const THUMB_BONE = [52, 40];
+  const LH_W = [[32, 17.5], [34, 18.4], [30, 16.6], [24, 13.4]];
+  const RH_W = [[30, 16.5], [33, 17.6], [28, 15.6], [23, 13]];
+  const FLEX_F = [0.42, 1, 0.68];
+  const FLEX_T = [0.5, 1];
+  const BUMP_F = [{ t: 0.46, amp: 0.22, s: 0.07 }, { t: 0.78, amp: 0.14, s: 0.05 }];
+  const BUMP_T = [{ t: 0.56, amp: 0.14, s: 0.07 }];
+
   function sampleAt(samples, t) {
     let best = samples[0];
     let bestD = 1e9;
@@ -364,26 +367,118 @@
     }
     return best;
   }
-  function limbSamples(x0, y0, x1, y1, opt) {
-    const w0 = opt.w0, w1 = opt.w1;
-    const mx = (x0 + x1) / 2 + (opt.bowX || 0);
-    const my = (y0 + y1) / 2 + (opt.bowY || 0);
+  function behindFret(fret) {
+    const f = Math.max(1, fret | 0);
+    const wire = fretX(f);
+    const prev = fretX(f - 1);
+    const space = Math.max(0, prev - wire);
+    return wire + Math.max(10, Math.min(17, space * 0.24));
+  }
+  function ease(cur, target, dt, rate) {
+    const k = 1 - Math.exp(-(rate || 8) * Math.max(0.001, dt || 0.016));
+    return cur + (target - cur) * k;
+  }
+  function chainReach(lengths, flex) {
+    let ang = flex[0] || 0;
+    let x = 0;
+    let y = 0;
+    for (let i = 0; i < lengths.length; i++) {
+      if (i > 0) ang += flex[i] || 0;
+      x += Math.cos(ang) * lengths[i];
+      y += Math.sin(ang) * lengths[i];
+    }
+    return Math.hypot(x, y);
+  }
+  function solveFlex(lengths, ratios, dist, minCurl) {
+    const full = lengths.reduce(function (a, b) { return a + b; }, 0);
+    const minC = minCurl == null ? 0.16 : minCurl;
+    if (dist >= full * 0.992) return ratios.map(function (r) { return r * minC; });
+    let lo = minC;
+    let hi = 1.85;
+    for (let i = 0; i < 18; i++) {
+      const mid = (lo + hi) / 2;
+      const flex = ratios.map(function (r) { return r * mid; });
+      if (chainReach(lengths, flex) > dist) lo = mid;
+      else hi = mid;
+    }
+    const c = (lo + hi) / 2;
+    return ratios.map(function (r) { return r * c; });
+  }
+  function pinChain(origin, target, lengths, flex, bendSign) {
+    const aim = Math.atan2(target.y - origin.y, target.x - origin.x);
+    let ang = aim + bendSign * (flex[0] || 0);
+    const pts = [{ x: origin.x, y: origin.y }];
+    let x = origin.x;
+    let y = origin.y;
+    for (let i = 0; i < lengths.length; i++) {
+      if (i > 0) ang += bendSign * (flex[i] || 0);
+      x += Math.cos(ang) * lengths[i];
+      y += Math.sin(ang) * lengths[i];
+      pts.push({ x: x, y: y });
+    }
+    const tip = pts[pts.length - 1];
+    const have = Math.hypot(tip.x - origin.x, tip.y - origin.y) || 1;
+    const need = Math.hypot(target.x - origin.x, target.y - origin.y) || 1;
+    const rot = Math.atan2(target.y - origin.y, target.x - origin.x) - Math.atan2(tip.y - origin.y, tip.x - origin.x);
+    const scale = need / have;
+    const co = Math.cos(rot);
+    const si = Math.sin(rot);
+    return pts.map(function (p) {
+      const dx = (p.x - origin.x) * scale;
+      const dy = (p.y - origin.y) * scale;
+      return { x: origin.x + dx * co - dy * si, y: origin.y + dx * si + dy * co };
+    });
+  }
+  function widthAt(t, w0, w1, bumps) {
+    const base = w0 + (w1 - w0) * Math.pow(t, 0.86);
+    let m = 1;
+    for (let i = 0; i < bumps.length; i++) {
+      const b = bumps[i];
+      m += b.amp * Math.exp(-Math.pow((t - b.t) / b.s, 2));
+    }
+    const waist = Math.exp(-Math.pow((t - 0.24) / 0.1, 2));
+    return Math.max(w1 * 0.78, base * (m - 0.045 * waist));
+  }
+  function sampleChain(pts, w0, w1, bumps) {
+    const seg = [];
+    let total = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const l = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+      seg.push(l);
+      total += l;
+    }
+    if (total < 1) total = 1;
     const N = 16;
     const samples = [];
     for (let i = 0; i <= N; i++) {
       const t = i / N;
-      const u = 1 - t;
-      const x = u * u * x0 + 2 * u * t * mx + t * t * x1;
-      const y = u * u * y0 + 2 * u * t * my + t * t * y1;
-      let tx = 2 * u * (mx - x0) + 2 * t * (x1 - mx);
-      let ty = 2 * u * (my - y0) + 2 * t * (y1 - my);
+      let d = t * total;
+      let si = 0;
+      let acc = 0;
+      while (si < seg.length - 1 && acc + seg[si] < d) {
+        acc += seg[si];
+        si++;
+      }
+      const sl = seg[si] || 1;
+      const u = clamp((d - acc) / sl, 0, 1);
+      const a = pts[si];
+      const b = pts[si + 1] || a;
+      let tx = b.x - a.x;
+      let ty = b.y - a.y;
       const tl = Math.hypot(tx, ty) || 1;
-      tx /= tl; ty /= tl;
-      samples.push({ t: t, x: x, y: y, tx: tx, ty: ty, px: -ty, py: tx, w: widthProfile(t, w0, w1) });
+      tx /= tl;
+      ty /= tl;
+      samples.push({
+        t: t,
+        x: a.x + (b.x - a.x) * u,
+        y: a.y + (b.y - a.y) * u,
+        tx: tx, ty: ty, px: -ty, py: tx,
+        w: widthAt(t, w0, w1, bumps)
+      });
     }
     return samples;
   }
-  function sideBand(samples, sign, inner, outer, t0, t1) {
+  function sideRibbon(samples, sign, inner, outer, t0, t1) {
     const a = [];
     const b = [];
     for (let i = 0; i < samples.length; i++) {
@@ -395,49 +490,7 @@
     if (a.length < 2) return "";
     return crClosed(a.concat(b.reverse()));
   }
-  function creasePath(samples, t, arch) {
-    const s = sampleAt(samples, t);
-    const hw = s.w * 0.72;
-    const ax = s.x + s.px * hw, ay = s.y + s.py * hw;
-    const bx = s.x - s.px * hw, by = s.y - s.py * hw;
-    const cx = s.x + s.tx * arch, cy = s.y + s.ty * arch;
-    return "M" + n1(ax) + " " + n1(ay) + "Q" + n1(cx) + " " + n1(cy) + " " + n1(bx) + " " + n1(by);
-  }
-  function nailPaths(samples) {
-    const sub = samples.filter((s) => s.t >= 0.74);
-    if (sub.length < 2) return { nail: "", shine: "", cut: "" };
-    const left = [];
-    const right = [];
-    for (let i = 0; i < sub.length; i++) {
-      const s = sub[i];
-      const hw = s.w * 0.74;
-      left.push({ x: s.x + s.px * hw, y: s.y + s.py * hw });
-      right.push({ x: s.x - s.px * hw, y: s.y - s.py * hw });
-    }
-    const end = sub[sub.length - 1];
-    const tip = { x: end.x + end.tx * end.w * 0.78, y: end.y + end.ty * end.w * 0.78 };
-    const nail = crClosed(left.concat([tip], right.reverse()));
-    const cut = creasePath(samples, 0.76, end.w * 0.35);
-    const sh = sampleAt(samples, 0.88);
-    const sx = sh.x - sh.px * sh.w * 0.08 + sh.tx * sh.w * 0.15;
-    const sy = sh.y - sh.py * sh.w * 0.08 + sh.ty * sh.w * 0.15;
-    const shinePts = [];
-    const ang = Math.atan2(sh.ty, sh.tx);
-    const co = Math.cos(ang), si = Math.sin(ang);
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2;
-      const lx = Math.cos(a) * sh.w * 0.34, ly = Math.sin(a) * sh.w * 0.2;
-      shinePts.push({ x: sx + lx * co - ly * si, y: sy + lx * si + ly * co });
-    }
-    return { nail: nail, shine: crClosed(shinePts), cut: cut };
-  }
-  function limbGeometry(x0, y0, x1, y1, opt) {
-    const len = Math.hypot(x1 - x0, y1 - y0);
-    if (len < 12) {
-      const c = "M" + n1(x1) + " " + n1(y1) + "m-6,0a6,6 0 1,0 12,0a6,6 0 1,0 -12,0";
-      return { skin: c, shade: "", hi: "", c1: "", c2: "", nail: "", shine: "", cut: "" };
-    }
-    const samples = limbSamples(x0, y0, x1, y1, opt);
+  function edgesOf(samples) {
     const left = [];
     const right = [];
     for (let i = 0; i < samples.length; i++) {
@@ -445,324 +498,466 @@
       left.push({ x: s.x + s.px * s.w, y: s.y + s.py * s.w });
       right.push({ x: s.x - s.px * s.w, y: s.y - s.py * s.w });
     }
-    const end = samples[samples.length - 1];
-    const tipA = {
-      x: end.x + end.tx * end.w * 0.55 + end.px * end.w * 0.72,
-      y: end.y + end.ty * end.w * 0.55 + end.py * end.w * 0.72
-    };
-    const tipM = { x: end.x + end.tx * end.w * 0.95, y: end.y + end.ty * end.w * 0.95 };
-    const tipB = {
-      x: end.x + end.tx * end.w * 0.55 - end.px * end.w * 0.72,
-      y: end.y + end.ty * end.w * 0.55 - end.py * end.w * 0.72
-    };
-    const start = samples[0];
-    const base = { x: start.x - start.tx * start.w * 0.25, y: start.y - start.ty * start.w * 0.25 };
-    const skin = crClosed(left.concat([tipA, tipM, tipB], right.reverse(), [base]));
-    const mid = samples[(samples.length / 2) | 0];
-    const lightSign = (mid.px * -0.5 + mid.py * -0.86) >= 0 ? 1 : -1;
-    const nails = nailPaths(samples);
-    return {
-      skin: skin,
-      shade: sideBand(samples, -lightSign, 0.08, 0.82, 0.02, 0.78),
-      hi: sideBand(samples, lightSign, 0.12, 0.7, 0.04, 0.7),
-      c1: creasePath(samples, 0.42, mid.w * 0.45),
-      c2: creasePath(samples, 0.7, mid.w * 0.3),
-      nail: nails.nail,
-      shine: nails.shine,
-      cut: nails.cut
-    };
+    return { left: left, right: right };
   }
-  function setCls(g, cls, d) {
-    const n = g.querySelector("." + cls);
-    if (n) n.setAttribute("d", d || "");
+  function tipPoint(samples) {
+    const e = samples[samples.length - 1];
+    return { x: e.x + e.tx * e.w * 0.92, y: e.y + e.ty * e.w * 0.92 };
   }
-  function makeLimb(id) {
-    const g = svg("g", { id: id });
-    g.appendChild(svg("path", { class: "shade", fill: "#e39a86", opacity: "0.34" }));
-    g.appendChild(svg("path", { class: "skin", fill: "url(#skin)", stroke: "#c57b6c", "stroke-width": "2.2", "stroke-linejoin": "round", "stroke-linecap": "round" }));
-    g.appendChild(svg("path", { class: "hi", fill: "#fff", opacity: "0.38" }));
-    g.appendChild(svg("path", { class: "c1", fill: "none", stroke: "#e2a898", "stroke-width": "1.55", "stroke-linecap": "round" }));
-    g.appendChild(svg("path", { class: "c2", fill: "none", stroke: "#e2a898", "stroke-width": "1.35", "stroke-linecap": "round" }));
-    const nail = svg("g", { class: "nailg" });
-    nail.appendChild(svg("ellipse", { class: "nail", fill: "url(#nail)", stroke: "#c57b6c", "stroke-width": "1.1" }));
-    nail.appendChild(svg("ellipse", { class: "shine", fill: "#fff", opacity: "0.92" }));
-    nail.appendChild(svg("path", { class: "cut", fill: "none", stroke: "#b84354", "stroke-width": "1.15", "stroke-linecap": "round" }));
-    g.appendChild(nail);
-    return g;
+  function packFinger(samples) {
+    const e = edgesOf(samples);
+    const mid = (samples.length / 2) | 0;
+    const neg = e.left[mid].x <= e.right[mid].x ? e.left : e.right;
+    const pos = neg === e.left ? e.right : e.left;
+    return { samples: samples, neg: neg, pos: pos, x: samples[0].x };
   }
-  function makePalm(id) {
-    const g = svg("g", { id: id });
-    g.appendChild(svg("ellipse", { class: "shadow", fill: "#6a4038", opacity: "0.12" }));
-    g.appendChild(svg("path", { class: "skin", fill: "url(#skin)", stroke: "#c57b6c", "stroke-width": "2.2", "stroke-linejoin": "round" }));
-    g.appendChild(svg("path", { class: "hi", fill: "#fff", opacity: "0.28" }));
-    g.appendChild(svg("path", { class: "crease", fill: "none", stroke: "#e2a898", "stroke-width": "1.5", "stroke-linecap": "round" }));
-    return g;
+  function pushRange(pts, arr, a, b) {
+    if (a <= b) {
+      for (let i = a; i <= b; i++) pts.push(arr[i]);
+    } else {
+      for (let i = a; i >= b; i--) pts.push(arr[i]);
+    }
   }
-  function updateLimb(g, x0, y0, x1, y1, opt) {
-    if (!g) return;
-    const o = opt || {};
-    const geo = limbGeometry(x0, y0, x1, y1, o);
-    setCls(g, "skin", geo.skin);
-    setCls(g, "shade", geo.shade);
-    setCls(g, "hi", geo.hi);
-    setCls(g, "c1", geo.c1);
-    setCls(g, "c2", geo.c2);
-    const samples = limbSamples(x0, y0, x1, y1, o);
-    const s = sampleAt(samples, 0.9);
+  function pushWeb(pts, a, b, dir) {
+    const mx = (a.x + b.x) / 2;
+    const my = (a.y + b.y) / 2 + dir * 13;
+    pts.push({ x: (a.x * 2 + mx) / 3, y: (a.y * 2 + my) / 3 });
+    pts.push({ x: mx, y: my });
+    pts.push({ x: (b.x * 2 + mx) / 3, y: (b.y * 2 + my) / 3 });
+  }
+  function palmArc(from, to, dir) {
+    const midX = (from.x + to.x) / 2;
+    const y0 = (from.y + to.y) / 2;
+    const span = Math.max(96, from.x - to.x);
+    const wideR = span * 0.4 + 62;
+    const wideL = span * 0.36 + 46;
+    const deep = dir > 0 ? 124 : 210;
+    const y1 = y0 + dir * deep * 0.4;
+    const y2 = y0 + dir * deep;
+    return [
+      from,
+      { x: from.x + 30, y: y0 + dir * 16 },
+      { x: midX + wideR, y: y1 },
+      { x: midX + wideR * 0.4, y: y2 },
+      { x: midX - 8, y: y2 + dir * 12 },
+      { x: midX - wideL * 0.46, y: y2 },
+      { x: midX - wideL, y: y1 },
+      { x: to.x - 28, y: y0 + dir * 18 },
+      to
+    ];
+  }
+  function handOutline(fingers, dir, thumbSamples) {
+    const list = fingers.slice().sort(function (a, b) { return a.x - b.x; });
+    const web = 5;
+    const N = list[0].samples.length - 1;
+    const pts = [];
+    pushRange(pts, list[0].neg, 0, N);
+    pts.push(tipPoint(list[0].samples));
+    pushRange(pts, list[0].pos, N, web);
+    for (let i = 1; i < list.length; i++) {
+      pushWeb(pts, list[i - 1].pos[web], list[i].neg[web], dir);
+      pushRange(pts, list[i].neg, web, N);
+      pts.push(tipPoint(list[i].samples));
+      pushRange(pts, list[i].pos, N, i === list.length - 1 ? 0 : web);
+    }
+    let palm = palmArc(list[list.length - 1].pos[0], list[0].neg[0], dir);
+    if (thumbSamples) {
+      const te = edgesOf(thumbSamples);
+      const tip = tipPoint(thumbSamples);
+      const mid = (te.left.length / 2) | 0;
+      const anchor = list[0].samples[0];
+      const dL = Math.hypot(te.left[mid].x - anchor.x, te.left[mid].y - anchor.y);
+      const dR = Math.hypot(te.right[mid].x - anchor.x, te.right[mid].y - anchor.y);
+      const outer = dL >= dR ? te.left : te.right;
+      const inner = outer === te.left ? te.right : te.left;
+      const spliced = [palm[0]];
+      pushRange(spliced, outer, 0, outer.length - 1);
+      spliced.push(tip);
+      pushRange(spliced, inner, inner.length - 1, 0);
+      for (let i = 1; i < palm.length; i++) spliced.push(palm[i]);
+      palm = spliced;
+    }
+    for (let i = 0; i < palm.length; i++) pts.push(palm[i]);
+    return crClosed(pts);
+  }
+  function ribbonPath(samples) {
+    const e = edgesOf(samples);
+    const tip = tipPoint(samples);
+    const b = samples[0];
+    const heel = { x: b.x - b.tx * b.w * 0.4, y: b.y - b.ty * b.w * 0.4 };
+    return crClosed(e.left.concat([tip], e.right.slice().reverse(), [heel]));
+  }
+  function placeNail(node, samples) {
+    if (!node) return;
+    const s = sampleAt(samples, 0.94);
+    const x = s.x + s.tx * s.w * 0.1;
+    const y = s.y + s.ty * s.w * 0.1;
     const ang = Math.atan2(s.ty, s.tx) * 180 / Math.PI;
-    const nail = g.querySelector(".nailg");
-    if (!nail) return;
-    const nx = s.x + s.tx * s.w * 0.2;
-    const ny = s.y + s.ty * s.w * 0.2;
-    nail.setAttribute("transform", "translate(" + n1(nx) + " " + n1(ny) + ") rotate(" + ang.toFixed(1) + ")");
-    const rx = Math.max(6.2, s.w * 1.05);
-    const ry = Math.max(4.4, s.w * 0.62);
-    const body = nail.querySelector(".nail");
-    body.setAttribute("cx", "0");
-    body.setAttribute("cy", "0");
+    node.setAttribute("transform", "translate(" + n1(x) + " " + n1(y) + ") rotate(" + ang.toFixed(1) + ")");
+    const rx = Math.max(8.2, s.w * 1.2);
+    const ry = Math.max(5.6, s.w * 0.74);
+    const body = node.querySelector(".body");
     body.setAttribute("rx", n1(rx));
     body.setAttribute("ry", n1(ry));
-    const shine = nail.querySelector(".shine");
+    const shine = node.querySelector(".shine");
     shine.setAttribute("cx", n1(-rx * 0.22));
-    shine.setAttribute("cy", n1(-ry * 0.28));
+    shine.setAttribute("cy", n1(-ry * 0.3));
     shine.setAttribute("rx", n1(rx * 0.32));
-    shine.setAttribute("ry", n1(ry * 0.38));
-    const cut = nail.querySelector(".cut");
-    cut.setAttribute("d", "M" + n1(-rx * 0.55) + " " + n1(-ry * 0.7) + "Q" + n1(-rx * 0.15) + " " + n1(-ry * 0.05) + " " + n1(-rx * 0.55) + " " + n1(ry * 0.7));
+    shine.setAttribute("ry", n1(ry * 0.4));
   }
-  function palmPath(knuckles, dir) {
-    const left = knuckles[0].x - 18;
-    const right = knuckles[3].x + 16;
-    const mid = (left + right) / 2;
-    const edge = (knuckles[0].y + knuckles[3].y) / 2;
-    const top = edge - dir * 4;
-    const bot = edge + dir * 58;
-    const side = dir > 0 ? 1 : -1;
-    return "M" + n1(left + 14) + " " + n1(top)
-      + "C" + n1(left - 2) + " " + n1(top + side * 16) + " " + n1(left + 2) + " " + n1(top + side * 40) + " " + n1(mid - 22) + " " + n1(bot - side * 10)
-      + "C" + n1(mid - 16) + " " + n1(bot + side * 8) + " " + n1(mid + 20) + " " + n1(bot + side * 8) + " " + n1(mid + 24) + " " + n1(bot - side * 10)
-      + "C" + n1(right + 4) + " " + n1(top + side * 40) + " " + n1(right + 2) + " " + n1(top + side * 14) + " " + n1(right - 12) + " " + n1(top)
-      + "C" + n1(mid + 16) + " " + n1(top - side * 8) + " " + n1(mid - 24) + " " + n1(top - side * 6) + " " + n1(left + 14) + " " + n1(top) + "Z";
+  function makeNail(cls) {
+    const n = svg("g", { class: cls });
+    n.appendChild(svg("ellipse", {
+      class: "body", cx: "0", cy: "0", rx: "9", ry: "6",
+      fill: "url(#nail)", stroke: "#c41630", "stroke-width": "0.8"
+    }));
+    n.appendChild(svg("ellipse", { class: "shine", fill: "#fff", opacity: "0.92" }));
+    return n;
   }
-  function updatePalm(g, knuckles, dir) {
-    if (!g) return;
-    g.querySelector(".skin").setAttribute("d", palmPath(knuckles, dir));
-    const midX = (knuckles[0].x + knuckles[3].x) / 2;
-    const edge = (knuckles[0].y + knuckles[3].y) / 2;
-    const sh = g.querySelector(".shadow");
-    sh.setAttribute("cx", n1(midX + 4));
-    sh.setAttribute("cy", n1(edge + dir * 46));
-    sh.setAttribute("rx", "36");
-    sh.setAttribute("ry", "8");
-    const hy = edge + dir * 16;
-    g.querySelector(".hi").setAttribute("d", "M" + n1(midX - 28) + " " + n1(hy)
-      + "a24 10 0 1 0 40 0a24 10 0 1 0 -40 0");
-    const cy = edge + dir * 24;
-    g.querySelector(".crease").setAttribute("d", "M" + n1(knuckles[0].x + 2) + " " + n1(cy)
-      + "Q" + n1(midX) + " " + n1(cy + dir * 6) + " " + n1(knuckles[3].x - 2) + " " + n1(cy));
+  function bonesToFit(dist, n) {
+    const total = Math.max(n === 2 ? 36 : 78, dist * 1.55);
+    if (n === 2) return [total * 0.58, total * 0.42];
+    return [total * 0.45, total * 0.33, total * 0.22];
   }
-
-  const HAND_KX = [50, 18, -14, -48];
-  const HAND_KY = [3, -7, 0, 12];
-  const HAND_W = [[13.2, 8.4], [14.2, 8.8], [12.8, 8.1], [10.6, 7.1]];
-  const HAND_REACH = 108;
-
-  function behindFret(fret) {
-    const f = Math.max(1, fret | 0);
-    const wire = fretX(f);
-    const prev = fretX(f - 1);
-    const space = Math.max(0, prev - wire);
-    return wire + Math.max(10, Math.min(17, space * 0.24));
+  function makeHandGroup(id) {
+    const g = svg("g", { id: id });
+    g.appendChild(svg("ellipse", { class: "drop", fill: "#c48b7c", opacity: "0.12" }));
+    const ink = svg("g", { class: "ink" });
+    for (let i = 0; i < 4; i++) ink.appendChild(svg("path", { class: "f" + i, fill: "url(#skin)" }));
+    ink.appendChild(svg("path", { class: "palm", fill: "url(#skin)" }));
+    ink.appendChild(svg("path", { class: "thumb", fill: "url(#skin)" }));
+    ink.appendChild(svg("path", {
+      class: "heel", fill: "none", stroke: "#e7b5a6", "stroke-width": "2.2",
+      "stroke-linecap": "round"
+    }));
+    g.appendChild(ink);
+    const shade = svg("g", { class: "shade" });
+    shade.appendChild(svg("ellipse", { class: "palmhi", fill: "url(#softHi)" }));
+    shade.appendChild(svg("ellipse", { class: "palmsh", fill: "url(#softSh)" }));
+    g.appendChild(shade);
+    const nails = svg("g", { class: "nails" });
+    for (let i = 0; i < 5; i++) nails.appendChild(makeNail("n" + i));
+    g.appendChild(nails);
+    return g;
+  }
+  function handPalmPath(cx, edge, halfW, depth, dir) {
+    const yKn = edge - dir * 14;
+    const yHeel = edge + dir * depth;
+    const left = cx - halfW;
+    const right = cx + halfW;
+    return "M" + n1(left + 36) + " " + n1(yKn)
+      + "Q" + n1(left - 8) + " " + n1(yKn) + " " + n1(left - 14) + " " + n1(edge + dir * depth * 0.32)
+      + "Q" + n1(left + 18) + " " + n1(yHeel) + " " + n1(cx - 8) + " " + n1(yHeel + dir * 20)
+      + "Q" + n1(right - 18) + " " + n1(yHeel) + " " + n1(right + 16) + " " + n1(edge + dir * depth * 0.3)
+      + "Q" + n1(right + 8) + " " + n1(yKn) + " " + n1(right - 34) + " " + n1(yKn)
+      + "Z";
+  }
+  function paintHand(g, fingerSamples, dir, thumbSamples, palm) {
+    for (let i = 0; i < 4; i++) {
+      const d = fingerSamples[i] ? ribbonPath(fingerSamples[i]) : "";
+      g.querySelectorAll(".f" + i).forEach(function (node) { node.setAttribute("d", d); });
+      placeNail(g.querySelector(".n" + i), fingerSamples[i]);
+    }
+    const palmD = handPalmPath(palm.cx, palm.edge, palm.halfW, palm.depth, dir);
+    g.querySelectorAll(".palm").forEach(function (node) { node.setAttribute("d", palmD); });
+    const heel = g.querySelector(".heel");
+    if (heel) {
+      const left = palm.cx - palm.halfW;
+      const right = palm.cx + palm.halfW;
+      const yHeel = palm.edge + dir * palm.depth;
+      heel.setAttribute("d", "M" + n1(left + 10) + " " + n1(palm.edge + dir * palm.depth * 0.42)
+        + "Q" + n1(left + 24) + " " + n1(yHeel) + " " + n1(palm.cx) + " " + n1(yHeel + dir * 16)
+        + "Q" + n1(right - 24) + " " + n1(yHeel) + " " + n1(right - 8) + " " + n1(palm.edge + dir * palm.depth * 0.4));
+    }
+    const drop = g.querySelector(".drop");
+    drop.setAttribute("cx", n1(palm.cx + 6));
+    drop.setAttribute("cy", n1(palm.edge + dir * palm.depth * 0.45));
+    drop.setAttribute("rx", n1(palm.halfW * 0.86));
+    drop.setAttribute("ry", n1(palm.depth * 0.42));
+    const hi = g.querySelector(".palmhi");
+    hi.setAttribute("cx", n1(palm.cx - palm.halfW * 0.08));
+    hi.setAttribute("cy", n1(palm.edge + dir * palm.depth * 0.28));
+    hi.setAttribute("rx", n1(palm.halfW * 0.62));
+    hi.setAttribute("ry", n1(palm.depth * 0.36));
+    const sh = g.querySelector(".palmsh");
+    sh.setAttribute("cx", n1(palm.cx + 12));
+    sh.setAttribute("cy", n1(palm.edge + dir * palm.depth * 0.62));
+    sh.setAttribute("rx", n1(palm.halfW * 0.48));
+    sh.setAttribute("ry", n1(palm.depth * 0.28));
+    const thumbNail = g.querySelector(".n4");
+    const thumbs = g.querySelectorAll(".thumb");
+    if (thumbSamples) {
+      const d = ribbonPath(thumbSamples);
+      thumbs.forEach(function (node) {
+        node.setAttribute("d", d);
+        node.setAttribute("opacity", "1");
+      });
+      placeNail(thumbNail, thumbSamples);
+      thumbNail.setAttribute("opacity", "1");
+    } else {
+      thumbs.forEach(function (node) {
+        node.setAttribute("d", "");
+        node.setAttribute("opacity", "0");
+      });
+      thumbNail.setAttribute("opacity", "0");
+    }
+  }
+  function fingerFlex(origin, target, lengths) {
+    const dist = Math.hypot(target.x - origin.x, target.y - origin.y);
+    return solveFlex(lengths, lengths.length === 2 ? FLEX_T : FLEX_F, dist, 0.42);
+  }
+  function easeFlex(cur, want, dt, rate) {
+    const out = [];
+    for (let i = 0; i < want.length; i++) {
+      const row = [];
+      const src = cur && cur[i] ? cur[i] : want[i];
+      for (let j = 0; j < want[i].length; j++) row.push(ease(src[j] || 0, want[i][j], dt, rate));
+      out.push(row);
+    }
+    return out;
+  }
+  function spreadKnuckles(tips, palmX, palmY) {
+    const raw = tips.map(function (p, i) {
+      return { x: palmX + (p.x - palmX) * 0.62, y: palmY + [8, -6, -2, 12][i] };
+    });
+    const order = [0, 1, 2, 3].sort(function (a, b) { return raw[a].x - raw[b].x; });
+    for (let k = 1; k < order.length; k++) {
+      const prev = raw[order[k - 1]];
+      const cur = raw[order[k]];
+      if (cur.x < prev.x + 78) cur.x = prev.x + 78;
+    }
+    let c = 0;
+    raw.forEach(function (p) { c += p.x; });
+    const shift = c / 4 - palmX;
+    raw.forEach(function (p) { p.x -= shift; });
+    return raw;
   }
   function poseLeft(shape) {
     const string = clamp(shape.string | 0, 0, 3);
-    const ideal = [];
+    const tips = [];
     for (let i = 0; i < 4; i++) {
       const s = shape.strings && shape.strings[i] != null ? shape.strings[i] : string;
-      ideal.push({ x: behindFret(shape.frets[i]), y: GEO.strings[clamp(s | 0, 0, 3)] });
+      tips.push({
+        x: behindFret(shape.frets[i]),
+        y: GEO.strings[clamp(s | 0, 0, 3)],
+        press: shape.press === i ? 1 : 0
+      });
     }
     if (shape.support) {
-      const off = shape.press === 3 ? 16 : 26;
-      ideal[2] = { x: ideal[3].x + 15, y: ideal[3].y + off, fixed: true };
+      const off = shape.press === 3 ? 12 : 20;
+      tips[2] = { x: tips[3].x + 16, y: tips[3].y + off, press: 0 };
     }
     if (shape.system === "octave") {
-      const x0 = ideal[0].x, x3 = ideal[3].x, y0 = ideal[0].y, y3 = ideal[3].y;
-      ideal[1] = { x: x0 + (x3 - x0) * 0.4, y: (y0 + y3) / 2 + 30 };
-      ideal[2] = { x: x0 + (x3 - x0) * 0.64, y: (y0 + y3) / 2 + 32 };
+      const x0 = tips[0].x, x3 = tips[3].x, y0 = tips[0].y, y3 = tips[3].y;
+      tips[1] = { x: x0 + (x3 - x0) * 0.36, y: (y0 + y3) / 2 + 6, press: 0 };
+      tips[2] = { x: x0 + (x3 - x0) * 0.64, y: (y0 + y3) / 2 + 8, press: 0 };
     }
-    const palmX = (ideal[0].x + ideal[3].x) / 2 + 2;
-    let palmY = (ideal[0].y + ideal[3].y) / 2 + HAND_REACH;
-    if (palmY > 492) palmY = 492;
-    const knuckles = HAND_KX.map((dx, i) => ({ x: palmX + dx, y: palmY + HAND_KY[i] }));
-    const tips = ideal.map((p, i) => {
-      if (shape.press === i) return { x: p.x, y: p.y, press: 1 };
-      if (p.fixed) return { x: p.x, y: p.y, press: 0 };
-      let pull = 0.28;
-      if (shape.system === "octave") pull = (i === 1 || i === 2) ? 0.2 : 0.12;
-      return {
-        x: p.x + (knuckles[i].x - p.x) * pull,
-        y: p.y + (knuckles[i].y - p.y) * pull,
-        press: 0
-      };
-    });
-    return { knuckles: knuckles, tips: tips, palmX: palmX, palmY: palmY };
+    if ((shape.press | 0) < 0) {
+      for (let i = 0; i < 4; i++) tips[i].y += 18;
+    }
+    let palmX = 0;
+    let avgY = 0;
+    for (let i = 0; i < 4; i++) { palmX += tips[i].x; avgY += tips[i].y; }
+    palmX /= 4;
+    let palmY = avgY / 4 + 102;
+    if (palmY > 488) palmY = 488;
+    return { knuckles: spreadKnuckles(tips, palmX, palmY), tips: tips, palmX: palmX, palmY: palmY };
+  }
+  function clonePose(src) {
+    return {
+      palmX: src.palmX,
+      palmY: src.palmY,
+      knuckles: src.knuckles.map(function (p) { return { x: p.x, y: p.y }; }),
+      tips: src.tips.map(function (p) { return { x: p.x, y: p.y, press: p.press }; })
+    };
   }
   function lerpLeft(target, dt) {
-    const snap = !vis.left;
-    const k = snap ? 1 : 1 - Math.exp(-8 * Math.max(0.001, dt));
-    if (snap) { vis.left = target; return; }
+    if (!vis.left) {
+      vis.left = clonePose(target);
+      vis.left.flex = target.knuckles.map(function (k, i) {
+        return fingerFlex(k, target.tips[i], bonesToFit(Math.hypot(target.tips[i].x - k.x, target.tips[i].y - k.y), 3));
+      });
+      vis.left.thumb = [0.2, 0.35];
+      return;
+    }
     const L = vis.left;
     for (let i = 0; i < 4; i++) {
-      L.knuckles[i].x += (target.knuckles[i].x - L.knuckles[i].x) * k;
-      L.knuckles[i].y += (target.knuckles[i].y - L.knuckles[i].y) * k;
-      L.tips[i].x += (target.tips[i].x - L.tips[i].x) * k;
-      L.tips[i].y += (target.tips[i].y - L.tips[i].y) * k;
-      L.tips[i].press += (target.tips[i].press - L.tips[i].press) * k;
+      L.knuckles[i].x = ease(L.knuckles[i].x, target.knuckles[i].x, dt, 8);
+      L.knuckles[i].y = ease(L.knuckles[i].y, target.knuckles[i].y, dt, 8);
+      L.tips[i].x = ease(L.tips[i].x, target.tips[i].x, dt, 9);
+      L.tips[i].y = ease(L.tips[i].y, target.tips[i].y, dt, 9);
+      L.tips[i].press = ease(L.tips[i].press, target.tips[i].press, dt, 10);
     }
-    L.palmX += (target.palmX - L.palmX) * k;
-    L.palmY += (target.palmY - L.palmY) * k;
-  }
-  function placeThumb(L) {
-    const pad = $("thumb-pad");
-    if (!pad) return;
-    const cx = L.knuckles[0].x + 2;
-    const cy = GEO.boardY - 1;
-    const skin = pad.querySelector(".skin");
-    skin.setAttribute("cx", n1(cx));
-    skin.setAttribute("cy", n1(cy));
-    skin.setAttribute("rx", "22");
-    skin.setAttribute("ry", "15");
-    const hi = pad.querySelector(".hi");
-    hi.setAttribute("cx", n1(cx - 5));
-    hi.setAttribute("cy", n1(cy - 3));
-    hi.setAttribute("rx", "6");
-    hi.setAttribute("ry", "3.2");
-    const nail = pad.querySelector(".nail");
-    nail.setAttribute("cx", n1(cx + 2));
-    nail.setAttribute("cy", n1(cy - 1));
-    nail.setAttribute("rx", "7");
-    nail.setAttribute("ry", "4.6");
-    const arm = $("thumb-arm");
-    if (arm) {
-      const x0 = L.knuckles[0].x + 6;
-      const y0 = Math.min(GEO.boardY + GEO.boardH - 8, L.knuckles[0].y + 8);
-      const x1 = cx;
-      const y1 = GEO.boardY + 10;
-      arm.setAttribute("d", "M" + n1(x0 - 12) + " " + n1(y0)
-        + "C" + n1(x0 - 8) + " " + n1((y0 + y1) / 2) + " " + n1(x1 - 16) + " " + n1(y1 + 16) + " " + n1(x1 - 8) + " " + n1(y1)
-        + "C" + n1(x1 + 10) + " " + n1(y1 - 4) + " " + n1(x1 + 12) + " " + n1(y1 + 8) + " " + n1(x0 + 14) + " " + n1(y0)
-        + "C" + n1(x0 + 4) + " " + n1(y0 + 10) + " " + n1(x0 - 4) + " " + n1(y0 + 8) + " " + n1(x0 - 12) + " " + n1(y0) + "Z");
-    }
+    L.palmX = ease(L.palmX, target.palmX, dt, 8);
+    L.palmY = ease(L.palmY, target.palmY, dt, 8);
+    const want = L.knuckles.map(function (k, i) {
+      return fingerFlex(k, L.tips[i], bonesToFit(Math.hypot(L.tips[i].x - k.x, L.tips[i].y - k.y), 3));
+    });
+    L.flex = easeFlex(L.flex, want, dt, 9);
+    const thumbTip = { x: L.knuckles[0].x + 10, y: GEO.boardY - 12 };
+    const thumbBase = { x: L.knuckles[0].x + 2, y: GEO.boardY + 26 };
+    L.thumb = easeFlex([L.thumb], [fingerFlex(thumbBase, thumbTip, bonesToFit(40, 2))], dt, 8)[0];
+    L.thumbBase = thumbBase;
+    L.thumbTip = thumbTip;
   }
   function drawLeftHand(dt, shape) {
     const target = poseLeft(shape);
     lerpLeft(target, dt);
     const L = vis.left;
-    updatePalm($("fret-palm"), L.knuckles, 1);
+    const samples = [];
+    let minX = 1e9, maxX = -1e9;
     for (let i = 0; i < 4; i++) {
-      const kn = L.knuckles[i];
-      const tip = L.tips[i];
-      const bow = 6 + (1 - tip.press) * 12;
-      updateLimb($("ff" + i), kn.x, kn.y + 14, tip.x, tip.y, {
-        w0: HAND_W[i][0],
-        w1: HAND_W[i][1],
-        bowX: (i - 1.5) * 2,
-        bowY: bow * 0.65
-      });
-      const c = $("contact" + i);
-      if (c) {
-        c.setAttribute("cx", n1(tip.x));
-        c.setAttribute("cy", n1(tip.y + 3));
-        c.setAttribute("opacity", (Math.max(0, tip.press) * 0.18).toFixed(3));
+      const dist = Math.hypot(L.tips[i].x - L.knuckles[i].x, L.tips[i].y - L.knuckles[i].y);
+      const bones = bonesToFit(dist, 3);
+      const pts = pinChain(L.knuckles[i], L.tips[i], bones, L.flex[i], -1);
+      const w = LH_W[i];
+      samples.push(sampleChain(pts, w[0], w[1], BUMP_F));
+      minX = Math.min(minX, L.knuckles[i].x);
+      maxX = Math.max(maxX, L.knuckles[i].x);
+      const mark = $("mark" + i);
+      if (mark) {
+        mark.setAttribute("transform", "translate(" + n1(L.tips[i].x) + " " + n1(L.tips[i].y) + ")");
+        mark.setAttribute("opacity", clamp(L.tips[i].press, 0, 1).toFixed(3));
       }
     }
-    placeThumb(L);
+    const span = Math.max(150, maxX - minX);
+    paintHand($("fret-hand"), samples, 1, null, {
+      cx: L.palmX,
+      edge: L.palmY - 6,
+      halfW: Math.max(span * 0.85 + 62, 168),
+      depth: 136
+    });
+    const base = L.thumbBase;
+    const tip = L.thumbTip;
+    const tpts = pinChain(base, tip, bonesToFit(40, 2), L.thumb, 1);
+    const ts = sampleChain(tpts, 17, 14, BUMP_T);
+    const thumb = $("thumb-back");
+    if (thumb) {
+      thumb.querySelector(".skin").setAttribute("d", ribbonPath(ts));
+      placeNail(thumb.querySelector(".nail"), ts);
+    }
   }
   function thumbRestFor(stringIndex) {
-    // Thumb stays on the bridge pickup and slides toward the string being plucked.
-    const y = TOP_Y[stringIndex] - 26;
-    return { x: 138, y: clamp(y, 64, 156) };
+    const y = TOP_Y[stringIndex];
+    return { x: 268, y: clamp(y + 2, 96, 188) };
   }
   function drawRightHand(dt, note, now) {
     const s = clamp(note.string | 0, 0, 3);
+    const stringY = TOP_Y[s];
     const rest = thumbRestFor(s);
-    const snap = vis.rY == null;
-    const k = snap ? 1 : 1 - Math.exp(-8 * Math.max(0.001, dt));
-    if (snap) {
-      vis.rY = TOP_Y[s];
-      vis.thX = rest.x;
-      vis.thY = rest.y;
-    } else {
-      vis.rY += (TOP_Y[s] - vis.rY) * k;
-      vis.thX += (rest.x - vis.thX) * k;
-      vis.thY += (rest.y - vis.thY) * k;
-    }
     const age = (now - vis.pluckStart) / 240;
     let env = 0;
     if (!note.rest && age >= 0 && age <= 1) {
       env = age < 0.28 ? Math.sin((age / 0.28) * Math.PI / 2) : Math.cos(((age - 0.28) / 0.72) * Math.PI / 2);
     }
-    const y = vis.rY;
-    const palmX = 188;
-    const palmY = 14 + (y - TOP_Y[0]) * 0.42;
-    const knuckles = [
-      { x: palmX - 22, y: palmY + 24 },
-      { x: palmX + 12, y: palmY + 28 },
-      { x: palmX + 40, y: palmY + 20 },
-      { x: palmX + 62, y: palmY + 10 }
-    ];
+    const knuckleY = clamp(52 + (stringY - 130) * 0.1, 46, 68);
+    const palmX = 146;
+    const kx = [-156, -52, 54, 158];
+    const ky = [4, -10, -6, 6];
+    const knuckles = kx.map(function (dx, i) { return { x: palmX + dx, y: knuckleY + ky[i] }; });
     const indexOn = vis.pf === "index";
-    function pluckTip(on, x, lift, travel) {
-      const e = on ? env : 0;
-      return { x: x, y: y - lift + e * travel, bow: on ? 3 + (1 - e) * 8 : 14 };
+    function tipFor(i, pluck) {
+      const x = palmX + [-36, 8, 48, 88][i];
+      const curled = knuckleY + 112 + (3 - i) * 6;
+      const through = stringY + 22;
+      return { x: x, y: pluck ? curled + (through - curled) * env : curled };
     }
-    const index = pluckTip(indexOn, palmX - 16, 14, 46);
-    const middle = pluckTip(!indexOn, palmX + 20, 14, 48);
-    const ring = { x: palmX + 44, y: y - 36, bow: 16 };
-    const pinky = { x: palmX + 64, y: y - 52, bow: 14 };
-    updatePalm($("ph-palm"), knuckles, -1);
-    const parts = [
-      ["ph-index", knuckles[0], index, HAND_W[0]],
-      ["ph-middle", knuckles[1], middle, HAND_W[1]],
-      ["ph-ring", knuckles[2], ring, HAND_W[2]],
-      ["ph-pinky", knuckles[3], pinky, HAND_W[3]]
-    ];
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i];
-      updateLimb($(part[0]), part[1].x, part[1].y - 10, part[2].x, part[2].y, {
-        w0: part[3][0], w1: part[3][1], bowX: 0, bowY: -part[2].bow
+    const tips = [tipFor(0, false), tipFor(1, false), tipFor(2, !indexOn), tipFor(3, indexOn)];
+    const thumbBase = { x: palmX + 108, y: knuckleY - 6 };
+    const thumbTip = { x: 292, y: rest.y - 6 };
+    if (!vis.rh || vis.rY == null) {
+      vis.rY = stringY;
+      vis.rh = {
+        knuckles: knuckles.map(function (p) { return { x: p.x, y: p.y }; }),
+        tips: tips.map(function (p) { return { x: p.x, y: p.y }; }),
+        palmX: palmX,
+        knuckleY: knuckleY,
+        thumbBase: { x: thumbBase.x, y: thumbBase.y },
+        thumbTip: { x: thumbTip.x, y: thumbTip.y },
+        flex: knuckles.map(function (k, i) {
+          return fingerFlex(k, tips[i], bonesToFit(Math.hypot(tips[i].x - k.x, tips[i].y - k.y), 3));
+        }),
+        thumb: fingerFlex(thumbBase, thumbTip, THUMB_BONE)
+      };
+    } else {
+      const R = vis.rh;
+      for (let i = 0; i < 4; i++) {
+        R.knuckles[i].x = ease(R.knuckles[i].x, knuckles[i].x, dt, 8);
+        R.knuckles[i].y = ease(R.knuckles[i].y, knuckles[i].y, dt, 8);
+        R.tips[i].x = ease(R.tips[i].x, tips[i].x, dt, 16);
+        R.tips[i].y = ease(R.tips[i].y, tips[i].y, dt, 16);
+      }
+      R.palmX = ease(R.palmX, palmX, dt, 8);
+      R.knuckleY = ease(R.knuckleY, knuckleY, dt, 8);
+      R.thumbBase.x = ease(R.thumbBase.x, thumbBase.x, dt, 8);
+      R.thumbBase.y = ease(R.thumbBase.y, thumbBase.y, dt, 8);
+      R.thumbTip.x = ease(R.thumbTip.x, thumbTip.x, dt, 8);
+      R.thumbTip.y = ease(R.thumbTip.y, thumbTip.y, dt, 8);
+      vis.rY = R.knuckleY;
+      const want = R.knuckles.map(function (k, i) {
+        return fingerFlex(k, R.tips[i], bonesToFit(Math.hypot(R.tips[i].x - k.x, R.tips[i].y - k.y), 3));
       });
+      R.flex = easeFlex(R.flex, want, dt, 14);
+      R.thumb = easeFlex([R.thumb], [fingerFlex(R.thumbBase, R.thumbTip, THUMB_BONE)], dt, 10)[0];
     }
-    updateLimb($("ph-thumb"), palmX - 8, palmY + 8, vis.thX, vis.thY, {
-      w0: 17, w1: 12, bowX: -16, bowY: 4
+    const R = vis.rh;
+    const samples = [];
+    for (let i = 0; i < 4; i++) {
+      const dist = Math.hypot(R.tips[i].x - R.knuckles[i].x, R.tips[i].y - R.knuckles[i].y);
+      const pts = pinChain(R.knuckles[i], R.tips[i], bonesToFit(dist, 3), R.flex[i], 1);
+      samples.push(sampleChain(pts, RH_W[i][0], RH_W[i][1], BUMP_F));
+    }
+    const tpts = pinChain(R.thumbBase, R.thumbTip, THUMB_BONE, R.thumb, -1);
+    const thumbSamples = sampleChain(tpts, 24, 17, BUMP_T);
+    paintHand($("pluck-hand"), samples, -1, thumbSamples, {
+      cx: R.palmX + 6,
+      edge: R.knuckleY + 8,
+      halfW: 196,
+      depth: 176
     });
   }
   function buildHands() {
-    const thumbG = svg("g", { id: "thumb-back" });
-    thumbG.appendChild(svg("path", { id: "thumb-arm", fill: "url(#skin)", stroke: "#c57b6c", "stroke-width": "2", "stroke-linejoin": "round" }));
-    const pad = svg("g", { id: "thumb-pad" });
-    pad.appendChild(svg("ellipse", { class: "skin", fill: "url(#skin)", stroke: "#c57b6c", "stroke-width": "2" }));
-    pad.appendChild(svg("ellipse", { class: "hi", fill: "#fff", opacity: "0.55" }));
-    pad.appendChild(svg("ellipse", { class: "nail", fill: "url(#nail)", stroke: "#c57b6c", "stroke-width": "1" }));
-    thumbG.appendChild(pad);
+    const defs = document.querySelector("#stage-svg defs");
+    [["softHi", "#ffffff", "0.55"], ["softSh", "#c48474", "0.4"]].forEach(function (spec) {
+      const grad = svg("radialGradient", { id: spec[0], cx: "50%", cy: "50%", r: "50%" });
+      grad.appendChild(svg("stop", { offset: "0", "stop-color": spec[1], "stop-opacity": spec[2] }));
+      grad.appendChild(svg("stop", { offset: "1", "stop-color": spec[1], "stop-opacity": "0" }));
+      defs.appendChild(grad);
+    });
+    defs.appendChild(svg("clipPath", { id: "clip-top", clipPathUnits: "userSpaceOnUse" }))
+      .appendChild(svg("rect", { x: "-80", y: "0", width: "1760", height: "250" }));
+    defs.appendChild(svg("clipPath", { id: "clip-board", clipPathUnits: "userSpaceOnUse" }))
+      .appendChild(svg("rect", { x: "-80", y: "252", width: "1760", height: "300" }));
+
+    const thumb = svg("g", { id: "thumb-back" });
+    thumb.appendChild(svg("path", { class: "skin", fill: "url(#skin)" }));
+    thumb.appendChild(makeNail("nail"));
     const board = $("board");
-    board.parentNode.insertBefore(thumbG, board);
+    board.parentNode.insertBefore(thumb, board);
+
     const hand = $("fret-hand");
+    hand.setAttribute("clip-path", "url(#clip-board)");
     hand.replaceChildren();
+    hand.appendChild(makeHandGroup("fret-skin"));
+    const marks = svg("g", { id: "fret-marks" });
     for (let i = 0; i < 4; i++) {
-      hand.appendChild(svg("ellipse", { id: "contact" + i, rx: "8", ry: "3.4", fill: "#5a302c", opacity: "0" }));
+      const m = svg("g", { id: "mark" + i, opacity: "0" });
+      m.appendChild(svg("circle", {
+        r: "18", fill: "none", stroke: "#ff4b5c", "stroke-width": "7",
+        opacity: "0.55", filter: "url(#glow)"
+      }));
+      m.appendChild(svg("circle", {
+        r: "13", fill: "none", stroke: "#e1061c", "stroke-width": "2.7"
+      }));
+      marks.appendChild(m);
     }
-    hand.appendChild(makePalm("fret-palm"));
-    for (let i = 3; i >= 0; i--) hand.appendChild(makeLimb("ff" + i));
+    hand.appendChild(marks);
+
     const pluck = $("pluck-hand");
     pluck.replaceChildren();
     pluck.removeAttribute("transform");
-    pluck.appendChild(makePalm("ph-palm"));
-    pluck.appendChild(makeLimb("ph-thumb"));
-    pluck.appendChild(makeLimb("ph-pinky"));
-    pluck.appendChild(makeLimb("ph-ring"));
-    pluck.appendChild(makeLimb("ph-middle"));
-    pluck.appendChild(makeLimb("ph-index"));
+    pluck.setAttribute("clip-path", "url(#clip-top)");
+    pluck.appendChild(makeHandGroup("pluck-skin"));
   }
 
   function buildStage() {
@@ -1469,13 +1664,13 @@
 
   window.XBass = {
     setTrack: function (notes) {
-      vis.shape = null; vis.left = null; vis.key = ""; vis.rY = null;
+      vis.shape = null; vis.left = null; vis.rh = null; vis.key = ""; vis.rY = null;
       if (!notes) { state.track = null; state.staffFrame = null; return; }
       state.track = notes.map((n) => ({ t: +n.t || 0, string: n.string | 0, fret: n.fret | 0, rest: !!n.rest })).sort((a, b) => a.t - b.t);
       state.staffFrame = frameOf(state.track);
     },
     clearTrack: function () {
-      vis.shape = null; vis.left = null; vis.key = ""; vis.rY = null;
+      vis.shape = null; vis.left = null; vis.rh = null; vis.key = ""; vis.rY = null;
       state.track = null; state.staffFrame = null;
     },
     getTrack: function () { return state.track; },
