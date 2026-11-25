@@ -1116,6 +1116,34 @@ body.on-title.title-ready #scene-label {
   opacity: 1 !important;
   animation: none !important;
 }
+/* b55: MOAB and shield sit on the right, clear of the weapon camera (left) and the stick. */
+body.in-game .specials {
+  position: fixed !important;
+  left: auto !important;
+  right: calc(env(safe-area-inset-right) + 10px) !important;
+  top: auto !important;
+  bottom: calc(env(safe-area-inset-bottom) + var(--stick) + 96px) !important;
+  flex-direction: column !important;
+  z-index: 46;
+  pointer-events: none;
+  gap: 10px;
+}
+body.in-game .specials .orb { pointer-events: auto !important; touch-action: manipulation; z-index: 47; }
+@media (orientation: landscape) {
+  body.in-game .specials {
+    right: calc(env(safe-area-inset-right) + 12px) !important;
+    bottom: auto !important;
+    top: 36% !important;
+    flex-direction: column !important;
+  }
+}
+body.on-title .t35-row,
+body.on-title #btn-reroll,
+body.on-title #scene-label {
+  pointer-events: auto !important;
+  touch-action: manipulation;
+  z-index: 80;
+}
 .gift-flash { animation: giftflash .7s ease; }
 @keyframes giftflash {
   0% { filter: brightness(1); }

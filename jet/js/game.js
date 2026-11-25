@@ -10,6 +10,7 @@ import { toonMaterial, outlineMaterial, toonModel, PartBuilder, G, outlineUnifor
 import { POINTS, LABEL, LABEL1, mulberry32 } from "./missions.js?v=48";
 import { setQuality, FX as FXQ } from "./tex.js?v=48";
 import { style, patchTerrain, waveAt, createDreamShapes, onStyle, setLake } from "./surreal.js?v=48";
+import { createGiftObject } from "./giftslook.js?v=55";
 
 const V = () => new THREE.Vector3();
 const tA = V(), tB = V(), tC = V(), tD = V(), tE = V();
@@ -54,7 +55,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   let hardIdx = 0; const hpReload = [0, 0, 0, 0]; let ccip = null, muzzleFlip = 0, gunCool = 0, rocketRegen = 0, bombRegen = 0, rocketSide = 1;
   // weapon racks: 10 missiles + 10 bombs, one round is restored every N seconds; short delay between launches.
   const RACK = 10, ROCKET_REGEN = 1.7, BOMB_REGEN = 2.4, ROCKET_GAP = 0.28, BOMB_GAP = 0.45;
-  let rocketCd = 0, bombCd = 0, emptyT = 0;
+  let rocketCd = 0, bombCd = 0, moabCd = 0, emptyT = 0;
   // gun heat: fills in ~4 s of firing, overheats at 100%, must cool below 30% before firing again
   const HEAT_UP = 4, HEAT_DOWN = 2.5, HEAT_RESUME = 0.3;
   let assist = true; try { assist = localStorage.getItem("jet-assist") !== "0"; } catch { /* ignore */ }
@@ -908,7 +909,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     for (let i = 0; i < 24; i++) { const a = (i / 24) * Math.PI * 2; for (const r of [0, 800, 1800]) maxH = Math.max(maxH, groundAt(sp.x + Math.cos(a) * r, sp.z + Math.sin(a) * r)); }
     sp.y = maxH + 420;
     player = { pos: sp, vel: V(), q: new THREE.Quaternion(), yaw: 0, pitch: 0, bank: 0, inverted: false, speed: 125, hp: 100, rockets: RACK, bombs: RACK, boost: 0, flares: 12 };
-    rocketCd = bombCd = 0; rocketRegen = bombRegen = 0; maneuver = null; crashing = null; wrecks.length = 0; lives = LIVES_MAX; moabs = 1; shields = 1; shieldT = 0; laserT = 0; ejClean(); invulnUntil = 0; heat = 0; overheated = false; lowAlt = false; voiceT = 0;
+    rocketCd = bombCd = moabCd = 0; rocketRegen = bombRegen = 0; maneuver = null; crashing = null; wrecks.length = 0; lives = LIVES_MAX; moabs = 1; shields = 1; shieldT = 0; laserT = 0; ejClean(); invulnUntil = 0; heat = 0; overheated = false; lowAlt = false; voiceT = 0;
     landing = null; landingOpen = false; pad = null; baseCenters.length = 0;
     plane.visible = true;
     const zone = new THREE.Vector3(center.x, 0, center.z - 1800);
@@ -1193,6 +1194,14 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (upY < 0.2 || Math.abs(player.bank) > 1.35) {
       smYawR *= Math.exp(-dt * 8);
       smPR *= Math.exp(-dt * 6);
+      if (brkV > 0.4) {
+        // Euler blend stays wings-level. A quaternion slerp from a steep brake was the flip.
+        const hold = THREE.MathUtils.clamp(player.pitch, -0.35, 0.28);
+        const bank = player.bank * Math.exp(-dt * 7);
+        player.q.setFromEuler(_eu.set(hold, player.yaw, -bank, "YXZ"));
+        syncAngles();
+        return;
+      }
       _qL.setFromEuler(_eu.set(player.pitch * 0.85, player.yaw, 0, "YXZ"));
       player.q.slerp(_qL, 1 - Math.exp(-dt * 3.8));
       syncAngles();
@@ -1202,7 +1211,8 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     const yawCmd = -expoStick(st.roll, 1.28) * ARC_YAW;
     const yawK = 1 - Math.exp(-dt * (Math.abs(st.roll) > 0.04 ? 8 : 4.4));
     smYawR += (yawCmd - smYawR) * yawK;
-    const pitCmd = expoStick(st.pitch, 1.15) * ARC_PITCH * (1 + 0.18 * brkV);
+    // Hard brake slows the jet. Extra pitch here was pitching a banked jet until the recovery rolled it over.
+    const pitCmd = expoStick(st.pitch, 1.15) * ARC_PITCH * (1 - 0.62 * brkV);
     const pitK = 1 - Math.exp(-dt * (Math.abs(st.pitch) > 0.08 ? 11 : 3.4));
     smPR += (pitCmd - smPR) * pitK;
 
@@ -1232,7 +1242,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     if (Math.abs(st.pitch) < 0.08 && Math.abs(aimPitch) < 0.02) pitch += (0 - pitch) * (1 - Math.exp(-dt * 1.2));
     pitch = THREE.MathUtils.clamp(pitch, -1.15, 1.05);
 
-    const bankTarget = THREE.MathUtils.clamp(st.roll, -1, 1) * 1.0;
+    const bankTarget = THREE.MathUtils.clamp(st.roll, -1, 1) * (1 - 0.28 * brkV);
     const bankK = 1 - Math.exp(-dt * (Math.abs(st.roll) > 0.2 ? 7 : 4.2));
     let bank = player.bank + (bankTarget - player.bank) * bankK;
     bank = THREE.MathUtils.clamp(bank, -1.12, 1.12);
@@ -2169,8 +2179,8 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     return best;
   }
   function dropMoab() {
-    if (moabs <= 0 || bombCd > 0) { if (moabs <= 0) events.toast?.("NO MOAB"); return false; }
-    moabs--; bombCd = 0.4;
+    if (moabs <= 0 || moabCd > 0) { if (moabs <= 0) events.toast?.("NO MOAB"); return false; }
+    moabs--; moabCd = 0.45;
     const b = bombs.find((x) => !x.active) || bombs[0];
     b.active = true; b.life = 20; b.moab = true; b.result = null; b.target = null;
     b.p.copy(tA.set(0, -1.4, 0.2).applyMatrix4(plane.matrixWorld));
@@ -2189,114 +2199,57 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   const GIFT_MARK = { health: "+", fuel: "+", shield: "◈", moab: "☢", missile: "M", bomb: "B", cash: "$", life: "✈" };
   const GIFT_POOL = ["health", "health", "fuel", "fuel", "shield", "missile", "missile", "bomb", "bomb", "moab", "cash", "cash", "cash", "life"];
   const GIFT_BTN = { missile: ".w-msl", bomb: ".w-bomb", bombs: ".w-bomb", shield: "#btn-shield", health: ".hull-row", fuel: "#fuel-dial", moab: "#btn-moab", cash: ".score-pill", life: "#hud-lives" };
-  const giftGeo = {};
-  const giftIcon = {};
-  function sharedGeo(name, build) { return giftGeo[name] || (giftGeo[name] = build()); }
-  function glassMat(col, opacity = 0.78) {
-    const m = new THREE.MeshPhysicalMaterial({ color: col, metalness: 0.08, roughness: 0.06, transparent: true, opacity, emissive: col, emissiveIntensity: 0.72, clearcoat: 1, clearcoatRoughness: 0.05, fog: false });
-    m.userData.own = 1;
-    return m;
-  }
-  function iconTex(kind, worth) {
-    const key = kind + (worth || "");
-    if (giftIcon[key]) return giftIcon[key];
-    const c = document.createElement("canvas"); c.width = c.height = 256; const x = c.getContext("2d");
-    x.clearRect(0, 0, 256, 256);
-    x.lineJoin = "round"; x.lineCap = "round"; x.strokeStyle = "#fff"; x.fillStyle = "#fff";
-    x.shadowColor = "rgba(0,0,0,.85)"; x.shadowBlur = 8;
-    if (kind === "health" || kind === "fuel") {
-      x.lineWidth = 36; x.beginPath(); x.moveTo(128, 46); x.lineTo(128, 210); x.moveTo(46, 128); x.lineTo(210, 128); x.stroke();
-    } else if (kind === "moab") {
-      x.font = "900 150px sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("☢", 128, 138);
-    } else if (kind === "missile") {
-      x.lineWidth = 16; x.beginPath(); x.moveTo(128, 36); x.lineTo(168, 150); x.lineTo(128, 132); x.lineTo(88, 150); x.closePath(); x.fill();
-      x.fillRect(112, 140, 32, 70);
-    } else if (kind === "bomb") {
-      x.beginPath(); x.ellipse(128, 148, 52, 64, 0, 0, 7); x.fill();
-      x.lineWidth = 14; x.beginPath(); x.moveTo(128, 84); x.lineTo(128, 48); x.moveTo(108, 56); x.lineTo(148, 56); x.stroke();
-    } else if (kind === "cash") {
-      x.font = "900 168px sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("$", 128, 142);
-    } else if (kind === "shield") {
-      x.lineWidth = 16; x.beginPath(); x.arc(128, 128, 70, 0, 7); x.stroke();
-    }
-    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.needsUpdate = true;
-    giftIcon[key] = tex;
-    return tex;
-  }
-  function haloSprite(col, size) {
-    const c = document.createElement("canvas"); c.width = c.height = 128; const x = c.getContext("2d");
-    const g = x.createRadialGradient(64, 64, 4, 64, 64, 62);
-    g.addColorStop(0, "rgba(255,255,255,.95)"); g.addColorStop(0.25, "#" + col.toString(16).padStart(6, "0")); g.addColorStop(1, "rgba(255,255,255,0)");
-    x.fillStyle = g; x.beginPath(); x.arc(64, 64, 62, 0, 7); x.fill();
-    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0.9 }));
-    sp.scale.set(size, size, 1); sp.userData.ownMat = 1; return sp;
-  }
   function giftMesh(kind, worth) {
+    if (kind === "life") {
+      const g = new THREE.Group();
+      let jet;
+      try { jet = createAllyJet(); } catch { jet = createGiftObject("life"); }
+      jet.scale.setScalar(0.72); jet.rotation.y = 0.45;
+      jet.traverse((o) => { o.frustumCulled = false; });
+      g.add(jet);
+      g.userData.shell = jet; g.userData.col = GIFT_COL.life || 0xfff2c4;
+      g.frustumCulled = false;
+      return g;
+    }
     const col = kind === "cash" ? (worth >= 5000 ? 0xfff6c0 : worth >= 2000 ? 0xffc24a : worth >= 1000 ? 0xffd35a : 0xf0e0a0) : (GIFT_COL[kind] || 0xfff2c4);
-    const g = new THREE.Group(); g.frustumCulled = false;
-    let shell;
-    if (kind === "health") shell = new THREE.Mesh(sharedGeo("cube", () => new THREE.BoxGeometry(28, 28, 28)), glassMat(col, 0.82));
-    else if (kind === "fuel") shell = new THREE.Mesh(sharedGeo("geo", () => new THREE.IcosahedronGeometry(16, 1)), glassMat(col, 0.8));
-    else if (kind === "cash") {
-      shell = new THREE.Mesh(sharedGeo("bag", () => new THREE.SphereGeometry(13, 18, 14)), glassMat(col, 0.48));
-      shell.scale.set(1.05, 1.35, 0.78);
-      const neck = new THREE.Mesh(sharedGeo("neck", () => new THREE.CylinderGeometry(3.2, 5, 6, 10)), glassMat(col, 0.55));
-      neck.position.y = 16; g.add(neck);
-    } else if (kind === "life") {
-      let jet; try { jet = createAllyJet(); } catch { jet = new THREE.Mesh(sharedGeo("ball", () => new THREE.SphereGeometry(12, 20, 14)), glassMat(0xfff2c4)); }
-      jet.scale.setScalar(0.85); jet.rotation.y = 0.4; jet.traverse((o) => { o.frustumCulled = false; });
-      g.add(jet); shell = jet;
-    } else shell = new THREE.Mesh(sharedGeo("ball", () => new THREE.SphereGeometry(16, 28, 20)), glassMat(col, kind === "shield" ? 0.7 : 0.8));
-    if (kind !== "life") g.add(shell);
-    const icon = new THREE.Sprite(new THREE.SpriteMaterial({ map: iconTex(kind, 0), transparent: true, depthWrite: false, fog: false, sizeAttenuation: true }));
-    icon.scale.set(kind === "cash" ? 30 : 26, kind === "cash" ? 30 : 26, 1);
-    icon.position.z = kind === "health" ? 15 : 0;
-    if (kind !== "life") g.add(icon);
-    const halo = haloSprite(col, kind === "life" ? 46 : kind === "moab" ? 58 : 50);
-    g.add(halo);
-    g.userData.shell = shell; g.userData.halo = halo; g.userData.icon = icon; g.userData.col = col;
-    g.traverse((o) => { o.frustumCulled = false; });
-    return g;
+    return createGiftObject(kind, { color: col });
   }
   function placeGift(kind, p, worth) {
     const mesh = giftMesh(kind, worth);
     mesh.position.copy(p); scene.add(mesh);
     prizes.push({ kind, p, mesh, t: Math.random() * 4, worth: worth || 0, col: mesh.userData.col });
   }
-  function giftPoint(dist, side) {
-    const f = fwdFrom(player.yaw, 0, V());
-    const p = player.pos.clone();
-    p.x += f.x * dist - f.z * side;
-    p.z += f.z * dist + f.x * side;
-    p.y = player.pos.y;
-    const floor = groundAt(p.x, p.z) + 55;
-    if (p.y < floor) p.y = floor;
-    return p;
-  }
-  function giftsAhead() {
-    if (!player) return 0;
-    const f = fwdFrom(player.yaw, 0, V());
-    let n = 0;
-    for (const z of prizes) {
-      const along = (z.p.x - player.pos.x) * f.x + (z.p.z - player.pos.z) * f.z;
-      if (along > 120 && along < 2600) n++;
+  function mapGiftPoint() {
+    const span = Math.max(1800, half * 0.86);
+    for (let i = 0; i < 16; i++) {
+      const x = center.x + (Math.random() - 0.5) * span * 2;
+      const z = center.z + (Math.random() - 0.5) * span * 2;
+      if (strip) {
+        const dx = x - strip.pos.x, dz = z - strip.pos.z;
+        if (dx * dx + dz * dz < 650 * 650) continue;
+      }
+      const y = groundAt(x, z) + 220 + Math.random() * 260;
+      return new THREE.Vector3(x, y, z);
     }
-    return n;
+    return new THREE.Vector3(center.x + span * 0.4, groundAt(center.x, center.z) + 340, center.z - span * 0.35);
   }
   function scatterGifts() {
     for (const z of prizes) scene.remove(z.mesh);
     prizes.length = 0;
-    giftLine = false;
-    prizeT = 1;
+    giftLine = true;
+    for (let i = 0; i < 16; i++) {
+      let kind = GIFT_POOL[i % GIFT_POOL.length];
+      if (kind === "life" && prizes.some((z) => z.kind === "life")) kind = "cash";
+      placeGift(kind, mapGiftPoint(), kind === "cash" ? cashWorth() : 0);
+    }
+    prizeT = 10;
   }
   function cashWorth() { const r = Math.random(); return r < 0.46 ? 500 : r < 0.76 ? 1000 : r < 0.93 ? 2000 : 5000; }
-  function spawnPrize(dist) {
-    if (!player || prizes.length >= 12) return;
+  function spawnPrize() {
+    if (!player || prizes.length >= 16) return;
     let kind = GIFT_POOL[Math.floor(Math.random() * GIFT_POOL.length)];
     if (kind === "life" && (lives >= LIVES_MAX || prizes.some((z) => z.kind === "life"))) kind = "cash";
-    const worth = kind === "cash" ? cashWorth() : 0;
-    placeGift(kind, giftPoint(dist || 420 + Math.random() * 900, (Math.random() - 0.5) * 220), worth);
+    placeGift(kind, mapGiftPoint(), kind === "cash" ? cashWorth() : 0);
   }
   function flashGift(kind) {
     const el = document.querySelector(GIFT_BTN[kind] || ".w-msl");
@@ -2306,6 +2259,9 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     el.classList.add("gift-flash");
   }
   function collectGift(z) {
+    if (z.popping) return;
+    z.popping = true;
+    z.pop = 0.34;
     giftGot++;
     if (z.kind === "moab") { moabs = Math.min(3, moabs + 1); events.toast?.("MOAB +1", "good"); }
     else if (z.kind === "shield") { shields = Math.min(3, shields + 1); if (shieldT <= 0) { shields = Math.max(0, shields - 1); shieldT = 7; } events.toast?.("SHIELD", "good"); }
@@ -2318,7 +2274,6 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     else { score += 1000; events.toast?.("+1000", "good"); }
     audio.gift?.();
     flashGift(z.kind);
-    retireGift(z);
   }
   function retireGift(z) {
     const m = z.mesh; if (!m) return;
@@ -2332,42 +2287,38 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
   function tickSpecial(dt) {
     shieldT = Math.max(0, shieldT - dt); laserT = Math.max(0, laserT - dt);
     const hold = ops && ["load", "ready", "reload", "app", "final", "rollout", "turn"].includes(ops.mode);
-    if (!hold && !crashing && !ended && player) {
-      const agl = player.pos.y - groundAt(player.pos.x, player.pos.z);
-      if (agl > 40) {
-        if (!giftLine) {
-          giftLine = true;
-          const line = [["health", -80], ["fuel", 70], ["shield", -40], ["missile", 110], ["bomb", -120], ["moab", 0], ["cash", 90], ["life", -30]];
-          line.forEach((row, i) => placeGift(row[0], giftPoint(380 + i * 210, row[1]), row[0] === "cash" ? 1000 : 0));
-          prizeT = 8;
-        } else {
-          prizeT -= dt;
-          if (prizeT <= 0 && prizes.length < 10) { prizeT = 7 + Math.random() * 5; spawnPrize(); }
-        }
-      }
+    if (!hold && !crashing && !ended && player && prizes.length < 12) {
+      prizeT -= dt;
+      if (prizeT <= 0) { prizeT = 9 + Math.random() * 7; spawnPrize(); }
     }
-    const nose = player ? fwdFrom(player.yaw, 0, V()) : null;
     for (let i = prizes.length - 1; i >= 0; i--) {
       const z = prizes[i]; z.t += dt;
+      if (z.popping) {
+        z.pop -= dt;
+        const k = THREE.MathUtils.clamp(1 - z.pop / 0.34, 0, 1);
+        z.mesh.scale.setScalar(1 + k * 1.45);
+        z.mesh.traverse((o) => {
+          const mat = o.material;
+          if (mat && mat.userData && mat.userData.baseOp != null) mat.opacity = mat.userData.baseOp * (1 - k);
+        });
+        z.mesh.position.copy(z.p);
+        if (z.pop <= 0) { retireGift(z); prizes.splice(i, 1); }
+        continue;
+      }
       if (player) {
         const d = z.p.distanceTo(player.pos);
-        if (d < 240 && d > 1) {
-          const step = Math.min(d - 16, 55 * dt);
+        if (d < 165 && d > 18) {
+          const step = Math.min(d - 16, (1 - d / 165) * 24 * dt);
           if (step > 0) { tA.subVectors(player.pos, z.p).setLength(step); z.p.add(tA); }
         }
-        const floor = groundAt(z.p.x, z.p.z) + 70;
-        if (z.p.y < floor) z.p.y += Math.min(40, (floor - z.p.y) * 0.4);
-        if (d < 72) { collectGift(z); prizes.splice(i, 1); continue; }
-        if (nose) {
-          const along = (z.p.x - player.pos.x) * nose.x + (z.p.z - player.pos.z) * nose.z;
-          if ((along < -1400 && d > 700) || z.t > 150) { retireGift(z); prizes.splice(i, 1); continue; }
-        }
+        const floor = groundAt(z.p.x, z.p.z) + 90;
+        if (z.p.y < floor) z.p.y += Math.min(18, (floor - z.p.y) * 0.35);
+        if (d < 36) { collectGift(z); continue; }
       }
-      z.mesh.position.copy(z.p); z.mesh.position.y += Math.sin(z.t * 2.2) * 8;
-      z.mesh.rotation.y += dt * (z.kind === "life" ? 0.8 : 1.4);
-      const shell = z.mesh.userData.shell, halo = z.mesh.userData.halo;
-      if (shell && shell.scale && z.kind !== "life" && z.kind !== "cash") shell.scale.setScalar(1 + 0.08 * Math.sin(z.t * 3.2));
-      if (halo) { halo.material.opacity = 0.55 + 0.4 * (0.5 + 0.5 * Math.sin(z.t * 4)); const s = (z.kind === "moab" ? 62 : 52) * (1 + 0.12 * Math.sin(z.t * 3)); halo.scale.set(s, s, 1); }
+      z.mesh.position.copy(z.p);
+      z.mesh.position.y += Math.sin(z.t * 1.6) * 3.5;
+      const shell = z.mesh.userData.shell;
+      if (shell) shell.rotation.y += dt * 0.45;
     }
     tickShieldFx();
   }
@@ -2382,9 +2333,22 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
         const mat = new THREE.LineBasicMaterial({ color: 0xf7fbff, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
         const line = new THREE.Line(geo, mat); line.frustumCulled = false; g.add(line); lines.push(line);
       }
-      g.frustumCulled = false; plane.add(g); shieldFx = { g, lines };
+      const bubble = new THREE.Mesh(
+        new THREE.SphereGeometry(6.4, 28, 20),
+        new THREE.MeshPhysicalMaterial({
+          color: 0x8ec8ff, transparent: true, opacity: 0.22, roughness: 0.06, metalness: 0,
+          clearcoat: 1, clearcoatRoughness: 0.05, emissive: 0x1a4e88, emissiveIntensity: 0.35,
+          depthWrite: false, side: THREE.DoubleSide, fog: false,
+        }),
+      );
+      bubble.scale.set(1.25, 0.62, 1.85);
+      bubble.position.set(0, 0.15, 0.3);
+      bubble.frustumCulled = false;
+      g.add(bubble);
+      g.frustumCulled = false; plane.add(g); shieldFx = { g, lines, bubble };
     }
     shieldFx.g.visible = true;
+    if (shieldFx.bubble) shieldFx.bubble.material.opacity = 0.16 + 0.08 * (0.5 + 0.5 * Math.sin(performance.now() * 0.006));
     for (const line of shieldFx.lines) {
       const a = line.geometry.attributes.position.array;
       let x = (Math.random() - 0.5) * 14, y = (Math.random() - 0.5) * 3.2, z = -2 + Math.random() * 12;
@@ -2603,7 +2567,7 @@ export function createGame({ renderer, audio, controls, haptics, events }) {
     else heat = Math.max(0, heat - dt / HEAT_DOWN);
     if (!overheated && heat >= 1) { overheated = true; audio.hiss(); events.onOverheat?.(true); }
     else if (overheated && heat < HEAT_RESUME) { overheated = false; audio.cool(); events.onOverheat?.(false); }
-    rocketCd -= rdt; bombCd -= rdt; emptyT -= rdt; tgtFlash = Math.max(0, tgtFlash - dt);
+    rocketCd -= rdt; bombCd -= rdt; moabCd -= rdt; emptyT -= rdt; tgtFlash = Math.max(0, tgtFlash - dt);
     // b24: a missile / bomb request is remembered for 0.4 s, so a press during a cooldown or right after the other weapon is never lost
     if (controls.consumeRocket()) rockReq = 0.4; if (controls.consumeBomb()) bombReq = 1.0;
     rockReq -= rdt; bombReq -= rdt;
